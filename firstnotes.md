@@ -1,0 +1,12 @@
+- Application should be a way to learn about Projekt 2
+- educational function
+- Info fields
+- No fields that suggest other types/options than they actually accept
+- Prevent invalid input early on
+- intelligent validation information, tells you what is expected
+- hierarchy, more a bring to front button, or up/down buttons
+- reason for hierarchy
+- documentation integrated into application
+- being able to actually run, even small list-table-ensemble structures
+- output: midi, csv, visualisation
+- maxmsp and supercollider classes/patch to use it 
