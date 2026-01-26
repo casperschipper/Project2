@@ -1,0 +1,113 @@
+# Collective reading of the Atari manual in Vienna
+*January, 2026*
+
+QUESTIONS
+
+absolute pitch
+
+    is octave 4 scientific/american pitch notation (c4 = c')?
+
+    so there is no octave 0?
+
+
+autonomous rest vs pseudo rest, need to clarify
+
+    is this "playing" a rest?
+
+
+chord
+
+    does it simply mean each event is a collection of subevents (pitches, durations, dynamics, instruments)? YES
+
+
+combination
+
+    syncing the group indices of several parameters
+
+    question: implication with regard to hierarchy?
+
+
+what is provisional entry point?
+
+entry range??
+
+general entry
+
+    not "superposed" by rest?
+
+
+how to find the instruments?
+
+data types of parameters/items, strings/numbers?
+
+layers?
+
+    union?
+
+
+why can't tendency be used for rest parameter?
+
+
+pitch grid
+
+    equal division of the octave?
+
+
+do we want to condition the selection principles, so they chose allowed values, such as when duration needs tp be samller than entry delay would alea pick allowed values?
+
+Maybe visually offset REST "parameter", since it is fundamentallay different from the other parametrs, more of a tranformation done afterwards
+
+FOUND OUT
+
+tendency masks use series!
+
+element is list index
+
+there are three kinds of events/entry points: tone, chord, autonomous rest
+
+hierarchy can be random
+
+
+rhythmic context:
+
+        all the time data (starts and durations)
+
+
+variant duration
+
+    calculate based on average entry delay duration?
+
+
+vertical density
+
+    do we need it?
+
+
+groups are table rows
+
+ListTableEnsemble, in ensemble we have indices into indices of the list
+
+
+DECISIONS
+
+no strict limit on vertical density
+
+ranges with inclusive limits
+call = program entry (NEVER USE THE TERM CALL!)
+
+what exactly is entry delay?
+
+    time between current and next!
+
+
+relative pitch: 
+
+    pitch class 
+
+    or
+
+    non-pitched
+
+
+
+
