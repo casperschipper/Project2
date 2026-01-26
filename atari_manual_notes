@@ -1,4 +1,5 @@
 # Collective reading of the Atari manual in Vienna
+
 *January, 2026*
 
 QUESTIONS
@@ -90,14 +91,16 @@ ListTableEnsemble, in ensemble we have indices into indices of the list
 
 DECISIONS
 
-no strict limit on vertical density
+No strict limit on vertical density
 
 ranges with inclusive limits
+
 call = program entry (NEVER USE THE TERM CALL!)
 
 what exactly is entry delay?
 
-    time between current and next!
+    Time between current and next! (beginning of current event and beginning of next event)
+    If the duration is shorter than the entrydelay, a pseudo rest occurs.
 
 
 relative pitch: 
