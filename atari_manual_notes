@@ -111,6 +111,22 @@ relative pitch:
 
     non-pitched
 
+3 page 29 and 30 (examples)
+
+Reading these examples, I had a thought on Group indexes vs element indexes.
+
+I propose we create a notation to communicate differences between element indexes, group indexes and parameters.
+In reading these examples, there is a lot of non-useful ambiguity.
+
+Maybe instead of just using number 1 2 3 etc... we should use something like:
+group-1, instr-elem-1 etc, so that it is always 100% clear what is being referred to.
+So when group indexes are created by alea, they don't create
+1 2 3 1, but they create G1, G2, G3, G1.
+If these group indexes are of a particular parameter, that should also be explicit.
+We will need to think how we express this, but it is very important for being able to think about examples in PR2.
+
+
+
 
 
 
