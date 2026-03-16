@@ -25,3 +25,9 @@ On page 22: the autonomous density means that a chord is "scored" by just pickin
 
 Instrument, name and chord size
 Vertical density may be 0 or, from the chord size or it may come from the.
+
+# a/p is a freeze parameter (we are not going to do it?)
+
+# i/o
+
+# music XML
