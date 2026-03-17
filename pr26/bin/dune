@@ -1,0 +1,4 @@
+(executable
+ (public_name pr26)
+ (name main)
+ (libraries pr26))
