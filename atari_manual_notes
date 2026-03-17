@@ -1,0 +1,132 @@
+# Collective reading of the Atari manual in Vienna
+
+*January, 2026*
+
+QUESTIONS
+
+absolute pitch
+
+    is octave 4 scientific/american pitch notation (c4 = c')?
+
+    so there is no octave 0?
+
+
+autonomous rest vs pseudo rest, need to clarify
+
+    is this "playing" a rest?
+
+
+chord
+
+    does it simply mean each event is a collection of subevents (pitches, durations, dynamics, instruments)? YES
+
+
+combination
+
+    syncing the group indices of several parameters
+
+    question: implication with regard to hierarchy?
+
+
+what is provisional entry point?
+
+entry range??
+
+general entry
+
+    not "superposed" by rest?
+
+
+how to find the instruments?
+
+data types of parameters/items, strings/numbers?
+
+layers?
+
+    union?
+
+
+why can't tendency be used for rest parameter?
+
+
+pitch grid
+
+    equal division of the octave?
+
+
+do we want to condition the selection principles, so they chose allowed values, such as when duration needs tp be samller than entry delay would alea pick allowed values?
+
+Maybe visually offset REST "parameter", since it is fundamentallay different from the other parametrs, more of a tranformation done afterwards
+
+FOUND OUT
+
+tendency masks use series!
+
+element is list index
+
+there are three kinds of events/entry points: tone, chord, autonomous rest
+
+hierarchy can be random
+
+
+rhythmic context:
+
+        all the time data (starts and durations)
+
+
+variant duration
+
+    calculate based on average entry delay duration?
+
+
+vertical density
+
+    do we need it?
+
+
+groups are table rows
+
+ListTableEnsemble, in ensemble we have indices into indices of the list
+
+
+DECISIONS
+
+No strict limit on vertical density
+
+ranges with inclusive limits
+
+call = program entry (NEVER USE THE TERM CALL!)
+
+what exactly is entry delay?
+
+    Time between current and next! (beginning of current event and beginning of next event)
+    If the duration is shorter than the entrydelay, a pseudo rest occurs.
+
+
+relative pitch: 
+
+    pitch class 
+
+    or
+
+    non-pitched
+
+3 page 29 and 30 (examples)
+
+Reading these examples, I had a thought on Group indexes vs element indexes.
+
+I propose we create a notation to communicate differences between element indexes, group indexes and parameters.
+In reading these examples, there is a lot of non-useful ambiguity.
+
+Maybe instead of just using number 1 2 3 etc... we should use something like:
+group-1, instr-elem-1 etc, so that it is always 100% clear what is being referred to.
+So when group indexes are created by alea, they don't create
+1 2 3 1, but they create G1, G2, G3, G1.
+If these group indexes are of a particular parameter, that should also be explicit.
+We will need to think how we express this, but it is very important for being able to think about examples in PR2.
+
+
+
+
+
+
