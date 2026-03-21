@@ -1,0 +1,32 @@
+6.7 Combination 59 |
+6.1 COMBINATION | | |
+As is the case with the hierarchy, the idea of combination and :
+union also comes from instrumental music: manually operated musical |
+‘instruments which have to execute the structure occupy a central position :
+and are defined with the greatest care. It is often usual in instrumental |
+music to divide the "orchestra" into varying orchestral groups (smailer :
+ensembles); in the original version of PR-2 the formation of an ensemble |
+was only intended for the INSTRUMENT parameter. However, the necessity
+of providing each instrumental group with its own range of durations :
+or intensities resulted in "combination", so that together with a part- |
+icular instrumental group the appropriate group of another parameter :
+could also be called. In this aspect combination is thus another type :
+of selection principle, in addition to those already available for group
+selection. | |
+The "compatibility" of the parameters (see 5.1) is yet another
+aspect. Without the possibility of combination, two or more parameters
+would either be compatible (any element of the one parameter can be :
+combined with any element of the other) or incompatible (parameters
+interdependent in such a way that a preceding parameter restricts the |
+following ones in the selectability of their elements). Combination can |
+be used to turn parameters which are incompatible with regard to their :
+element lists into compatible ones by means of appropriate grouping of :
+elements in the tables; as soon as the combination is de-activated, the
+previously combined parameters revert to their incompatible state. |
+However, we must state that a certain degree of incompatibility is
+still present in combined parameters (unless the lists are compatible), |
+because every group~element of one parameter is not necessarily combin- |
+able with every element of the relevant group of the other parameter. |
+A resource would be to declare for each instrument its own group and to |
+make the corresponding groups of the parameters that are to be combined
+only contain elements which are compatible with the respective instrument. |

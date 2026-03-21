@@ -1,0 +1,48 @@
+58 Group formatton and layers
+
+eC
+6 GROUP FORMATION AND LAYERS
+We have repeatedly mentioned the LIST-TABLE~ENSEMBLE principle
+
+(especially in sections 2 and 3); it means that the composer not only
+
+makes a list of elements in a parameter but also a table in which the
+
+list elements can be formed into "groups" at will. Several groups can
+then form an ensemble, which is the final supply for the score. It is
+frequently not necessary to make use of group combination because
+individual groups can be arranged in such a way that they already re-
+present the final supply and can be transferred as such into the
+ensemble. If however several groups form an ensemble they can either be
+regarded as a uniform group (result: a "layer") or as several single
+groups (result: as many "layers" as there are groups in the ensemble).
+Some rules apply to the combination of groups to form an
+ensemble; these rules are stated here, and explained in 6.1. The
+possible "union" of several groups to form a uniform group, and the
+working-out of several layers, the groups remaining separate, are :
+
+discussed in 6.2
+Rules for combination and union:
+
+(1) Several table-groups can only be assembled to form the ensemble
+for INSTRUMENT.
+
+(2) Only one group can be indicated for the ensemble for all the
+other parameters, independent of INSTRUMENT.
+
+(3) If several groups are to form ensembles in the other parameters
+as well, these may only be groups with the same indices as those
+also declared as ensemble in INSTRUMENT ("combination").
+
+(4) If the ensembles each only contain one group (with the exception
+of INSTRUMENT, which may always contain more than one group),
+the respective variant is executed as one layer.
+
+) (5) If the ensembles contain several groups (number and indices of
+the groups as in INSTRUMENT), they can still be treated as one
+group; result: one layer ("union").
+
+(6) The groups in the ensembles can also be dealt with separately
+as in (5); result: as many layers as there are groups in the
+INSTRUMENT ensemble (and thus also in the ensembles of the
+"combined" parameters, "no union").

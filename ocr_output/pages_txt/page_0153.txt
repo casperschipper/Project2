@@ -1,0 +1,71 @@
+a |
+
+— | 153 |
+
+| HARMONY | : dummies | :
+
+15 principle 1 CHORD :
+
+| 3 INTERVAL | |
+
+16 table !
+
+17 order 1 ALEA ! 2
+
+3. RATIO: ,
+
+4 GROUP a: 2: type: 123 4
+
+5 SEQ: :
+
+a 18 transposition O no transposition 0
+
+| 1) ALEA
+
+2 SERIES
+
+| 3 row: |
+
+a 19 row . | . :
+
+| --| 20 transposition 0 no transposition 0 .
+
+1 ALEA |
+
+| | 2 SERIES |
+a , | 3 chromatic oe
+
+4 serial
+
+. 21 matrix MATRIX: -
+
+2 no matrix . 2
+
+| 22 chord : | I , |
+. QO no chord :
+
+| 23 forbidden tones :
+0 no forbidden tones 0
+
+24 inversion - QO no inversion 0
+
+| inversion
+| | REGISTER
+
+25 | list | | | |
+
+26 table . (tf combitnatton, number of groups =
+
+, | number of I-groups) | |
+
+27 | group selection 1 ALEA |
+
+| | | 5 SEQ: |
+
+(| 28 | order ‘1 ALEA |
+
+| 3 RATIO: | :
+
+4 GROUP a: 2: type: I 2 3 4 |
+
+| 6 TEND d: al: a2: zi: z2:

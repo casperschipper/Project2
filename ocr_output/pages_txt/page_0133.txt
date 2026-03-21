@@ -1,0 +1,38 @@
+|
+
+, However, the composer must be clear about the difference bet-
+ween elements which can be given per variant group (lists, tables and :
+also general information as in. the first five entries) and data for the |
+selection principles. Fig. 10-2 makes no distinction here. For the |
+number of groups (entry 13p) a.selection principle is determined per :
+variant group, but this principle is in action per variant. It is un- :
+important whether one or more layers are to be calculated; the number : |
+of groups applies to the entire variant and is automatically adopted |
+for all combined parameters. The same applies to the selection of |
+groups (entry 13q). The group selection in REGISTER, ENTRY DELAY, | | :
+DURATION, REST, DYNAMICS and PERFORMANCE only occurs "per layer" how- |
+ever if these parameters are “uncombined"; otherwise the group selection |
+is made per variant - in INSTRUMENT. | | :
+Neither does fig. 10-2 tell us anything about how HARMONY is ,
+treated. Elements and other data are given per variant group; but . :
+whether the selection of chords, row tones or interval tones occurs . :
+per variant or per layer depends on the union (entry 13s).
+| Technically, the data are fed into the computer in such a | :
+manner that first of all the composer's text is transferred literally |
+onto punch tape. A special preliminary programme puts this set of data
+into a new form as required by the read programme of PR-2. (The differ- |
+ence between composer's data and the preliminary programme's version is”
+mainly in counting operations which might be a nuisance to the composer,
+and also in the consideration of extremely exact format instructions. ,
+which might lead to errors if the tape were punched by hand.) The :
+computer in its turn makes a punch tape of the new version, and this |
+tape is the input material for PR-2. Since all sets of data (initial |
+sets, containing the data for all 63 entries and all subsequent sets |
+for re-defined entries) are dealt with in one run by means of the |
+preliminary programme, the computer functions as a memory for data |
+which are to be taken over for further variant groups. The new punch |
+tapes with complete sets of data for all 63 entries can then be — . |
+- presented to the PR~2 programme independently of one another and at |
+any time. This system can easily be adapted if disc or tape storage |
+are to be used as intermediaries.
+|

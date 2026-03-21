@@ -1,0 +1,10 @@
+72 Schematte parameters
+ensemble elements. This is not the case as a rule if the number or order
+of the groups is determined at random. Two examples are shown in
+example 7-2.
+
+An important principle applying to all "schematic" parameters:
+if parameters are to be combined, the number of table-groups in the .
+combined parameters must be the same as the number of table-groups in
+INSTRUMENT; in the uncombined parameters the number is free. This last
+also applies if the combination is not used (COMB = 0, see 9.6).

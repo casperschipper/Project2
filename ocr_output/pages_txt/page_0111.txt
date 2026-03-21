@@ -1,0 +1,55 @@
+|
+
+9.7 Time structure 111
+modify the sequence of entry points (durations are unaffected). All |
+entry points following the entry point of an autonomous rest are in- |
+creased by the duration of the rest. oe |
+‘Because of the fact that the durations in a chord can be inde-
+
+pendent of one another, we have a double definition of the chord with ; :
+
+more than one tone:
+
+(a) chord tones begin and end: simultaneously, : |
+
+-(b) > chord tones begin simultaneously and end one after the other. |
+
+It is not possible to have chord tones starting one after the other. | |
+Auxiliary constructions: | ae |
+
+- _. “arpeggio" indication, 7 - . : |
+
+- | + single tones with short entry delays and longer durations; ~~ :
+however, it is not possible in this case to have the chord
+
+_ tones ending simultaneously. oe .
+‘Simultaneously starting tones also result from entry delay 0 ("pseudo |
+chords"). - ee |
+
+. mo 9.1.2 Average entry delay 7 |
+In order to achieve a previously. established structure duration |
+
+it would be obvious to calculate all the parameter values for each entry
+point and to go on doing this until the sum of the entry points was |
+about equal to the structure duration. However, this method must be ~
+eliminated for two reasons: (1) for selection programme TENDENCY the
+number of entry points must be ‘known in advance because the step-for- :
+
+step movement of the mask could otherwise not be calculated; (2) the © |
+present. computer configuration at Utrecht makes it impossible either ~ !
+
+to accommodate the entire programme in core storage or to transfer the :
+parameter subprogrammes per entry point from background storage to core |
+storage. :
+The individual parameters. are therefore calculated one after — |
+
+the other in the selected hierarchy. This method necessitates estab~- |
+lishing the number of entry points (which is the same in all parameters)
+
+in advance. This is done by means of the average entry delay. During the |
+first pass of the programme, the ensembles are put together for all the |
+parameters. The average entry delay is then calculated from the ensemble |
+of entry delays |
+
+| ~ for ALEA, GROUP and TENDENCY without modification, |
+- for RATIO taking the ratio factors into account (each ensemble |

@@ -1,0 +1,46 @@
+Deftntttons 15
+elements in >list and +table. >Selection principles are available for
+the formation of series in the >ensemble and score. The result of a
+completed selection process is also occasionally known as series, +sel-
+ection cycle.
+Set of data. The totality of all the composer's data to be read for the
+calculation of a variant group.
+Sound entry. *Entry point for a tone or >chord as opposed to the entry
+point of an +autonomous rest.
+Structure duration. The duration in seconds, given by the composer, of
+a ~>structure variant. Since the number of ~entry points is calculated
+from the structure's duration and the average entry delay, and the
+entry delays are determined by one of the >selection principles, the
+sum of entry delays is not certain to correspond with the structure
+duration.
+Structure formula. The structural characteristics of the *+parameters
+and their elements as expressed in the input data, rules for the
++selection of elements and for the +hierarchy of the parameters, another :
+designation for +set of data. |
+Structure variant. If the number and selection of ~>groups for an
+>ensemble on the one hand and/or the selection of ensemble elements
+for the score on the other hand are determined aleatorically, the result
+is not the only possible interpretation of a +structure formula, but
+merely a structure variant. All further variants will have other char-
+acteristics inherent to the +set of data whilst having similar element
+stockpiles and +selection principles, and thus will gradually reveal :
+the ambiguity of the structure formula. |
+Subsequent set. >Set of data referring to an +initial set or a sub-
+sequently read set of data and thus not necessarily complete.
+Table. Collective term for >groups. Represents a stockpile of groups
+among which selections can be made for the >ensemble by means of a
++selection principle.
+Transposition cycle. >Selection cycle of transposition intervals for
+the transposition of >chords and rows which the composer has declared |
+in the harmony ~parameter for the >chord principle or-row principle. |
+Union. The treatment of the ~ensemble as a single unit to which the
++selection principle for the score extends regardless of the number of |
++groups comprising the ensemble. Only one +layer results from union.
+Vertical density. Number of tones commencing simultaneously at each time-
+point, regardless of the *chord size of the instruments involved. An
+automatic check sees to it that the total number of superposed tones per
++layer does not exceed the number of tones in the>pitch grid.
+| Wrong element. An element in the >ensemble which is used in violation of /
+the rules inherent to the >structure formula because no element can be
+found to satisfy the rules. Wrong elements are marked by a +comment in
+the score. . .

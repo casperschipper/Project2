@@ -1,0 +1,42 @@
+8.7 Inetrument 97
+tong durations may be played. a :
+Every pair of numbers is given a common index, so that one ~
+duration range corresponds to each instrument. The duration range applies
+to both melody and percussion instruments. a
+The duration range participates in the hierarchy: durations can |
+only be selected for a given instrument if they are in the allowed dur-
+ation range. |
+This also applies the other way round: instruments can only be
+selected for a given duration if they can play this duration. If no ©
+allowed element can be found here, a "wrong" one is inserted and pro-
+vided with a comment, |
+intensities | AMB-DYN By ZyAyZyo ee AyZ
+As Z yee 5 7TAynZ
+A dynamic range, referring to the list L-DYN (see 7.5), is given :
+for each instrument. The limit values a and z must be indices. a and z
+are elther both positive or both negative, positive values contain
+"allowed" dynamics, negative values contain "prohibited" ones, themselves
+belonging to the allowed ones.
+Example: (3,5) means that dynamics with an index <3 or >5 may not be :
+used. (-3,-5) means that dynantes with an index >3 and <5 :
+may not be used (only index 4 ts blocked in thte case). Note
+that these tndices always refer to the list (thus not to the |
+ensemble). : : |
+Each pair of numbers is given a common index, so that a dynamic
+range corresponds to each instrument. The dynamic range applies to both
+melody and percussion instruments.
+The dynamic range participates in the hierarchy: dynamics can |
+only be selected for a given instrument if they are in the allowed
+dynamic range. . |
+The same applies the other way round: instruments can only be |
+selected for a given intensity if they can play it. If no allowed
+element can be found, a "wrong" one is inserted and provided with a
+comment. |
+A range of allowed chord sizes is given for each instrument,
+@ representing the smallest chord and z the largest. ALEA selects bet-—
+ween these limit values. Each pair of numbers is given a common index,
+so that a range of chord sizes corresponds to each instrument. The chord
+size range applies to both melody and percussion instruments.
+The chord size plays an important part in the "instrumentation"
+of the score (compare 5.2 and 9.2). For whether the "vertical density",
+|

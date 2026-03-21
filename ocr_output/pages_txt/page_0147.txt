@@ -1,0 +1,80 @@
+11.4 Score / 11.8 Comment 147 |
+
+ne
+
+11.5 COMMENT | |
+
+In the last column of the score comments are printed if necess-
+
+ary which inform the composer that because of the given rules one or |
+
+more parameter values could not be found. These rules are either inherent |
+
+to the structure formula or result from the construction of PR-2. In
+
+the latter case we speak of restrictions. |
+
+The comment is printed in the form of a capital letter indicating
+
+. the parameter. It does not provide any enlightenment as to the respective
+
+cause. The letters have the following meanings:
+
+— I INSTRUMENT
+
+H HARMONY
+
+OR _ REGISTER |
+
+E ENTRY DELAY |
+
+D DURATION |
+
+A INTENSITY |
+
+M MODE OF PERFORMANCE |
+
+No comment is provided for REST, since no restriction exists
+
+and the rules can basically be adhered to. Here follows a list of |
+
+reasons why the above-mentioned parameters might have comments.
+
+| | > INSTRUMENT - |
+
+«A comment is provided in the following cases:
+
+| (a) HARMONY comes first, no instrument can be found to play the |
+
+selected pitch. :
+
+(b) HARMONY comes first according to the CHORD principle, all
+
+allowed instruments have been used before the chord is com- ~
+
+| pletely scored. In this case, moreover, repeated instruments
+
+- are only entered for one more tone at a time. | |
+
+. (c) | REGISTER comes first, no suitable instrument can be found for
+: the selected register.
+
+| (d) DURATION comes first.
+
+(1) No suitable instrument can be found for the selected
+
+' duration. |
+
+(2) Equal durations are requested in the chord, but no
+
+- . instrument can be found to play the given duration.
+
+- (e) DYNAMICS comes first.
+
+- — C4) No suitable instrument can be found for the selected
+
+intensity. |
+
+(2) Equal intensities are requested in the chord, but no
+
+— instrument can be found to play the given intensity.

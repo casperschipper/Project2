@@ -1,0 +1,39 @@
+22 Vartable data and thetr selection
+SUE Re
+
+2.3 ENSEMBLE
+
+When a variant is worked out, normally one group per parameter
+is selected and registered in ENSEMBLE. The ensemble then contains
+either the entire list or at least a selection represented by the
+selected group. Under certain circumstances (see section 6) several
+
+| groups can be put together into an ensemble. The groups are then registered
+in the ensemble in the same order in which they are named according to
+the given permutation principle (see example 2-1).
+
+The order of the elements (represented by their list indices)
+in the ensemble is the final arrangement for the variant. The use of
+this arrangement for purposes of data selection for the score depends
+on the permutation principle chosen for this.
+
+Since list-elements can be named more than once in the table
+(whether in one group or distributed among several), repetitions of
+elements can also occur in the ensemble. However, PR-2 does not take
+
+. this: into. accounts. the. permutation. principle for the. ensemble merely ©
+selects ensemble indices regardless of the elements: denoted: by- these
+indices. | . : .
+Repetition of elements in the ensemble can lead to undesired
+results. Consider the following example:
+fi ob eclar hrn fag —_
+7 3 4
+. 345°. .
+If groups 2 and 3 are put together to form the ensemble, we have the
+arrangement: | |
+According to this we have a flute, 2 clarinets, 2 horns and a bassoon, .
+which could result in unperformable situations for a wind quintet
+(see list). oO ; : | |
+‘The final selection of ‘the parameter elements is basically
+according to this LIST-TABLE-ENSEMBLE principle; assembly and permutation
+of the ensemble are governed by permutation principles which the com-

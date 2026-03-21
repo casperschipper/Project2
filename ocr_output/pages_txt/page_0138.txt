@@ -1,0 +1,48 @@
+138 Output
+.
+| CALL
+CALL NUMBER CODE FORMAT
+output 57 LAYOUT 1 (score)
+| 2 (score and parts)
+| | 3 (seore and parts, also score
+| tn simplified notation)
+| | 4 (punch tape with seore data)
+oS Fig. [1-1
+Survey OUTPUT —
+
+Cali number 1 causes not only the composer's data and check
+data to be printed out but also the complete score, layer for layer,
+and chronologically in seconds. The score printout serves as a refer-
+ence for the printout of the parts (if required), and also as a model
+for a musical graphic to scale,
+
+Call number 2 causes not only the score but also all parts
+comprising it (i.e. instruments) to be printed out singly and in metric
+notation. By a metre we mean a unit fixed arbitrarily by the composer
+(e.g. a quarter-note) which can be integrally subdivided. The given
+metronome tempo results in the duration of the metre: METRE = 60/TEMPO.
+The metres are numbered in chronological order, the metre counter being
+printed.
+
+The subdivision of the metre into duplets, triplets, etc., occurs
+automatically. For this purpose each original time-value is compared
+with the possible subdivisions of a metre (also in seconds) and rounded
+off to the nearest subdivision point. The number of subdivisions taken
+into account here is determined by the composer in entry 63. The sub-
+division to be found per instrument and per metre is the one which occurs
+most frequently; if various subdivisions occur equally often, the finer
+subdivision is selected because the rounding-off error factor is less,
+All beginnings and ends of tones are involved in this calculation.
+
+The result is a uniform subdivision for a given metre to which
+both entries and ends of the given instrument can be rounded off. If
+an instrument (e.g. piano) be notated "polymetrically", it must be
+defined a corresponding number of times in the instrument list (entry 6),
+or mentioned once in the list and a corresponding number of times in a
+table group.
+
+The composer determines the finest subdivision (e.g. eight sub-
+| divisions for 8 thirty-second notes to a quarter-note), and also the
+shortest period in seconds which is still to have an effect in the form
+of a subdivision. This shortest period determines the finest subdivision
+(compare 9.3).

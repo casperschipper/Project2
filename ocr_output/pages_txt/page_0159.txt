@@ -1,0 +1,52 @@
+i
+159
+| INDEX
+‘
+Page-numbers in bold type refer to passages where the respective item
+is discussed in detail; page-numbers in italics refer to illustrations |
+or examples. .
+absolute pitch, see pitch data 8, 18 ,
+actual parameter, see parameter -, composer's 138, 139
+additional data 110 - form 130, 752
+ALEA 25, 38 decimal numbers (18, 131 |
+aleatoric music, see music density, autonomous 98 |
+allowed element, see element : -, total 55, 98 .
+array 12 | dependency, mutual 50 .
+automatic check, see check dummies 76, 130
+autonomous density, see density = dummy groups 123
+autonomous rest, see rest duration 53, 79, 80, 82
+- list 20 ,
+bar 114, 149 . - range 96 ' :
+blocking 120, 720 : dynamics 88, 89 |
+- list 20
+call number 38, 121, 722, 131, : |
+156 element 8, 18, 79, 133
+chance 25 elements, allowed 20, 55
+check, automatic 55, 121 -, blocked 39
+- data 138 ff : -, repeated 22, 25 . :
+chord 12, 49, 55 ~, scattered, see repetition |
+- analysis 709 oo, wrong 15 .
+-, durations in 79 ensemble 12, 18, 79, 22, 27, 30,
+-, dynamics in 89 58, 139.
+- principle 12 ~ index, see index |
+-, pseudo 14, 55, 111 . entry, general 13, 83
+- sequence 104 - range 13, 85
+- size 12, 97, 139 -, sound 83
+- size "one" 49 entry delay! 49, 53, 78, 78, 82, |
+- table 104 | 86 : a
+- transposition 104° -, average 37, 80, lll, 773, 139
+column index, see index entry point,.13, 49, 110
+combination 12, 58, 59, 67, 66, -, definite: 12
+70, 123, 724 -, provisional 14, 85 : |
+-, rules for 58 error check 139, 141
+combined parameters, see parameters 8
+comment 12, 55, 120, 147 | forbidden tones, see tones
+compatible parameters, see para- format 13, 130
+meter |
+concealed rest, see rest general entry, see entry
+context, horizontal 49 given interval, see interval |
+-, rhythmic !4, 90, 120, 149 GROUP 26, 42 .
+-, vertical 49 . . group 13, 18, 27, 58
+continuation 136 - formation, see combination
+correction 121 - index, see index .
+cycle 40 . - selection 99, 133 |

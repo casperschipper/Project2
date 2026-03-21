@@ -1,0 +1,37 @@
+112 Additional data
+SNe eee
+element p times, divided by the sum of all p's); list elements
+. not in the ensemble are of course ignored; repeated list elements
+are calculated a corresponding number of times, _
+
+= _ for SEQUENCE only for the elements explicitly mentioned.
+Example 9-1 shows the calculation of the average entry delay for a given
+ensemble.
+
+The selected structure duration is divided by the average entry
+delay, which results in the number of entry points. This calculation is
+independent of the hierarchy of each structure variant. When the ENTRY
+DELAY is calculated at its appointed time, an entry delay is selected
+for every entry point according to the chosen selection programme,
+regardless of whether the sum of entry delays coincides with the struct- |
+ure duration or not. Experience shows that the deviations from the re-
+quired structure duration are relatively small. This especially applies
+to a short selection cycle with relation to the number of entry points
+and to all selection principles with the exception of TENDENCY; it is
+a precondition of this principle that all ensemble elements have more
+or less the same chance. It is therefore recommended when using TENDENCY
+to assemble only elements in the ensemble which are actually to be
+
+used, But even then greater deviations from the desired structure dur-
+ation can be expected if chiefly small. or large time quantities are
+selected for TENDENCY because of the mask's movements. Additional
+deviationsfrom the desired structure duration also arise of course
+‘because of longer durations, since the effective structure duration =
+last entry point + last duration. If the structure duration is not to be
+essentially exceeded or fallen short of, it is recommended to have a
+test version calculated first and then to correct the structure duration
+accordingly. oo : |
+
+Autonomous rests are basically ignored when the number of entry
+points is being calculated; this means that the actual structure duration
+is increased by the sum of all inserted rests.

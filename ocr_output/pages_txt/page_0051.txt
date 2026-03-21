@@ -1,0 +1,36 @@
+5.1 Hterarchy of the parameters — 51 |
+En oN RE |
+parameter. Hierarchy and vertical density are discussed in this section,
+group formation and layers (in terms of points h and e) in the next one. |
+5.1 HIERARCHY OF THE PARAMETERS
+The order in which the parameters are placed in the previously ,
+calculated time grid is determined by the composer, partly or completely. |
+If the order is only partly fixed, the remaining parameters are automat—
+ically filled in according to selection principle SERIES. Restrictions
+applying to the hierarchy are discussed in section 9. .
+’ Since PR-2 is intended for the composition of instrumental |
+structures, the hierarchy of the parameters is concentrated around the
+instrument parameter (see fig. 5-1). |
+It can be clearly seen that nearly all the parameters depend on
+the instrument and vice versa; the relationships are two-sided. As well |
+as this there are also two pairs of parameters dependent on each other |
+(pitch/register and entry delay /duration) , and two one-sided relation- :
+ships (entry delay-duration/rest and rest/performance). The dependency :
+of the parameters on the instrument is based on the "definition" of the
+instruments with respect to :
+- the pitch compass, :
+- the "allowed" durations, intensities, modes of perfor- |
+mance and chord sizes.
+Pitches and registers also depend on each other if the instrument |
+is not yet given, because pitches must fit in an already given register, |
+or registers must encompass already given pitches. | | | _
+Entry delays and durations depend on each other insofar as :
+unison instruments can not play a new tone until the previous one has |
+ceased. In such cases the duration may not be longer than the entry |
+delay. This dependency can however be nullified if superpositions of |
+several tones are tolerated or desired. | |
+Basically, rests are inserted independently of all other para-
+meters. Since however a sustained tone should not be chopped up by sub-
+sequently inserted rests, a dependency of the rest on the relationship
+between entry delay and duration results. This is indicated by the
+letter P in the lines for entry delay and duration in fig. 5-1.

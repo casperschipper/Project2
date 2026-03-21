@@ -1,0 +1,35 @@
+3.4 Permutatton | 33 |
+ne |
+The first permutation occurs when the elements of the list are |
+put together to form various groups in the table (the groups can be of |
+varying lengths). The first permutation thus refers to the result of the :
+first selection. Since the composer makes the table himself, he makes :
+at the same time a final selection from the possible permutations of the :
+list unless he replaces the first table by another one later (referring |
+to the same list). :
+The second permutation occurs when the table-groups are formed
+into an ensemble. For this, selection programmes are employed; they |
+determine on the one hand the number of groups and on the other hand |
+the selection of the groups. Since the ensemble is formed again for
+each variant, a permutation can occur for each variant. )
+| The third permutation refers to the respective selection (one :
+of the permutations) from the table-groups: the ensemble contains
+groups which themselves consist of elements. This sequence of elements
+in the ensemble can be permutated repeatedly; the permutations are :
+registered in the score. Since the ensemble elements are as a rule :
+frequently brought into play for a musical structure, frequent permut~ | |
+ation of the ensemble plays a considerably more important part than
+the selection that is performed just once. |
+Selection and permutation overlap. "Selection" is meant to imply :
+that atcertain points a selection must be made from imagined or given
+elements, regardless of possible permutations: |
+- a list is formed from "possible" elements, |
+- groups are formed from list-elements, |
+. . = an ensemble is put together from groups. | |
+"permutation" is meant to imply that selected elements (by means |
+of further selections) can be (but do not have to be) put in various |
+orders: ;
+- list-elements can form groups in different orders,
+= groups can be combined in various ways to form an ensemble,
++=. ensemble elements can be registered in the score in various
+orders. . .

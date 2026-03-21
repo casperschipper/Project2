@@ -1,0 +1,37 @@
+146 Output
+——————-_-_———
+11.4 SCORE
+
+The printout of the score follows the CHECK DATA. The score is
+in the form of tables and gives the time values per layer for beginnings
+and ends of tones, arranged in chronological order, in seconds. The —
+score printout is meant to be a complete collection of the data for a
+musical structure, regardless of its legibility or playability. The
+score printout is chiefly suitable for the transcription of the data
+into musical graphics, it being possible to convert the time quantities
+(seconds) into any desirable scale, Refer to the parts for transcription
+into traditional notation (see 11.6). The comments accompanying the
+score are explained in 11.5.
+
+The score data are distributed over 9 columns; all parameter
+values of a single tone are printed in each line. In the columns for
+instrument, mode and intensity, repetitions are not printed. Chords can”
+be recognized by their common entry points. Fig. 11-4 shows the 9 columns
+to contain the following information:
+
+caption information } |
+(none) line index
+INSTRUMENT name of instrument |
+MODE performance indication
+PITCH absolute pitch
+(REGISTER) index of register employed
+INTENSITY intensity
+ENTRY time~point of tone-entry counting from start of variant
+END time-point of tone-end counting from start of variant
+COMMENT comment referring to parameter values inserted against
+the rules
+Fig. 11i=4
+
+Within a variant group the individual variants are numbered.
+
+The "specification" is repeated on every page.

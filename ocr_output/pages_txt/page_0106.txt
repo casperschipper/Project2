@@ -1,0 +1,54 @@
+— 106 Devtating parameters
+eee
+In example 8-4 several chords start with the same tone (8); this
+
+might have been avoided if all chords in the table had started with 1.
+True, all chords would have started with the same tone in the first pass,
+but the transposition principle (e.g. SERIES or a given row) would have
+been clearly expressed in the starting-—tones. Starting-tones, however,
+are of slight importance, since the decision as to the octave register
+
+of the individual tones in the chord is not made until REGISTER.
+
+When transposition intervals are used only once in a particular
+arrangement, we call this a "transposition cycle" (analogous to the
+"selection cycle"). In ALEA this is of infinite length, in SERIES it is
+limited to tr tones, and in the case of a given row its length is equal
+to the number of tones in the row. Each transposition cycle is started
+once for each variant group; in the variant group each new variant simply
+continues the series of chords and the row of transposition intervals.
+
+If this is not desirable, a new variant group must be started for each
+variant (number of variants = 1); see 9.7 and section 10.
+
+The same applies if several layers have their own harmony; the |
+transposition cycle, like the selection cycle, passes over the layers
+and can only make a fresh start with a new variant group.
+re es en
+| ROW | 19 | ROW | t,t,...,t | :
+
+Any number of relative pitches between O and tr inclusive can
+be given. If INSTRUMENT comes after HARMONY a percussion instrument is
+inserted for pitch 0. Pitch 0 is ignored, however, if INSTRUMENT comes
+first and a melody instrument has been selected. The tones in the row
+are distributed in turn among the entry points, and per entry point among
+the chord tones ("vertical density"). |
+
+transposition 20 TRANSP-ROW 0 (no transposttton)
+of row 1 (transposttion with ALEA)
+| 2 (transposition with
+SERIES)
+3 (echromatte transposition)
+| 4 ("sertal" transposition)
+
+Once the row as a. whole has been used, it is transposed. See
+TRANSP-CHORD for reference tone and transposition cycle.
+
+The development of the row (including transpositions) is not
+broken off at each variant; a new row only starts again with any cert-
+ainty together with a new variant group. ALEA and SERIES provide trans-
+position intervals between 1 and tr, call 3 causes the ascending seq-
+uence of numbers from 1 to tr, for "serial" transposition the given row
+acts as a row of transposition intervals, call 0 always means that no
+transposition takes place. Remember that all O-tones in a row are ex-
+cluded from transposition. |

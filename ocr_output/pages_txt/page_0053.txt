@@ -1,0 +1,38 @@
+5.7 Hterarchy of the parameters | 53 :
+Lastly, performance depends on the rest if new modes of perfor- |
+mance may only be inserted after rests. . :
+In the left-hand column of fig. 5-1 we have the "given" para- |
+meters; "given" means that the respective parameter was calculated | |
+before the "dependent" parameters. In the sequence of parameters . i
+ABCDEFGH, A would be given for parameters B to H, B for C to H, |
+etc. However, it is frequently the case that not all parameters depend
+on each other, so that only pairs of parameters are considered, such as :
+C and F; C would then be given, F dependent.
+To aid comprehension of the résumé below it must be stated that
+percussion instruments are indicated by the pitch 0 and the register |
+0,0. For given percussion instruments a 0 pitch is then generated in |
+HARMONY and a "range" selected in REGISTER (see 8.1). If however pitch |
+and/or register are already given, percussion instruments can only be
+inserted where a 0 pitch or a 0,0 register have been selected. - |
+Explanations of the "given" parameters follow here: .
+| Instrument given: Pitches can only be inserted if the instrument
+is a melody one, otherwise pitch 0 is inserted. Registers, durations, |
+intensities and modes of performance are tested as to whether the in- |
+strument has been defined for the respective values of these parameters. |
+Pitch given: Only melody instruments can be inserted. Registers
+are tested as to whether they encompass the respective pitch. |
+Pitch "zero" given: Only percussion instruments can be inserted. :
+The register is given the form 0,0.
+Register given: Only melody instruments can be inserted. Pitches |
+are tested as to whether they are included in the respective register. |
+Zero register given: Only percussion instruments can be inserted.
+The pitch is given the form 0. |
+Entry delay given: Durations are tested as to whether they are |
+in the allowed ratio to the respective entry delay. If the duration is |
+always to be the same as the entry delay, the duration ensemble is |
+ignored... : :
+Duration given: Instruments are tested as to whether they may |
+play the respective duration. Entry delays are tested as to whether they |
+are in the allowed ratio to the respective duration. The ratio desired |
+by the composer between entry delay and duration applies regardless of i
+the order in which the two parameters are calculated.

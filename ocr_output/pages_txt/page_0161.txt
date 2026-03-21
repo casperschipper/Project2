@@ -1,0 +1,58 @@
+i
+16] |
+range of articulation 90 storage, available 143
+RATIO 26, 39 -, disc 139
+ratio factor 26, 39 -, drum 139 :
+reference tones, see tones structure duration 15, 85, 113,
+register 53, 74, 70, 77 173, 139 .
+0,0-register 53, 74 - formula 8, 15, 69, 147
+relative pitch, see pitch - variant 8, 15, 90, 110
+repetition 25 structure duration, effective |
+- check 38 (actual) 85, 112
+- command 26 sub-chords 55
+~ in groups 26, 42 - -groups 30 |
+- of elements 22, 25, 30 - -tendencies 44
+-, premature 25, 38, 107 succeeding interval, see interval
+- prohibition 25 superposition 79, 120
+-, scattered 25 ff - supply 25 ff, 98
+rest 54, 83, 84 -, final 58
+-, autonomous 12, 83, 110 -, regeneration of 38 ff
+-, concealed 12, 83, 110 symbol 18, 27 j
+- duration 14, 83 |
+~ entry, definite 85, 87 table 15, 18, 79, 20, 27, 28, 58,
+-, general 83 130, 732 |
+-, pseudo 14, 83, 110 -- -group 30
+rest delay 83, 86 tempo 114, 774, 139
+-, definite 12 TENDENCY 26, 44, 45 |
+O-rest 90 ' test programme, see programme
+restrictions 50, 55, 122, 147 time axis 49 |
+rhythmic context, see context - grid 51
+row 106 - -points, number of 36
+- development 106 - structure 110
+-, infinite 13, 107 ff time value, smallest 118, 779
+- principle 14 time values, common 80
+- transposition 106 tones, forbidden 107 ff |
+rules 8, 147 -, reference 104 f£ |
+-, starting 104
+sample 28 -, sustained 83
+score 8, 47, 58, 62, 137 ff, 141, transposition 705
+146 . -, chromatic 106
+~, assembly of 70 - cycle 15, 106
+-, uniform 62 - interval 104 ff
+scoring 13, 56, 97 - row 104
+selection 8, 14, 18, 24, 26 -, serial 106 a
+-~ cycle 14, 36, 39, 98, 113 ff type 42
+- principle 14, 62, 133 —
+~ programme 287, 38, 77, 132 union 15, 62, 65-66, 70, 99
+SEQUENCE 26, 43, 70 -, rules for 58
+serial music, see music | |
+SERIES 25, 38 variant 8
+series 14 ~ group 8, 106, 125, 130
+set, initial 13, 80, 130, 156 vertical density 15, 50, 55, 81,
+- of data 15, 125, 130 97, 102, 115, 775-776
+-, subsequent 15, 130, 156
+Sign 18 wrong element, see element |
+sound entry 15 |
+start number 125 .
+starting tones, see tones
+|

@@ -1,0 +1,62 @@
+ee 135 |
+mo _ : o. | 7 |
+So | ow | |
+
+o | a |
+
+7 | : oof ou . 7 |
+a a w | 85 | | | |
+a | Po
+
+| ee
+
+co 7 a | | |
+Hit
+
+. . a sd DO | _
+entry | description oO ma | «ik | within a variant per © |
+| ENTRY DELAY | | :
+29 list 7 a x | |
+30° - table _ x : :
+4.31. selection of groups KX Oe .
+320 order entry point
+DURATION | oo
+33 list x eo
+34 table | x
+35 selection of groups xx
+36 order . entry point, tone
+37 relation x
+38 mode x
+REST :
+
+39 list x
+40 table x
+41 selection of groups xx
+42 order . rest
+43 mode x
+DYNAMICS |
+
+44 list x
+45 table x
+46 selection of groups KX
+47 order entry point, tone
+48 mode x
+49 TEMPO-list x |
+50 order x
+51 STRUCTURE DURATION-list | x |
+52 order x
+53 VERTICAL DENSITY x |
+54 order entry point
+55 blocking x
+56 hierarchy XX |
+57 output x
+MODE OF PERFORMANCE
+
+58 list x |
+59 table x
+60 selection of groups XX |
+61 order entry point, tone, rest |
+62 mode x |
+
+| 63 grid x
+Fig. 10-2 |

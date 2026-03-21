@@ -1,0 +1,44 @@
+38 , oe The selection programmes
+Saar ee
+| | | ) . |
+
+4 THE SELECTION PROGRAMMES 7
+
+. |
+
+' For the assembly of an ensemble from table-groups (how many
+groups? - which groups?) and also for the forming of the score from |
+ensemble data, there are selection programmes which the composer calls
+by using their call numbers followed (if required) by additional data
+(the so-called actual parameters). These selection programmes can
+also be used for other purposes (see sections 5, 7, 8, 9). In this |
+section the selection programmes are described in detail.
+
+4.1 ALEA .
+
+Call number: |
+Selection programme ALEA chooses elements of a given supply
+at random. The elements are regarded as "samples" (see 3.3), and can
+thus be used repeatedly. There is no check on possible "premature"
+repetition of elements before the entire supply has been "used up".
+
+The instruction used to select the index of an element in the
+
+programme is:
+i := entier ((z-at+l) x RANDOM + a),
+a and z indicating the random range (a < z) and RANDOM generating
+equally distributed numbers between 0 and |.
+
+If selection programme ALEA is to be called, it is sufficient
+to indicate call number 1. The programme automatically inserts the
+actual parameters. a and z.
+
+4.2 SERIES .
+
+| Call number: 2
+
+Selection programme SERIES chooses elements of a given supply
+at random, the "samples" being removed from the supply. In contrast to
+ALEA, there is thus a repetition check which sees that no element is :
+repeated until all of them have been selected. As soon as the supply
+is exhausted, it is automatically regenerated.

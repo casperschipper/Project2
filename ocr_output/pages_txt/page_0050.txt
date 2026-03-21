@@ -1,0 +1,60 @@
+50 Hortzontal and vertical arrangement
+divisions. The result is then "parts" which in their turn can
+
+be scored either for one part or in chords. Such parts are called
+
+LAYERS (see section 6).
+
+(f£) Since the parameters involved in a tone are defined separately,
+we can regard the tones as a "chord" of the various parameters.
+
+: However, since many possible parameter combinations must be re-~
+jected for practical reasons (the mechanical construction of
+
+the musical instrument, performance technique, aural properties),
+
+mutual dependencies result. It seems reasonable to establish
+
+the parameter which is most important each time (i.e. the one
+
+which dominates the structure) independently of the others;
+
+these other parameters must then be more or less subordinate
+
+according to the unavoidable restrictions. The order in which
+
+the parameters are established is therefore of great formal
+
+| significance. |
+(g) The order in which the parameters of a structure variant are
+worked out is called the HIERARCHY of the parameters. We call
+
+the (changing) number of tones in the chord the VERTICAL DENSITY
+
+of the structure variant. |
+(h) The restrictions regarding the possibility of combining the
+
+| parameters into a tone can be different from one instrument
+
+to the next. A special combination principle is used to make
+
+sure that certain values of the one parameter are only linked
+
+with certain values of one or several other parameters (see
+
+"sroup combination" in section 6).
+
+All decisions made by the computer in calculating a musical
+structure are made one after the other. Mutual dependencies can only
+occur when later decisions depend on previous ones. This is the case,
+for example, in selection principle SERIES, where a selected element is
+blocked until all elements of the supply have been used up.
+
+The same principle of sequential decision also applies to the
+various parameters of the musical structure. The structure is divided
+up into the number of layers specified by the composer, each layer
+being divided up into a particular number of entry points; the parameter
+programmes are then called in the order established as "hierarchy" by
+
+the composer; each individual parameter programme sees to it that the
+time-points in a layer are occupied by the elements of the respective

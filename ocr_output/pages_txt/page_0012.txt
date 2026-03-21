@@ -1,0 +1,45 @@
+12 Defintttons
+ee
+© Od DEFINITIONS
+Absolute pitch. Pitch code for the entire pitch range, consisting of an
+octave digit (1 to 9) and a >relative pitch.
+Autonomous rest. A rest subsequently inserted in the +rhythmic context
+by means of the rest >parameter; not to be confused with >pseudo rest.
+Chord. In general: all tones commencing simultaneously; each sentry .
+point is occupied by a chord. Specially: tones which commence simult-
+aneously in accordance with a chord instruction (+chord size of an
+instrument, chord in terms of the harmonic ~chord principle, >vertical
+density).
+Chord size. Number of tones which can be played by an instrument simul-
+taneously. Defined for each instrument between two limit values.
+Chord principle. One of three harmonic principles. Several chords form
+a stockpile from which selections can be made according to a >selection
+principle.
+Combination. A principle developed for PR-2 according to which the
+sequence of group-indices in the instrument parameter is automatically
+adopted by the indicated >parameter; the >groups designated by these
+indices are put together to form an >ensemble. The parameters excepted
+from the combination obey their own +selection principles, with which
+however only one group can be indicated for the ensemble each time.
+Comment. Indication in the score printout that certain parameter values
+are inserted in contradiction to the composer's rules since suitable
+elements were not available in the +ensemble. A +wrong element is marked
+by a letter indicating the appropriate ~parameter.
+Compatible parameters. Parameters whose elements can be fitted together
+in any manner. Special attention must be paid to the compatibility in
+the >combination of parameters. Since the selection of elements for the
+score is made according to an >ensemble, only the respective ensembles
+have to be compatible; but if group selection is made by aleatoric means,
+the +lists must also be compatible.
+Concealed rest. >Autonomous rest inserted in the >rhythmic context
+instead of a +sound entry which is not also a >general entry, superposed
+however by a sustained tone (or ~chord).
+Definite entry point. Point in time at which an >autonomous rest com-
+mences. The definite entry point is found after a +provisional entry
+point has been established.
+Definite rest delay. The time-lag between the end of an »autonomous rest
+and the +definite entry point of the next rest.
+Ensemble. An array (field of numbers) among whose elements a selection
+can be made by means of a >selection principle for the assembly of the
+score. The ensemble consists of one or more ~groups taken from the
++table in accordance with a selection principle.

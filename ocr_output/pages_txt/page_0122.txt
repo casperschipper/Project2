@@ -1,0 +1,42 @@
+122 Addtttonal data
+call number parameter
+| INSTRUMENT
+2 HARMONY
+3 REGISTER
+4 ENTRY DELAY
+a 5 DURATION
+6 DYNAMICS
+7 PERFORMANCE
+8 REST
+Parameters 1 to 7 can be main parameters, REST can not. These
+call numbers are not identical with the order in which the parameters
+are named in the data form (APPEMDIX).
+} CALL |
+CALL NUMBER | CODE FORMAT |
+hierarchy 56 HIER O (hterarchy with SERIES)
+1,1,...,i (hterarchy wtth
+| SEQUENCE, unstated
+parameters with
+SERIES, 71 < @ < 7)
+Fig. 9-11
+Survey of HIERARCHY
+HIER = 0 means that the order of parameters 1 to 7 is determined
+. by SERIES. Parameter 8 (REST) always comes last.
+
+Otherwise the composer can determine the order of the parameters
+himself. In this case it is not necessary to state all the parameters; the
+unstated ones are automatically added by SERIES.
+po place in hierarchy 123 4 5 6 7 8
+
+l no further restrictions . P
+2 vertical density depends on instr. I P
+3 harmony with chords H P
+4 performance per rest PM
+5 layers with common harmony P oH
+6 combination of (5) and (4) , P M H
+7 combination of (2) and (4) I P M
+8 combination of (3) and (4) H P M
+
+Fig. 9-12
+
+RESTRICTIONS

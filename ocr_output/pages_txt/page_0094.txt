@@ -1,0 +1,33 @@
+94 Devtating parameters
+| CALL | | |
+CALL NUMBER CODE FORMAT
+instrument list 6 L-INSTR WyWyee.,W —_
+modes of 7 AMB-PERF AyZ58,Z,2425a,52
+performance WA, 7Z yee MAH Z
+pitches { 8 AMB-FROQ tl,t2,t1,t2,...,t1,t2
+O,n,O,n,...,0,n
+durations 9 AMB-DUR A,2,8,Z,..+,a,2
+. TAZ yee yy yn7Z
+intensities 10 | AMB-DYN | AyZyAyZy ee eg AyZ
+. 7 oO TAy7"Zy sen yg 7ay—-Z
+chord sizes HW AMB-CHORD A,2Z58,25.444,4,2
+instrument table 12 : TAB-INSTR Lyi,...,51
+i,i,...,1
+number of groups 13 | N-GR-INSTR l | _ .
+(p) a! D
+5 (i,i,...,1)
+group selection 13 SEQ-GR-INSTR 1, )
+(q) : OO 2 oe
+5 (i,i,...,1)
+union 13 UNION (0 (unton, one layer)
+(s) 1 (no unton, common
+harmony)
+2 (no unton, harmony
+per layer)
+order 14 SEQ-INSTR l
+3 (PsPs-++yp)
+4 (a,z,type)
+a a 5 (i,i,...,i) .
+| | - 6 (d,al,a2,z1,22,...)
+Fig. 8-1
+Survey of INSTRUMENT parameter

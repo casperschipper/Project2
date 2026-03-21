@@ -1,0 +1,74 @@
+8.7 Instrument | 99
+i
+instrument table 12 TAB-INSTR Lyi,eeegl
+
+| As in the "schematic" parameters, instruments can be put together
+
+into groups. There may be: any number of groups, which may be of any size.
+
+number of groups | 13 N-GR-INSTR 1 |
+
+(p) | 2 |
+
+| : a 5 (i,i,-.0,i)
+
+group selection | 13 _SEQ-GR-INSTR| 1 a |
+
+| (q) po | —— 2 : — }
+—_ | 5 Ci,i,...,i)
+
+union 13 UNION 0 (unton, one. layer)
+
+(s) a . 1 (no unton, common
+
+a - | | | | harmony) - a |
+
+oo : 2 (no unton, harmony | —
+
+OS | per layer) ;
+
+Entry 13 represents a table with 3 groups, named p, q and s in
+
+the survey. p is the number of groups intended to form an ensemble,
+
+q the selection of groups for the ensemble, s regulates the "union"
+
+(see 6.2). Note that for p and q a choice can be made among selection |
+Programmes 1, 2 and 5. The values for i (in ‘selection programme 5) |
+
+mean for p the number of groups, but for q their order. It goes without |
+
+saying that the values for i in groups p and q may not exceed the number
+
+of table-groups in TAB-INSTR; the number of i's may not be greater than
+
+the number of groups either. Example 8-2 shows some constellations of |
+selection programmes for p and q. /
+The third group of this table contains a call number for union.
+
+If s = 0, all the groups in the ensemble are treated as one
+
+single group, so that the selection programme called for SEQ-INSTR ex- — |
+tends to all the groups which have been put together. | |
+
+If 8 = 1, the groups in the ensemble are dealt with separately;
+
+as many "layers" are computed as there are groups in the ensemble (for
+each layer one group - in the same order as the groups are in the ensemble).
+
+The same assembly (and thus the same distribution among layers) applies
+to all "combined" parameters, whilst for the ensemble a new group is
+selected for each layer in the uncombined parameters. HARMONY automatic~
+
+ally becomes the last parameter (REST comes before HARMONY), so that the
+
+pitches are not inserted until all the layers have been put together to
+
+. form a variant. If however the performance is changed per rest (MOD~PERF
+= 2), PERFORMANCE is inserted between REST and HARMONY.
+
+If s = 2, the groups in the ensemble are also treated separately;
+
+however, HARMONY retains its place in the hierarchy and is computed per
+
+layer.

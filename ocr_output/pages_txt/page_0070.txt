@@ -1,0 +1,42 @@
+70 Sehematte parameters
+
+For the parameters of register, entry delay, duration, rest,
+dynamics and performance, the LIST-TABLE-ENSEMBLE principle explained
+in section 2 applies practically schematically; they will therefore
+be discussed first. Only the instrument and harmony parameters deviate.
+All explanations in sections 7 and 8 refer to the read format (see
+section 10). A number of additional indications about the structure
+variant are in section 9. However, the reader is recommended at this
+point to refer to the table of programme entries (APPENDIX) for purp-
+oses of comparison.
+
+7 SCHEMATIC PARAMETERS
+
+The "pattern" of the six schematic parameters consists in each
+case of 4 programme entries for
+
+(a) reading the list, | oy
+
+| (b) reading the table-groups,
+
+(c) assembling the ensemble,
+
+(d) assembly of the score.
+
+The ensemble can be formed by calling selection programmes
+ALEA, SERIES and SEQUENCE; the score can be assembled by calling sel-
+ection programmes ALEA, RATIO, GROUP, SEQUENCE and TENDENCY. If we
+indicate the elements with r and the indices with i, the table in
+fig. 7-1 results.
+
+We must point out once more that in entry SEQ-GR the number of
+groups to be selected depends on the "combination"; one group "without
+combination", selection by the called selection principle; the same
+number and selection of groups as prescribed for INSTRUMENT "with com-
+bination". "With union" the selected groups are treated in the ensemble
+as one group (result: one layer), "without union" the groups remain, as-
+it were, separate in the ensemble (result: the same number of layers as
+there are groups in the INSTRUMENT ensemble).
+
+If selection programme SEQUENCE is used, care must be taken.
+The indices in parentheses must really be available as table-groups or

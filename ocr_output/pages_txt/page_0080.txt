@@ -1,0 +1,54 @@
+80 : Schematic parameters
+CALL |
+CALL NUMBER CODE FORMAT
+duration list 33 L-DUR ne ea |
+duration table 34 TAB~DUR Lylyecegld
+| 1,i,...,i1 |
+one |
+group selection 35 SEQ-GR-DUR | :
+2
+| 5 (1,1,...,i)
+| order 36 SEQ-DUR l
+3 (PsPae-+oP)
+| 4 (a,z,type)
+| 5S (i,i,..+,1)
+. 6 (d,al,a2,z1,22,...)
+| relation 37 DUR-ENTRY | 1 (duration = entry delay,
+| MOD-DUR = 0)
+2 (duratton < entry delay)
+0 (duration tndependent)
+mode | 38 MOD~DUR 1 (different durations in
+. chord)
+0 (equal durations in chord)
+Fig. 7-8
+Survey of DURATION parameter
+
+If DUR-ENTRY = 1, the first parameter determines the common
+time-values, which are then adopted for the other parameters; the
+ensemble of the second parameter is not taken into account. Of course
+this mechanism only functions when the tones in the "chord" (tones with
+the same entry-point) are of equal length. Therefore we must have
+MOD-DUR = 0. If the hierarchy is established by random decision, it is
+necessary that the same instructions be issued for both parameters |
+(same lists, same tables, same principle for selection of groups and
+elements). If, on the other hand, the hierarchy is established by the
+composer, it is sufficient to provide the entries of the previous
+parameter with the necessary data; then only dummies have to be inserted
+for later parameters (see APPENDIX). In other words, the call number
+for DUR-ENTRY also applies if the durations are fixed first.
+
+IMPORTANT. Entries 29-32 must in any case be completely equipped with
+data for the "initial set" (see section 10), because the "average entry
+delay" can not otherwise be calculated. -
+
+If DUR-ENTRY = 1, INSTRUMENT and ENTRY DELAY coming first, the durations
+(always the same as the entry delays) can come into conflict with the
+instrument definitions. In such cases they are shortened to the "allowed"
+duration if necessary, but never lengthened.
+
+If DUR-ENTRY = 2, valid lists must be given and valid ensembles
+must be formed for both parameters. If ENTRY DELAY comes first, elements
+are rejected in the DURATION ensemble if they are greater than the sel-
+ected entry delay. If no "allowed" duration’ available, a "wrong" dur-
+ation is provided with a comment. If, on the other hand, DURATION comes
+first, elements in the ENTRY DELAY ensemble which are smaller than the |

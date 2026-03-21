@@ -1,0 +1,17 @@
+6.2  Unton | 67 |
+(b) Two layers result, since no union is required; each layer has |
+
+one group. In parameter K the same group indices are selected 2
+
+as in parameter I. L has one group for each variant.
+
+(ce) Only one layer occurs because of the union. Since no combination
+
+is required, parameter K is treated as parameter L: one group
+
+per variant.
+
+. (a) Two layers result because no union is required; each layer has
+one group. Since no combination is required, parameter K is |
+
+treated as parameter L: one group per variant. |

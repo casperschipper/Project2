@@ -1,0 +1,41 @@
+7.3. Duration 81
+selected duration are rejected. If such "allowed" entry delays are not
+available, the "wrong" entry delay is provided with a comment.
+Tf DUR-ENTRY = 0, there must be valid lists and ensembles for |
+
+both parameters. However, the two parameters are computed independently
+of one another, regardless of the hierarchy.
+If MOD~DUR = 1, one duration per tone is selected; |
+
+if MOD-DUR = 0, one duration per entry point is selected.
+
+Since chords still have to be "scored", the mode becomes dependent on
+the selected instruments, or instruments to be selected. With regard to
+the "vertical density" we distinguish three possibilities (compare 5.2,
+but see also 9.2):
+the dependency on the instrument,
+
+the dependency on the harmony (chord principle),
+
+autonomous density.
+
+In the first case INSTRUMENT is main parameter, the instrument thus
+being fixed before one or more durations can be selected. -
+| In the second case the pitches are already given (HARMONY being main |
+parameter), the order of INSTRUMENT and DURATION still being open. ~
+The same applies to the third case, where it is only the number of tones
+per chord that is fixed, the choice of main parameter being free. -
+In the last two cases we can distinguish two situations:
+| (a) DURATION precedes INSTRUMENT. If the durations in the chord are
+equal, instruments can only be selected which can play the
+selected duration. If the durations in the chord are not the
+
+same, this question is posed for each duration and instrument. _
+
+(b) INSTRUMENT precedes DURATION. A common duration can only be
+inserted if it is allowed for all involved instruments. Various
+durations are compared one by one with the instruments which are
+supposed to play them. This arrangement also applies to the
+first case (INSTRUMENT main parameter). . |
+
+|

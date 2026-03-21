@@ -1,0 +1,36 @@
+|
+8.2 Harmony 103 |
+CALL | |
+CALL NUMBER CODE FORMAT
+principle 15 HARM 1 (CHORD) |
+2 (ROW) |
+| 3 (INTERVAL)
+CHORD table 16 TAB-CHORD tytyeee,t | ,
+tyt,eee,t
+sequence of 17 | SEQ-CHORD ] | | :
+chords : 3 (psPps-++>p)
+4 (a,z,type) :
+5 (i,1,..+.,1) |
+transposition 18 TRANSP-CHORD 0 (no transposttton)
+of chords 1 (transposition with ALEA)
+2 (transposttion with
+SERIES) ,
+3 (t,t,...,t) (transpostt- :
+ton with gtven row) |
+ROW 19 ROW tytye.eyt |
+transposition 20 TRANSP-ROW 0 (no transposttion)
+of row 1 (transposttion with ALEA)
+| 2 (transposttion with
+SERIES)
+3 (ehromatie transposttton)
+4 ("sertal" traneposttion) —
+INTERVAL table | 21 TAB-INT matrix |
+2 (chord instead of matrix)
+chord 22 CHORD-INT tyt,ee,t -
+O (matrix instead of chord)
+forbidden tones | 23 XCL-FRQ tytyeee,t | a
+| | 0 (no forbidden tones) |
+inversion 24 BIT 1 (tnverston of matrix) :
+| 0 (no tnverston) a
+Fig. 8-3 | :
+, | , Survey of HARMONY parameter ; | | |

@@ -1,0 +1,35 @@
+64 Oo Group formatton and’ layers
+a ee
+form a uniform score, so that all time values (beginnings and ends of |
+tones) are placed in chronological order. Attention must however be
+paid to the fact that the selection principle chosen for the variant
+applies to all the layers; it is not possible to have a different sel-
+ection principle for each layer. Since however a new group is used for
+each layer, the table-groups can be organized correspondingly. _
+
+Fig. 6-4 is a schematic representation of union. Two groups
+are indicated for the INSTRUMENT parameter (1) and two combined para-
+meters (X and Y). The selection principles for the score first produce |
+the first layer according to the first group and then the second layer
+according to the second group. The two layers are fitted together before
+they appear in the output. The composer is therefore able to Manipulate
+the hierarchy in a way not illustrated in fig. 6-4. HARMONY can be calc-
+ulated in layers (in which case the pitch parameter occupies any pos-
+ition of priority), or it can be calculated after the layers have been
+fitted together to form the final rhythmic context. In this case the
+pitch parameter is not called until the very end (even after the rest
+parameter).
+
+If the fact that it is impossible to call a different selection
+
+principle for each layer proves to be a great obstacle, an auxiliary
+construction can be used. We calculate as many variant groups (only one
+variant per variant group) as the number of layers to be contained in
+the score. Admittedly, it is then impossible to work out a common
+harmony for ail the layers, but on the other hand a different selection
+principle can then be used for each layer (and each parameter).
+
+Example 6-5 uses numbers to illustrate the processes which
+occur when we have combination and union in groups, ensembles and
+layers. We distinguish three parameters: I (= instrument), K (any "comb-
+ined" parameter) and L (a non-combined parameter).

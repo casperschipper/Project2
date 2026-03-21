@@ -1,0 +1,46 @@
+92 - Sehematte parameters
+rr aa
+
+has a "range". In circumstances such as these the user must not
+hesitate to name each mode of performance in the list as often as is
+necessary for the definitions of the instruments, even if this means
+that each instrument has its own group of "performances". The list-
+elements do not have to be quoted in full in the table, so that the
+list of definitions can be adapted to the instruments, but the table
+can be adapted to the selection mechanisms for the score.
+
+If selection principle TENDENCY is to be called for the "order",
+the calculation of the position of the mask depends on the mode; this
+is done: | | |
+- if MOD-PERF = 0 per entry point,
+
+- if MOD-PERF = 1 per tone,
+
+~ if MOD-PERF = 2 per rest. |
+
+In the last case we must be prepared for the mask's position to change
+by leaps and bounds, especially if only a few rests are inserted. In
+order to have this under control, it is better either to have only a
+few modes of performance or to have the mask big enough for there to
+be sufficient elements for the aleatoric principle within the mask.
+Example 7-15 |
+
+Let us assume that the modes of performance a, b, e, d, e are
+
+to be distributed among instruments A, B and C as follows:
+tnetrument performance
+
+A abe
+
+B aba
+
+C aba
+The list of performances (call 58) might then be:
+This would result in the following ranges for the definttton of the
+tnstruments (call 7): | |
+
+| 7,.8, 2, 4, 6, 7 |
+
+The distribution of the performance modes among table-groups (call 59) —
+does not formally depend on this; the tndtces would be 2, 8, 7, 4, 7 ©
+for performance modes a, b, ec, d, e.

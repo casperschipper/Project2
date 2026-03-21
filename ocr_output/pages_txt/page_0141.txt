@@ -1,0 +1,42 @@
+11.8. Cheek data I / Check data II 141 |
+Commentary to fig. 11-2 °° _ | | |
+(1) n = number of list elements, . oe
+m = number of groups in ensemble,
+
+i = group indices.
+
+(2) Is only printed if rests have been calculated. |
+(3) Number of entry points or tones per layer. .
+| (4) The data-groups 12-17, 1821 and 22-24 represent alternatives
+and refer to the respective regulation of the vertical density.:
+
+(5) p = number of elements in the ensemble,
+- YZ ="enumeration of the list indices.
+
+(6) ‘Lines 13, 14 and 15 are repeated for each layer.
+(7) p = number of ensemble elements. The reductions referred to in
+fig. 11-2 only occur if the order of the elements was selected
+
+. by GROUP (with type = 2 or type = 4) and the number of possible
+group~sizes is greater than the number of ensemble elements or |
+
+the number of chords or chord sizes. This line only appears in
+
+this case. |
+
+(8) Is only printed if the order of the instruments was determined :
+by SEQUENCE. | : : :
+
+| 11.3. CHECK DATA II oe ;
+The second part of the programme is used to work out the matrix
+for the INTERVAL principle (if necessary) and to work out the score.
+Check data II are followed by a printout of the data which were
+
+in drum storage during the transition to the third part of the programme. ,
+These data are used to check programme errors, and are in general of no
+interest to the composer. If this printout is missing, it was removed _ :
+previously in the institute for checking purposes. :
+Fig. 11-3 shows the check data II which are printed per variant.
+
+The numbers in the first column of fig. 11-3 are not printed; they are
+merely references for the commentaries. | |

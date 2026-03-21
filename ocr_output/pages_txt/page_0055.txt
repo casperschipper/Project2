@@ -1,0 +1,36 @@
+|
+5.2  Vertteal density | | 55
+If this hierarchy would mean that no "allowed" element could be |
+found in some parameter, the ensemble element last tested would be put |
+in the score and provided with a comment reminding the composer that the |
+rules could not be complied with. 7 |
+5.2 . VERTICAL DENSITY | | |
+The vertical aspect of a musical structure occurs because of |
+- the division into layers (see section 6), . |
+- .- the simultaneous entry of several tones (chords),
+- the definition of a tone in the form of several parameters.
+By "vertical density" we mean however only the formation of chords; we :
+disregard "pseudo chords" here, which result from single tones with an |
+entry delay of 0. The chord structure is worked out layer for layer; |
+there is no control over the "total density" of several layers. :
+| The composer determines the vertical density by indicating the |
+minimum and maximum number of tones in a chord; selection programmes
+ALEA, RATIO, GROUP and SEQUENCE can operate between these limits
+("autonomous density"). There is also an automatic check in the pro- |
+gramme to prevent .more tones from occurring simultaneously than indic- |
+ated for the pitch grid (see 9.3). The composer can avoid this restric~ |
+| tion by distributing the context among several layers. . ,
+.. A "chord" is defined on the one hand by the number of tones |
+starting simultaneously and on the other hand by a single entry delay. |
+In other words, if we are operating with chords (compare 8.2), a chord |
+is selected for each entry point. Although the chord-tones commence |
+together, they do not have to be of equal length. If they should be of :
+equal length, a duration is fixed for the chord, otherwise for each
+tone in the chord. | :
+Vertical density must not be confused with chord sizes, which |
+must be stated for each instrument. If several instruments are involved :
+| in a chord, a number of tones is selected for each instrument within |
+the range of its chord sizes; these "sub-chords" are put together until :
+' the vertical density is reached. This supplementation of the number of |
+chord tones required for the vertical density can be referred to by a |
+|

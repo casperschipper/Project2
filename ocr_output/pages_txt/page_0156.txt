@@ -1,0 +1,43 @@
+156 Appendix
+ee
+MODE OF PERFORMANCE
+
+| | 58 | list |
+59 | table SO (tf combination, number of groups =
+number of I-groups)
+60 group selection 1 ALEA .
+2 SERIES
+5 SEQ:
+61 order 1 ALEA
+3 RATIO:
+4 GROUP a: zs type: 1 2 3 4
+5 SEQ: .
+| ; 6 TEND d: al: a2: zl: 22:
+62 mode | QO per tone
+BS |) per entry point
+2 per rest
+63 grid t pitch grid
+
+f maximum subdivision
+| | | d smallest time value |
+
+The entries must bedefined in the ascending order of their call
+numbers, in full for the initial set (unless the last set of data
+finished with -2), with any degree of completeness for subsequent sets.
+The programme is executed when there is a 0 after the last entry of a
+set of data. The 0 can be replaced by ~1 (no more data sets) or -2 (if
+the programme is to be continued later in accordance with the last set
+of data).
+
+The data for an entry always finish with a semicolon (;), this
+also applies to the groups of a table, the call number being repeated
+for each group. Elements. are separated by commas (,); always use decimal
+points in numbers.
+
+The selection principles represent alternatives. A colon (:)
+indicates that more data are to come (put in brackets). Other call
+numbers referring to various modes, etc., are also alternatives.
+Exceptions: in entries 4 and 56, if no 0 is noted, any amount of call
+numbers can be stated, but each of them only once. Four call numbers
+are required for entry 55, either a 0 or a 1 for each of the stated
+parameters. |

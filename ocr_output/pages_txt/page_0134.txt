@@ -1,0 +1,47 @@
+134 The data form
+ree
+a.
+=] rf)
+| iw G re
+o fed @
+vo | &®
+g | Po |
+a a A
+4 iow
+oe v od soa .
+entry description A, 4 within a variant per
+| user x
+2 specification x |
+- 3 number of variants x
+4 combination x
+5 start number x
+INSTRUMENT
+6 list x
+7 modes of performance x
+| 8 | pitches x
+9 durations x
+10 intensities x
+1! ; chord sizes x
+12 table x
+13 number of groups x
+13 selection of groups x
+13 union x
+14 order entry point
+HARMONY
+15 principle x
+CHORDS
+16 | table | x .
+17 order entry point |
+18 transposition entry point |
+19 ROW x
+20 transposition row
+INTERVALS
+21 matrix x
+22 chord x
+23 forbidden tones x
+: 24 inversion x
+REGISTER
+| 25 list x .
+26 table x
+27 selection of groups XX
+28 order tone

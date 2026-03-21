@@ -1,0 +1,23 @@
+88 SC  Sehematte parameters
+
+7.5 DYNAMICS.
+
+Dynamics are expressed as symbols. Besides combinations of
+letters, numbers may be used, but especially the symbols < and >.
+
+These "swells" apply, as do all other data, to one entry-point (or
+tone) at a time. The "chart" for the dynamics also has an additional
+entry for a mode (for the ratio of the dynamics in the chord).
+
+The DYNAMICS parameter depends hierarchically only on INSTRUMENT.
+If INSTRUMENT comes before DYNAMICS, dynamics may only be selected for
+a given instrument if this instrument can play them. If DYNAMICS come
+first, an instrument can only be selected for the given degree of
+intensity if it can play this intensity. See 8.1 with respect to
+instrument definitions. ~ SO .
+
+If TENDENCY is called for the "order", the calculation of the
+mask's edges depends on the mode, and occurs | |
+- per entry point if MOD-DYN = 0,
+
+- per tone if MOD-DYN = 1. a |

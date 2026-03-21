@@ -1,0 +1,39 @@
+56 | Horizontal and vertical arrangement
+ee
+familiar term, the "scoring" of the chord.
+
+Under these conditions we have the following possibilities for
+
+the regulation of vertical density in PR-2:
+
+(a) Vertical density can depend on the instrument if INSTRUMENT is
+Main parameter and a specific chord size is determined within
+the range of the instrument's chord sizes. Pitches can then only
+be distributed among the chords according to one of the row
+principles (compare 8.2). Each time-point is occupied by one
+instrument only.
+
+(b) Vertical density depends on the pitch parameter if the pitches
+are generated according’ to the chord principle (compare 8.2);
+in this case HARMONY is main parameter. The process is divided
+into two phases:
+
+(1) first, a chord is selected for each time-point according to
+the chord table (this also provides the number of tones per
+chord), | |
+
+| (2) then, in the INSTRUMENT parameter (whose position in the
+hierarchy can be chosen freely, as many instruments are
+selected per chord as are necessary for the "scoring" of
+the chord. The number of tones per instrument is established
+by ALEA between the minimum and maximum chord size. This
+| number of tones is reduced for the last instrument if
+necessary if the vertical density would otherwise be exceeded.
+
+(c) Vertical density is autonomous if the composer states a minimum
+and maximum value for the vertical density, which is then determ-
+ined between these limits by means of a selection programme. In
+this case only one of the row principles can be used for
+HARMONY, the main parameter being free. The chords are scored
+
+as in (b2). | .

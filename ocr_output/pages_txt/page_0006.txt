@@ -1,0 +1,37 @@
+6 .
+eee
+CONTENTS |
+
+INTRODUCTION 8 |
+
+] DEFINITIONS 12
+
+oA BASIC PRINCIPLES
+
+2 VARIABLE DATA AND THEIR SELECTION 18
+
+2.1 List 20
+| 2.2 Table 20 |
+2.3 Ensembie 22
+3 SELECTION AND PERMUTATION 24
+3.1 Chance 25
+3.2 - Repetition 25 |
+3.3 Selection 26
+3.4 Permutation | 30. . —
+| 3.5 Number of results 36
+
+4 THE SELECTION PROGRAMMES 38 .
+4.1 ALEA 38 .
+4,2 SERIES 38
+4.3 RATIO 39
+4.4 GROUP , 42
+4.5 SEQUENCE 43
+4.6 TENDENCY 44
+
+5 HORIZONTAL AND VERTICAL ARRANGEMENT 49
+5.1 Hierarchy of the parameters 51
+5.2 Vertical density 55
+
+6 GROUP FORMATION AND LAYERS 58 .
+6.1 Combination 59
+6.2 Union 62

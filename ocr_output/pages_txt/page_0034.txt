@@ -1,0 +1,36 @@
+34 Seltectton and permutatton
+Here, selection makes a gradual transition to permutation.
+There would not be much sense in making a given selection of "possible"
+elements in the form of various permutations into lists: a single list
+can be permutated into various groups. However, in most cases the
+composer will form groups of various character, different lengths, so
+that it is better to speak of repeated selection than of permutation.
+The third selection is the first to acquire permutational features
+during the transition from table to ensemble, when variants occur because
+of various ensembles and the ensembles are based on group-permutations.
+The first permutation possibility occurs between list and table,
+but as we have just seen, it has little Significance. The second permut-
+ation presents itself when groups are combined, but can only be ex-
+ploited to a slight extent because of the usually limited number of
+variants. Furthermore, at the transition to the ensemble, the permutation |
+principle makes the condition that the ensemble elements must always be
+used in the same order; otherwise it is better to confine permutation to
+the ensemble. But here the permutation principle comes into its own
+because ~ apart from exceptions - the ensemble must often be brought
+into play for the composition of a variant.
+Whilst understanding "permutation" in its strictest sense as
+the multiple exchange of elements with respect to their order, we can
+also understand the opposite: the same order (of the indices) of various
+element-lists; permutation then does not mean the various orders of the
+same elements, but the same order of various elements. For example:
+~ an unchanged table can cause the list to be altered in several
+ways (provided that the lists always have at least the same
+number of elements),
+~ a constant selection can cause the table to be altered in
+_ several ways for the ensemble (provided that the tables
+| always have at least the same number of groups, at any rate
+for the SEQUENCE principle), .
+~ a constant permutation for the score can cause the ensemble
+| _ to be changed again and again (be careful when using SEQUENCE!),
+| either by different combinations of groups, or by new groups,
+or by new lists (or combinations of these three possibilities).

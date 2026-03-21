@@ -1,0 +1,68 @@
+9.2 Vertieal denstty | 115 |
+
+9,2 VERTICAL DENSITY | |
+
+The number of tones to start simultaneously depends on one or |
+
+more of the following conditions: . :
+
+(1) number of O-entry delays in succession; |
+
+(2) minimum and maximum number of tones which an instrument can play
+
+simultaneously, and the number of selected tones (or tones |
+
+remaining in the chord) within this range; Ho
+
+(3) _ number of tones in the chord - selected according to the CHORD |
+
+| principle;
+
+(4) minimum and maximum number of tones for the "vertical density".
+
+Apart from the first one, these conditions have already been _ !
+
+- explained in 5.2. Fig. 9-4 shows a survey of the vertical density. |
+
+The vertical density is only taken into account if the ROW or :
+
+INTERVAL principle is selected for the HARMONY parameter. If, on the ~ |
+
+other hand, the CHORD principle is selected, HARMONY becomes main para- |
+
+meter and thus decisive for the vertical density. See fig. 9-5 and |
+
+examples 9-6. _ _ | |
+
+Vertical density can only be computed in layers. If several |
+
+layers are to be computed (with or without common harmony), all of the
+
+_ above conditions apply to each individual layer.
+
+CALL
+
+CALL NUMBER CODE FORMAT ;
+
+vertical density} 53 | DENSITY 0 (vertical density depends on
+
+es _ tnetrument, INSTRUMENT ts
+
+ae an matn parameter)
+_ . a,z (mtnimum and maximum dens-
+
+Os rs a : -  &ty, trrelevant tf HARM=7) oO
+
+{order of | 540 SEQ-DENS l |
+
+Co rs 4 (a,z,type) 7 |
+
+es ee 5 (i,i,...,i)
+
+oe ae Fig. 9-4 : , :
+
+Survey of VERTICAL DENSITY. | |
+
+|
+
+|

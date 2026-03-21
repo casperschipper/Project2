@@ -1,0 +1,67 @@
+158  Ltst of tllustrattons
+
+EES
+
+7-15 Example of performance ranges
+
+8-1 Survey of INSTRUMENT
+
+8-2 Example of use of selection programmes for number and selection
+of groups in INSTRUMENT
+
+8-3 Survey of HARMONY
+
+8-4 Example of chord transposition
+
+8-5 Interval matrix: if a line is blocked, the column must also
+‘be blocked |
+
+8-6 Example of calculation of an interval matrix in accordance
+with the chord analysis .
+
+9-1 Example of calculation of the average entry delay
+
+9-2 Survey of STRUCTURE DURATION
+
+9-3 Survey of TEMPO |
+
+9-4 Survey of VERTICAL DENSITY
+
+9-5 Flowchart for vertical density
+
+9-6 Example of vertical density
+
+9-7 Survey of PITCH-TIME-GRID
+
+9-8 Example of metrical duration divisions
+
+9-9 survey of BLOCKING
+
+9-10 Call numbers of the parameters
+
+9-11 Survey of HIERARCHY |
+
+9~12 Table of restrictions for first and last parameters of the
+hierarchy
+
+9-13 Survey of COMBINATION
+
+9-14 Survey of START NUMBER
+
+9-15 Survey of NUMBER OF VARIANTS | |
+
+9-16 Survey of PROGRAMME SPECIFICATION
+
+10-1 Example of input data a
+
+10-2 Action range of the selection principles (table)
+
+11-1 Survey of OUTPUT
+
+11-2 Table of check data I .
+
+1i-3 Table of check data II
+
+11-4 Table of score data |
+
+11-5 Table of parts

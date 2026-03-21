@@ -1,0 +1,13 @@
+3.5 Number of results . 37 |
+in the reverse case several selection cycles are distributed over the :
+duration of the structure. The "ideal case", which is that the number
+of results goes exactly into the number of time-points once or more |
+_ than once, can only be realised in PR~-2 in exceptional circumstances. :
+Both quantities are independent of each other (with one exception, see |
+4.5): the number of results ensues from the composition of the ensemble |
+(which can be subjected to chance) and from the chosen selection programme |
+including the: possible ratio factor or group sizes; the number of time- | |
+points results from the quotient of the duration of the structure. (which |
+can be subjected to chance, see 9.1.3) and the average entry delay (see |
+| 9.1.2), which latter is calculated from the ensemble of entry delays, :
+which in its turn can also be the result of random decisions.

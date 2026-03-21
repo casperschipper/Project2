@@ -1,0 +1,55 @@
+77.5 Comment / 11.6 Parts 149 |
+(b) _ ENTRY DELAY comes first, duration must not be longer than entry
+delay, but such a duration cannot be found. |
+DYNAMICS |
+
+A comment is given in the following cases:
+(a) INSTRUMENT comes first.
+(1) No suitable intensity can be found for the selected |
+instrument.
+
+(2) ~~ Equal intensities are requested for the chord, but no
+intensity can be found which is suitable for all |
+
+Oo instruments involved in the chord. This comment is al-
+oo ways printed for the first tone in the chord, although
+
+it can also refer to others in the same chord.
+
+PERFORMANCE | :
+
+A comment is given in the following cases:
+: (a) INSTRUMENT comes first. |
+(1) No suitable mode of performance can be found for the
+selected instrument.
+
+(2) Equal modes of performance are requested for the chord,
+
+but none can be found to be suitable for all instruments
+
+: - involved in the chord. This comment is always printed :
+. for the first tone of the chord, but can also refer to
+
+| others in the same chord. . |
+. * (3) oA new mode of performance is requested per rest, but
+ee none can be found to be suitable for all instruments
+
+| . | up to the next rest. This comment only appears for the
+first tone after the rest.
+
+11.6 PARTS | : | |
+
+. The parts are printed after the score. This printout only occurs
+
+if LAYOUT = 2. The parts are intended to facilitate the transcription
+of the computer results into traditional notation. For this purpose the
+rhythmic context is divided up into metres which the composer can
+assemble to form measures as he sees fit. If necessary the metre is | ;
+subdivided periodically so as to result in duplets, triplets, etc. The
+composer fixes the maximum number of subdivisions. Each time-value is
+compared with the possible subdivisions of the metre and rounded off
+to the nearest divisional point. This occurs per metre and per instrum~ |
+ent so that there is no overlapping of different subdivisions. |
+Metrical subdivision is indicated by means of a two-digit :
+
+number (more digits are used if there are more than 9 subdivisions), |

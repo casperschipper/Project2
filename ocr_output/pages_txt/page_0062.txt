@@ -1,0 +1,41 @@
+62 Group formation and Layers
+
+Fig. 6-2 shows a construction for the separation of groups in
+the ensembles. However, for the final selection of elements for the
+score, TENDENCY, and not any other selection principle, is used. Since
+all masks assume the same position for the combined parameters (or move
+between the same limits), only compatible groups are brought into the
+score when several groups (two in fig. 6-2) are assembled to form the
+ensemble. It is however a condition that the groups in a table are of
+equal length, because otherwise the arrangement of the groups in the
+ensemble with the same mask position would not be free (if we want to
+leave group selection to chance). The group-length can change from
+one table to the next because, as we know, the mask is defined in
+percentages of the size of the ensemble. The masks can of course move
+freely in the groups which they separate, or assume any number of
+fixed positions. The movements of the masks can even be in different
+directions in the parameters. The only condition is that the masks
+jump simultaneously from one group to the next, and that they respect
+the limits of the groups (see fig. 6-3). |
+
+| 6.2 UNION
+
+"Union" (or "no union") indicates the part of the ensemble to
+which the selection principle for the score applies. "Union" is the
+normal situation here: the ensemble is regarded as a unit which produces
+a "uniform" score (one "layer"). It does not matter how many table-
+groups form the ensemble. It should not be forgotten that any number of
+groups can be used in the INSTRUMENT parameter, but only one group for
+all other parameters. With "combination" this principle can be departed
+from: the combined parameters are given the same number of groups and
+groups with the same indices as in the INSTRUMENT parameter. Examples
+
+6-2 and 6-3 merely showed auxiliary constructions for group separation
+with simultaneous "union".
+
+If the union is de-activated, the groups in the ensemble stay
+separate (only those in the INSTRUMENT parameter "without combination",
+those of all combined parameters "with combination"). As many "variants"
+are produced as the number of groups in the INSTRUMENT parameter. We
+only call these variants "layers" because they are calculated for the
+same structure duration and tempo. The layers are also put together to

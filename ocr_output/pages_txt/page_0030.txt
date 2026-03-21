@@ -1,0 +1,45 @@
+30 Seleetton and permutation
+ee ee
+
+The division of the list into groups (groups 2 and 3 in example
+3-2) makes it possible for sub-groups to be exchanged. The list can also |
+be permutated element for element if only one of the elements is named
+for each group (see example 3-3).
+
+A third selection occurs when an ensemble is formed by one or
+more table-groups. A difference between this and the first two selections
+is that here whole groups, and not single elements, are selected.
+
+Another difference is that it is not the composer who makes this selec-
+tion, although he does cause it to be made: by setting a selection pro-
+gramme to work.
+
+The selection principles available for this are ALEA, SERIES and
+SEQUENCE (compare 3.2). If the number or selection are to be left to
+chance, the random field is automatically confined to the number of table-
+groups. The random programmes which are applied to the "selection" gener-
+ate automatically as many numbers as instructed by the "number". But
+there is no danger in using SEQUENCE for the "selection", because the
+indices named will be omitted or repeated if necessary.
+
+In example 3-4 some combination possibilities are shown.
+
+3.4 PERMUTATION _ | | |
+
+By permutation we understand here the (repeated) alteration of
+a "supply" with regard to the order in which the elements are in the
+supply. Depending on the permutation principle used, not all the elements
+
+a have to participate in permutation; some may be repeated during permut-
+ation.
+
+At a first glance the difference between selection and permut—. mo ,
+ation appears to be purely theoretical because the elements are selected
+one after the other, which in itself implies an order; a selection is
+also a permutation of the selected elements. However, the difference is
+Significant if we permutate a given selection several times or put various
+selections (with regard to their indices) in the same order. We say that
+a selection is permutable (it can or should be permutated). —
+
+_ It is perhaps not superfluous to examine this difference between
+. the four stages of the LIST-TABLE-ENSEMBLE principle (see fig. 3-1 again).

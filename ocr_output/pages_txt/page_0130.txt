@@ -1,0 +1,51 @@
+130 The data form
+eee
+7 10 THE DATA FORM
+
+The data form consists of the data for 63 programme entries.
+
+The diagrammatic surveys of entries 1 to 56 and 58 to 63 were discussed
+in sections 7 to 9 (see section 11 for entry 57). A simplified version
+of the data form appears as the APPENDIX.
+
+The data for the 63 entries are also known as input data. PR-2
+uses the input data to calculate a variant group consisting of as many
+variants as the composer requires as N-VARIANTS (entry 3). This means
+that the composer's data cannot be altered within a variant group.
+
+The data provided by the composer for a variant group are called
+a "set of data". This set of data must be "complete" for the first
+variant group, i.e. it must contain complete data for all 63 entries
+("initial set"). For further variant groups the compeser only needs to
+register data for the entries which have to be changed with regard to the
+previous variant group ("subsequent set"). Unrevised entries are autom-
+atically taken over from the last variant group, so that the computer
+always receives a complete set of data. |
+
+Entries of no significance for the initial set can be provided |
+with dummies (this also applies to subsequent sets). Care must be
+taken here that the dummies also agree with the respective format. We
+recommend the dash (-) as dummy for alphanumeric information.
+
+If a table is to contain more than one group, the call number
+must be repeated for each group. The following entries are to be treated
+as tables:
+
+. 12 instruments
+13 instrument groups and union
+. 16 chords
+
+26 registers |
+
+30 entry delays
+
+34 durations
+
+40 rests
+
+45 intensities
+
+59 modes of performance
+Note that entry 13 also counts as a table (always three groups for p,
+
+q and s), entries 7 to 11 being treated as lists.

@@ -1,0 +1,22 @@
+|
+7.6 Dynamics | 89
+CALL |
+| CALL NUMBER | CODE FORMAT | |
+dynamics list 44 L~DYN WyWy een gW | i
+| dynamics table 45 TAB-DYN i,i,eseyi :
+| group selection 46 SEQ-GR-DYN 1 !
+5 (i,i,...,i)
+| order 47 SEQ-DYN |
+3 (PsPse++sP)
+4 (a,z,type)
+| 5 (i,i,...,i) |
+6 (d,al,a2,21,22,...)
+mode. 48 MOD~DYN 1 (different intenstttes
+: | tn chord} !
+—_ 0 (equal intenstties tn chord) |
+Survey of DYNAMICS parameter |
+The mode refers to the ratio of the dynamics within a chord.
+If we have MOD-DYN = 0, only one intensity is selected for each entry-
+point (and thus for all tones starting at the same time), whilst
+MOD-DYN = 1 means that a new intensity is inserted for each single
+tone (regardless, then, of the distribution of the tones in chords).

@@ -1,0 +1,33 @@
+7.6 Performance - 91° 2
+_ CALL a ; :
+CALL: NUMBER | CODE = —- | FORMAT ~ OS , :
+. | performance list 58 L-PERF WaWeeee W | 7
+performance 59 TAB-PERF | odyiyee.,id | :
+group selection | 60 _ SEQ-GR-PERF 1. | . of. |
+| * | | - a 9 . 7 : |
+order | 61 _ SEQ-PERF. Po rn ee
+— | 4 (a,z,type) .
+6 (d,al,a2,21,22,...)
+mode 62 MOD-PERF 0 (new performance
+for each chord) |. |
+1 (new performance
+for each tone) |
+a oo - | 2 (new performance — |
+SO 4. for each rest) —
+Survey of PERFORMANCE parameter
+The mode refers to the order of ensemble elements and indicates
+
+when the choice of a selection principle means that a new manner of
+performance should be inserted in the score. MOD-PERF = 0 generates a
+new performance for each entry point; MOD-PERF = 1 does the same for
+each tone (under certain circumstances, thus, more than once for each
+entry point). If a new mode of performance is to be selected by means ~
+of MOD-PERF = 2, PERFORMANCE moves to the last place in the parameter :
+hierarchy, REST to the last but one. If, however, we have "no union" |
+at the same time too (compare 6.2), resulting in the same number of |
+layers as there are groups in the INSTRUMENT ensemble, HARMONY is then /
+the last. parameter, PERFORMANCE last but one, with REST before it.- |
+If there is "no union", and MOD-PERF = 0 or MOD-PERF = 1, |
+HARMONY comes last, REST last but one; the position of PERFORMANCE is
+then free, Hierarchy and its restrictions are discussed in 9.4 in
+context.

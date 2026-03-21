@@ -1,0 +1,36 @@
+. 120 Additional data
+ne
+9.4 BLOCKING sO
+| Blocking applies to INSTRUMENT, HARMONY, REGISTER and DYNAMICS,
+and prevents the same instruments, relative pitches, registers or intens-
+ities from being superposed. Fig. 9-9 is a survey of the data for this
+entry.
+The four parameters mentioned can be blocked in any combination.
+Blocking reaches its full effect when the rhythmic context has been
+fixed, so that undesired "doublings" (time superpositions) can be pre-
+vented. The rhythmic context can however not be examined until ENTRY
+DELAY and DURATION have been fixed. It is therefore advisable. to pre-
+| scribe at least parameters 4 and 5 as main parameters for the hierarchy
+-(see 9.5) if even only one parameter is to be "blocked".
+Any comment there might be does not show whether the designated
+parameter value has disregarded the blocking instruction or other rules.
+| | CALL
+CALL NUMBER CODE FORMAT
+blocked values 55 BLOCK s,8,8,s (s = 7: blocking,
+& = 0: no blocking,
+order: INSTRUMENT,
+HARMONY, REGISTER,
+DYNAMICS)
+; Fig. 9-9
+Survey of BLOCKING | | |
+When INSTRUMENT is blocked, an instrument can not be inserted
+| in the score if an instrument with the same list-index is being "played".
+When HARMONY is blocked, a relative pitch can not be inserted
+in the score if this same relative pitch is still being "played". This
+does not apply to relative pitch 0.
+When REGISTER is blocked, a register can not be inserted in the
+score if one or more absolute pitches in the register with the same
+index are being "played". 7
+. When the DYNAMICS parameter is blocked, a dynamic value can not
+be inserted in the score if one with the same list-index is being
+"played". |

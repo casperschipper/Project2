@@ -1,0 +1,47 @@
+ee HORIZONTAL AND VERTICAL ARRANGEMENT | :
+
+- -Music can be regarded as successions of sound events. In instrum-
+ental music the sound events are produced by musical instruments played |
+by musicians. Every musical sound can therefore be broken up into single :
+components corresponding to the instruments which produce the components. |
+In polyphonic music this results in the problem of registering the sound i
+events in both the vertical context (chords) and the horizontal context |
+(melody). PR-2 is not able to organize melody tones harmonically or |
+chord tones melodically. It is rather the composer's business to use |
+the means available in PR-2 to work out a harmonic structure which does |
+justice to both criteria. . | ,
+The means in PR-2 can be applied to the horizontal and vertical
+arrangement as follows: : 7 :
+(a) The musical tone is broken up into several parameters; each
+. parameter is divided into steps which succeed one another.
+(b) The time axis of the music is broken up into sections of equal :
+or different size (rhythm). Only one step can be realized per
+
+_ section and per parameter. With respect to the possible change . |
+
+from one step to the next, the parameters are, as it were,
+"synchronized". | |
+
+(c) A one-part melody results from (a) and (b), being articulated |
+in various parameters such as pitch, intensity, timbre, etc. |
+
+The number of tones starting simultaneously can moreover be
+determined for each time-section: the one-part melody is then ,
+replaced by a chord sequence. Each individual tone in the chord :
+
+is in its turn defined in parameters. - To keep things simple,
+
+we can basically speak of "chord", and call single tones |
+
+"chord size one".
+
+(d) We shall call the limits of the time-sections (compare b) entry :
+points. The time-sections themselves are called entry delays.
+If the composer makes one or more entry delays in succession
+
+. zero, the result is still chords, because several entry points |
+
+.  . occur simultaneously. The difference between melody and chord :
+is thus reduced to a scale of values of entry delays.
+(e) Instead of dividing the time axis into sections (entry delays) |
+just once, we can also demand several different kinds of :

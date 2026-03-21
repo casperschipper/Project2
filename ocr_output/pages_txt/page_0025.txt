@@ -1,0 +1,34 @@
+3.7 Chance / 3.2 Repetition 25 |
+. The composer determines the elements of a list himself and also :
+puts the list indices in a table; on the other hand, table groups (for |
+the ensemble) and ensemble indices (for the score) can only be selected
+by means of one of the selection programmes which are a constituent of
+PR-2. This selection makes use of chance in all cases where the com- |
+poser does not determine the selection or order himself. The connection :
+is thus made between serial music, in which particular orders and per- :
+mutations play an important part, and aleatoric music, in which it is
+merely the presence of particular elements, the relative frequency at |
+which they occur and the manner in which they are scattered that is
+important. The selection programmes (see section 4) attempt to mediate )
+between these two extremes. In this way PR-2 is able to provide the |
+composer with empiric experience in the application of aleatoric prin- :
+ciples. . . - |
+3.2. REPETITION ee :
+_-  . The term "repetition" has three aspects in PR~-2. :
+~ (a) "Premature repetition" is
+If the elements of a given supply merely have to be put in a different 7
+order (once or more than once), no element may be repeated until all |
+the others have been "used up". There is therefore a repetition prohib- |
+ition applying to the entire supply and which is not lifted until-the |
+permutation is completed. If we call the number of selective actions |
+in setting up a permutation Vi and the number of elements in the supply :
+n, the "duration" of the repetition prohibition is then Vi =m. In PR-2
+this principle is known as "SERIES".
+| The repetition prohibition could also be lifted sooner, thus |
+allowing repetitions (though not insisting on them) before all the :
+elements would have occured. The "duration" of the prohibition would .
+then be ve <n. This principle of stopping the repetition check "pre- :
+maturely" is not employed in PR-2. © ae
+If, on the other hand, the repetition check is reduced to one |
+single element (and thus virtually cancelled), the "duration" of the |
+prohibition is v= 1. This principle is known as "ALEA" in PR-2. |

@@ -1,0 +1,39 @@
+7.4 Rest 85, |
+In order to calculate the entry points of rests, the composer
+declares an "entry range" (dl and d2 in entry 43). Both limits of the |
+range are stated in percentages of the structure duration. ALEA is used |
+to find a "provisional" entry point (dp) between these range limits; |
+the next sound or general entry is finally calculated starting from dp.
+‘This is then the "definite" rest entry. It can occur that a pseudo rest |
+precedes a general entry (any non~overlapped sound entry is also reg- :
+arded as a general entry), so that the autonomous rest is lengthened | |
+by this pseudo rest. Fig. 7-12 shows schematically the various time- |
+points during the search for the definite vestventry. — |
+A one-sided dependency exists between REST on the one hand and |
+ENTRY DELAY and DURATION’ on the other. For whether a sound entry or |
+general entry can be found in the entry range depends on the length of | |
+the entry delays or on the ratio of the entry delays to the durations. :
+Especially general entries can, because of numerous overlappings, be :
+so scarce that there is berely an opportunity for inserting rests in a |
+structure variant. The Frequency of sound entries, on the other hand,
+is only dictated by the average entry delay; durations of extra length |
+can not prevent rests, although they can conceal them. -
+The “entry range" is used exclusively to determine the pro- :
+visional entry point; the definite entry point can by all means be out-
+side this range. When stating the extreme values dl and d2, we must be :
+aware of the fact that there is a direct dependency between these :
+quantities and the number of expected rests. If MOD-REST=1 (5,15) and :
+the "average entry delay" < 1/10 of the structure duration, we can |
+expect a rest around every 10% of the structure duration; this is 9 or :
+10 rests. The shortest rest delay would be about 5%, the longest about |
+15%. Approximately the samé number of rests could be obtained with
+MOD-REST = 1 (8,12) or even | (10,10); the reat delays would then ad- |
+| mittedly be very similar or even the same (if the entry delays are |
+very short in relation to the structure duration). :
+The time~shift of all tones starting simultaneously or later is |
+made per rest entry, 80 that the calculation of the next rest entry refers :
+to the respective corrected rhythmic context. di and d2 always refer to the
+structure duration stated by the composer (entries 5] and 52, see 9.1.3), |
+and thus not to the respective remaining duration of the structure. The |
+effective structure duration exceeds the structure duration stated by 2
+the composer by the sum of all autonomous rests. |

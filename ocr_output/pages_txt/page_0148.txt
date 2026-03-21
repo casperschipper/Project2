@@ -1,0 +1,66 @@
+148 Output
+(£) PERFORMANCE comes first.
+
+(1) No suitable instrument can be found for the selected
+mode of performance.
+
+(2) Equal modes of performance are requested in the chord, ©
+
+| but no instrument can be found to execute the given
+mode of performance. |
+
+HARMONY | | :
+
+If HARM = 1 no comment can be given, because HARMONY is then main
+
+parameter. However, a comment is given in the following cases:
+
+(a) INSTRUMENT comes first, a melody instrument has been selected
+
+for which a suitable pitch cannot be found.
+
+(b) REGISTER comes first, a register has been selected for which a
+suitable pitch cannot be found.
+
+(c) HARMONY according to the ROW principle.
+
+(1) INSTRUMENT or REGISTER come first, a percussion instrum-
+ent or a 0,0-register have been selected, but the next
+row-tone is a relative pitch between 1 and tr. This
+tone is replaced by 0.
+Note: blocked row-tones (entry 55) are skipped without
+
+comment. The same applies also to blocked
+instruments, registers and intensities.
+
+(2) INSTRUMENT or REGISTER come first and request a relative
+pitch between ! and tr which cannot be found either
+
+He among the remaining tones in the row or in the next
+transposition of the row.
+
+— (d) HARMONY according to the INTERVAL principle. For the given |
+interval the matrix does not contain any allowed succeeding
+intervals. Here the comment is: INTERVAL RESTRICTIONS TOO STRICT.
+Note: Zeros inserted for percussion instruments in the "infinite"
+
+row do not give rise to comment.
+
+DURATION _ | |
+
+A comment is given in the following cases:
+(a) INSTRUMENT comes first.
+(1) No suitable duration can be found for the selected
+instrument.
+~ (2) Equal durations are requested for the chord, but no’
+duration can be found which is suitable for all instrum-
+. ents involved in the chord. This comment is always
+ee printed for the first tone of the chord, although it can
+also refer to other tones in the same chord.
+"ss Important: If the duration is to be the same length as
+oe the entry delay, but instrument and entry delay are al-
+ready given, the automatically inserted duration (the
+-. game length as the entry delay) will perhaps not be
+suitable for all instruments involved in the chord. This
+| _., duration is then shortened if necessary to the duration
+oe, . allowed for the instrument, but never lengthened.

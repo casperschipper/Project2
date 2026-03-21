@@ -1,0 +1,53 @@
+100 Deviating parameters
+Example 8-2 (all examples refer to 6 table-groups) : a
+(a) p=7,qz=i7
+
+For each vartant, ALEA selects between 1 and 6; p tndtcates the
+number of groups whtch are to be put together for the ensemble. This
+number ts automatically adopted for all "combined" parameters. For each
+variant, ALEA selects p times between 7 and 6; the found numbers denote
+the groups which are to form the ensemble. This sequence of numbers ts
+automatteally adopted for all "combined" parameters. |
+(b) p=28,q=82 | a
+
+The same as in example (a), but SERIES selects instead of ALEA.
+Different selection programmes can of course be called for p and q, but
+note that in the case of q = 2 the same group can appear several times
+tn the ensemble (compare commentary to example 7-2(2)). |
+(2) p=1,q=6
+
+For each vartant, ALEA selects the number of groups, the composer
+determining their order. Since the respective number ts unknown, the
+respective combinatton ts also undefined. For 4 vartants, the numbers
+é, 5, 2, 6 can result for p; tf the composer has given q = 6 (1,2,3,4,5),
+the following groups are put together: |
+
+vartant 7: 7, 2
+
+vartant 2: 8, 4, 4 .
+
+vartant 3: 6, 7
+
+vartant 4: 2, 3, 4, 6, 6
+The result for p = 2 would be on the same lines.
+(d)  p=5,q=17 |
+
+: Four vartants for p = & (1,2,8,4):
+
+vartant 7: §
+
+vartant 2: 3, 6 |
+
+vartant 3: 7, 2, 7
+
+, vartant 4: 3, 4, 3, & |
+
+The results for q = 2 would be on the same lines.
+Note that the groups arrtve tn the ensemble in the order in whtch the
+selected programme chose them; thts ts espectally important tf further
+dectstons are made with TENDENCY or several layers are to be composed.
+(e) p=5,q=5
+
+_ For both the number and order of the groups, the programne follows
+
+indications with which the composer supplied selection programme SEQUENCE.

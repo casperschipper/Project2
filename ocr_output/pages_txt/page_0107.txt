@@ -1,0 +1,64 @@
+;
+8.2 Harmony 107
+——_———_—
+
+INTERVAL table. | 21 TAB-INT matrix _
+
+} | = | | | 2 (chord instead of matrix) |
+| The interval principle produces an "infinite" row, the tones of
+which are distributed one for one among the entry points and chord |
+tones. Although repetition of tones is postponed for as long as possible, |
+there is no certainty that complete rows of tr tones will result. The :
+order of the tones is determined according to a matrix containing for
+each of the possible intervals (minor second to major seventh if tr=12)
+| allowed and forbidden succeeding intervals; forbidden succeeding inter-
+vals are indicated by 1, allowed ones by 0. Take care that if a line
+(succeeding intervals) only contains forbidden intervals, the column with
+the same index (given intervals) is also blocked in its entirety (fig.
+8-5, assuming tr=12); in other words take care to make each allowed suc- |
+ceeding interval, when turned into a given interval, continue the row.
+Since interval 5 (5th line) has no. continuation here, the same interval
+must be forbidden for ail given intervals (column 5). a
+Fig. 8-5 123 45 67 8 9 10 11
+oe 7
+
+2 7
+
+4 7 a
+
+53 |7 7 7 7 7 7 7 79 7 7 7
+
+| : 6 7 | |
+
+| = en: 7 | |
+| | 9 7 nn
+
+. 10 7
+
+‘At the beginning of the selection cycle any pitch (with the ex-
+ception of the forbidden tones, compare XCL-FRQ) is selected by ALEA, |
+and then any interval is determined where at least one 0 occurs in its |
+| line. This constitutes a first "given" interval. The second interval is
+found from among the allowed succeeding intervals, resulting in the
+third tone. The second interval is now a given interval for which the :
+matrix contains one or more allowed succeeding intervals. If an allowed
+succeeding interval results in a forbidden tone, another succeeding
+interval is sought; if this is not possible, a "wrong" tone is printed,
+together with a comment.
+Whether or not a new tone may be inserted in the score depends
+
+on three conditions:
+(1) it may not be one of the forbidden tones,
+(2) it must fit in the register if REGISTER comes first, or the
+instrument must be able to play it if INSTRUMENT comes first |
+
+(or both),
+
+(3) it can be rejected if repeated prematurely in the rovw.
+If no allowed tone can be found on these terms, they are ignored in re-
+verse order, so that at worst only the conditions of the matrix and
+forbidden tones still apply. Infringements of conditions in REGISTER
+and INSTRUMENT are accompanied by 4 comment.
+|
+
+}

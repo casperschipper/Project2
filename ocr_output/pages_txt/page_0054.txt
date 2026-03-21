@@ -1,0 +1,47 @@
+54 Hortzontal and vertical arrangement
+een
+
+Rest is ignored in the hierarchy; rests are inserted in the
+finished rhythmic context. If rests are to be inserted, this can only be
+done when the ratio of entry delays to durations ( as far as this is
+relevant for the insertion of rests, see 7.4) does not prevent this
+(many rests can for instance not be inserted if there are only a few
+entry points).
+
+Intensity given: Instruments are tested as to whether they may
+play the respective intensity. :
+
+Performance given: Instruments are tested as to whether they
+may execute the respective mode of performance. Modes of performance
+can also be required to change at each rest; in this case the rest table
+(compare 11.3) is consulted for the mode of performance.
+
+This all goes to show that the first parameter in the hierarchy
+is completely independent; we call it the MAIN PARAMETER. The selection
+principle assigned to it can freely have its full effect. The second
+parameter is - if at all - only dependent on one parameter (the main
+
+| parameter); it is still very probable that its selection principle will
+
+have its effect. The third parameter can already depend on two given
+parameters. If the hierarchy was D-H-A up to this point, the order of
+the parameters is of no significance because pitch does not depend on
+duration, nor does intensity depend on either of the other two para-
+meters. If we have R-H-I, pitch depends first of all on the given reg-
+
+ister (registers can be less than an octave, zero registers are reserved
+for percussion instruments and exclude pitches >0), the instrument then
+depends on both pitch (if a pitch is given, all percussion instruments
+are rejected; if a zero pitch is given, all melody instruments are
+rejected) and register. The later a parameter has its turn in the given
+hierarchy, the greater is the probability that the selection principle
+chosen for it can not have its full effect. Of course, the order of the
+parameters is entirely irrelevant if all parameters can be combined
+in any manner; e.g. entry delay and duration independent of each other,
+register in the form of octaves or larger intervals, no registers in
+which not all instruments can play, only melody instruments which can
+play all given durations, intensities and modes of performance, etc.
+We call these parameters that are unaffected by the hierarchy "compatible"
+parameters; although the hierarchy formally remains in existence (as
+the order in which the parameters are to be calculated), it could be
+altered without any consequences for the compatible parameters.

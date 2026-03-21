@@ -1,0 +1,49 @@
+18 Vartable data and their selectton
+ee
+2 VARIABLE DATA AND THEIR SELECTION .
+
+In order to understand PR-2 and its practical applications, it
+is important to make a clear picture of the kind of data to be used,
+and of their selection. For this purpose we distinguish elements and
+their index numbers, lists, tables and ensembles. Elements are either —
+numbers or symbols, the index indicating the position of an element in
+a list, table or ensemble. The above terms are defined as follows:
+ELEMENT Number or symbol
+NUMBER Whole or decimal number
+
+Examples: 76
+73.9
+. 0.0085
+SYMBOL Combination of signs
+Examples: PROT ECT 2 .
+TET 5 - Aprtl 1968
+37
+SIGN Number or letter not representing a numerical value.
+Examples: the dtgtts from 0 to 9,
+the 26 letters of the alphabet,
+other signs suchas. , "/+- ( ) and the space
+
+LIST Enumeration of elements, each of which is automatically provided
+with an index.
+
+TABLE Arrangement of list indices in lines and columns. The lines do
+not have to be of equal length, and are called "groups". The
+current number of a group is its group index.
+
+ENSEMBLE Enumeration of several groups which are to be regarded as a
+unit. A single group can also be declared as an ensemble.
+
+Both a list and a table must be made for almost all parameters.
+The ensemble then results from the required combination of groups. This
+construction means that a list-element obtains several indices:
+
+(a) a list index,
+
+(b) a group index in the table (line index),
+
+(c) a column index within the group,
+
+(d) an ensemble index. The ensemble index depends on the one
+hand on the position of the list index within a group
+and on the other hand on the order of the groups in the
+ensemble. See example 2-1.

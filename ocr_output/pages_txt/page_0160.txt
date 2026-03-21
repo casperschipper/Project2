@@ -1,0 +1,58 @@
+160
+a
+group size 26, 42 music, aleatoric 25
+-, serial 25
+harmonic principles 102, 104 musical graphics 146
+harmony 77, 102, 703
+“~, common 99 . notation 137
+~, separate 99 ~, traditional 146, 149
+hierarchy 13, 50, 51, 95 ££, 121,  jumber 18, 27
+722, 139 ~ of entry points 111, 139
+- of groups 99, 133
+index 18, 24, 28 - of results 36, 47
+-, column 18, 79 - ~ of variants 126, 726
+~, common 75, 95 ff numbers, equally distributed 125
+~, ensemble 18, 79
+-, group 18, 79 octave digit 12
+-, list 18, 79, 27 order 78 ff, 88, 92, 121
+infinite row, see row -, chronological 64
+initial set, see set ~ of instruments 10] ,
+input data 130 output 137, 738
+instrument 53, 77, 93, 94
+~ list 95 . parameter 8 ff, 14, 49, 121
+- table 99 -, actual 38 ff, 131
+instrumentation, see scoring -, dependent 53
+instruments, definition of 51, 93 ~, given 53
+~, melody 93, 96 ~, Main 13, 54
+“, percussion 74, 93, 96 parameters, combined 99, 123, 133
+intensity 54 ~, compatible 12, 54, 59, 121 .
+~ range 97 ~, dependency of 8, 52, 93
+interval, given 107 | ~, deviating 93
+- principle 13, 141 -, schematic 70, 77
+-, succeeding 107, 709 parts 50, 137 ff, 149
+- table, see matrix performance 54, 90, 97
+interval content 108 - range 95
+inversion 108 | permutation 8, 24, 30
+pitch 53
+layer 13, 50, 58, 70, 83, 99, 106 OQ-pitch 53
+limits of range 125 pitch, absolute 12, 74
+list 13, 18, 79, 20, 27, 28, 58, - grid 14
+132 . ~ range 74, 96
+- index, see index -, relative 14, 74
+list-table-ensemble principle 22, pitch-time grid 118, 779
+24, 30, 35, 58 plot programme 137
+| polymetric notation 138
+main parameter, see parameter programme, preliminary 10, 77,
+Mask 44 133
+~ edges 44 - specification 126, 726, 139,
+mask position 44, 44 146, 150
+-, Momentary 45 -, test 10
+matrix 107, 709, 141 programme entry 14, 70, 130
+measure, see bar - parts 77, 139 ©
+metre 114, 138, 149 pseudo chord, see chord
+-, duration of 114 ~ rest, see rest
+metric duration 150
+- expression 118 | RANDOM 38, 155
+- notation 138 random field 30
+- subdivisions 118, 138, 149 ~ generator 125, 728
+mode 79, 83, 88, 90 range 90, 96

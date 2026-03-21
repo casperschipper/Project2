@@ -1,0 +1,34 @@
+A
+PREFACE |
+Growing interest in the use of computers for purposes of musical |
+composition has stimulated composers versed in mathematics or matters
+pertaining to the computer to write programmes for their own use. There
+ought, apart from this, to be programmes which any composer can use
+just as he uses manuscript paper, a piano or a tape-recorder, without
+any knowledge of computers or mathematics. (Experiments in this field
+have been made with the MUSICOMP programme, written by Robert A. Baker
+and Lejaren A. Hiller. Max V. Mathews’ MUSIC V programme does not belong
+to this category, being primarily for sound production. )
+PROJECT 2 is an attempt to make a composing programme of this
+sort for general use. Experience gained in the use of PROJECT 1 formed
+a basis for this (see Electronic Music Reports 2/1970), especially the
+criticism that the compositional rules for this programme were inflex-
+ible. However, the writer of PROJECT 2 is aware of its weaknesses:
+the manifold combinatorial possibilities of several parameters can never
+do justice to all the requirements of a composer, not to mention the
+compositional-theoretical points of departure without which a programme
+like this could not be written at all but which could be an out-and-out
+contradiction of the ideas of a composer faced with using the programme.
+For these reasons, PROJECT 2 is also intended to be used for
+research into compositional theory. It is meant to answer the question
+as to what in music can be programmed, and to what extent rules of
+serial or aleatoric music, whether already formulated or capable in
+individual cases of being formulated, are valid. Furthermore, the manner
+should be observed in which contact between the composer and the computer
+: occurs, or, to put it more precisely: what is the extent to which the
+composer is ready and able to formulate his structural principles in
+the framework of the possibilities provided by the programme, to plan
+the course of a piece of music in advance and to translate this plan
+into constellations of individual parameter values. For this purpose,
+copies of all experiments and results will be kept at the institute and
+in due course subjected to an investigation.

@@ -1,0 +1,38 @@
+[
+
+re ee 9B |
+, 8 DEVIATING PARAMETERS | |
+The parameters deviating from the "chart" (see fig. 7-1) refer |
+
+to instruments and harmony. They are discussed individually in the | |
+following. For additional indications which can be expected of the Lo :
+programme, see section 9. | SO | | a a -
+| 8.1 INSTRUMENT a CG |
+PR-2 is chiefly intended for the composition of instrumental | |
+
+| music; the instruments required for the performance of a composition | |
+must therefore be defined in many respects. These definitions yield | |
+dependencies (in terms of the “"hierarchy") on other parameters which
+have already been mentioned (see section 7) or which will be mentioned |
+(8.2). Nonetheless, these dependencies will be dealt with in detail | |
+here. . |
+The instruments are divided into melody and percussion instrum- | |
+ents. The composer decides which instruments are to be treated as a !
+melody or percussion instruments. It might be conceivable to treat a | . ,
+violin as a percussion instrument, whereas cow-bells might be treated. |
+melodically. Instruments are defined in the following parameters: oy . 2
+| - name of instrument, | |
+
+- mode of performance, - oe |
+
+- —s pitch compass, | os :
+
+~ playable durations, | |
+
+| - playable dynamics, |
+
+-  -ghord size. oo : : Poa! )
+
+As well as these definitions, the survey for INSTRUMENT also | |
+contains the "schematic" entries for table, group selection and order
+(entries 12-14), | |

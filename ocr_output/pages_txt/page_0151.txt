@@ -1,0 +1,11 @@
+17.6 . Parts 15] |
+caption | information
+INDEX | line-number of respective tone in the score
+
+| METRE | metre index |
+BEGIN entry point of a tone in metric notation ,
+END end point of a tone in metric notation
+PITCH absolute pitch (as in score)
+DYN intensity (as in score)
+MODE mode of performance (as in score)
+Fig. 11-5 |

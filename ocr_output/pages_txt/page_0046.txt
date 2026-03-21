@@ -1,0 +1,19 @@
+46 The seleetton programmes
+aetna neem
+indices are to be converted into percentages. In this manner the com-
+poser can make the mask reveal the required elements and the indices
+
+be exactly represented by percentages. The two formulae in fig. 4-4
+
+can be used for this.
+
+Fig. 4-5 will help the reader to understand how the TENDENCY —
+programme works.
+
+The TENDENCY principle can only be applied to ensembles, i.e.
+to the final data selection for the score. TENDENCY can be called for
+all parameters except HARMONY and REST. Care must however be taken as |
+to which elements are in the ensemble each time; for it depends on this
+and additional instructions (MODE) whether the position of the mask
+alters at each time-point or at each tone. For details see the respec-
+tive parameters (sections 7 and 8).

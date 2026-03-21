@@ -1,0 +1,33 @@
+20 Vartable data and their selection
+rc
+
+2.1 LIST
+
+For each parameter, a list is first made containing all “allowed"
+elements; "allowed" does not mean that they occur in a variant, but
+depends rather on compositorial conditions: if 20 elements are available
+for a parameter, but the variant is so short that only 17 are required,
+3 elements are left over (excluding element vepetitions). A list-element
+can only occur in a variant if it is named in the table and if the group
+containing the element is selected for the ensemble.
+
+The kind of list-element depends on the kind of parameter. Time-
+values (for entry delay, duration and rest) are given in the form of
+numbers (seconds), designations of instruments, dynamics or modes of
+performance as symbols.
+
+Examples:
+
+. DURATION LIST 0.7 0.2 0.8 0.5 0.7 1.0 1.4
+
+DYNAMICS LIST ppp pp p mf f ff fff
+
+2.2 TABLE
+
+Besides the list, a table must also be made for most of the
+parameters. The purpose of the table is to arrange the list~elements
+in groups or to make a selection among the elements. The elements them-
+selves are never named in the table, but only their corresponding list
+indices. An index may be named several times within a group. If no :
+groups are to’ be formed, it is sufficient to name the list indices once
+- in the form of a single group. See example 2-2. . .

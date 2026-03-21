@@ -1,0 +1,38 @@
+74 Sehematte parameters
+7.1 REGISTER | | |
+For the harmony (see 8.2) a distinction is made between "relative"
+
+and "absolute" pitches. "Relative" pitches (regardless of the octave
+
+range) are indicated by the numbers from 1 to 99, "absolute" pitches by
+
+the octave number (] to 9) and the relative tone number. The absolute
+
+pitches 10! to 199, 201 - 299 etc., 901 - 999 are accordingly available
+
+for the pitch range. Tones to be played by percussion instruments of
+
+undefined pitch are given the relative pitch 0. The number of relative
+
+pitches per octave is fixed by the composer as tr (see 9.3).
+
+- Registers are expressed in absolute pitches and indicate the
+range in which relative pitches can be localized. A register is defined
+by two absolute pitches. In the register (401,512) the relative pitch 5
+can occupy two positions: 405 or 505. In the register (401,504) relative
+pitch 5 can only occupy position 405. Relative pitch 5 can not be
+accommodated in register (401,404). Absolute pitches may not, of course,
+be greater then tr per octave; the programme searches among the avail-
+
+| able relative pitches until an "allowed" pitch is found. If this is
+not possible, a "wrong" pitch is inserted and provided with a comment.
+Registers for percussion instruments are indicated by (0,0).
+
+_ There may be any number of registers in the list. The individ-~
+ual registers may overlap at will. Tendencies in the pitch-space can
+only be caused by the REGISTER parameter, see examples 7~4 and 775.
+
+Fig. 7-6 shows schematically the four combinations of REGISTER,
+HARMONY and INSTRUMENT. | ,
+If selection principle TENDENCY is called for the "order",
+the mask's position is calculated for each tone. |

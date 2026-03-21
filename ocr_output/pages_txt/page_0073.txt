@@ -1,0 +1,36 @@
+| 73 |
+Example 7-2 :
+(7) Given: L rl, ra, v3, r4, v5, ré :
+oe TABOO OT | a
+4, 5, 6 |
+SEQ-GR 1 a fo |
+SEQ 3 (1, 8, 3, 4, 5, 6) | |
+If only one group can be selected, it remains uncertain as to
+how many elements arrive in the ensemble in this way. Not until
+‘the group itself is named can the order of the ensemble elements
+be determined by SEQUENCE: |
+SEQ-GR 5 (3) | | |
+SEQ 5 (2, 1, 3) |
+Things are different when in all cases only the first element
+, of the respective group is to be used:
+SEQ-GR 1 | |
+| SEQ 5 (1) . ;
+(2) Given: L rl, r2, vr, r4, rd, ré | | |
+| TAB 7, 2 |
+3, 4 | gs |
+SEQ-GR 2 - -
+| SEQ 5 (4, 3, 2, 1) | | |
+If two groups must always be selected (by "combination"), four
+elements land in the ensemble each time. SEQUENCE can therefore
+be used to make selections for the score.
+Note, that here selection programme SERIES does not definitely
+exclude repetitions for SEQ-GR. SERIES could generate the index
+sequence 2 3 11 2 3 (two "series" without repetition: 2 3 1.
+and 1 2 3), thus forming ensembles (2 3), (1 1) and (2 3). In
+, the second ensemble the elements would then repeat themselves:
+121 2; the calling of SEQUENCE for the score would then result
+in the series 2121 (= r2yr1r2r1). However, SEQUENCE is
+called as often as elements are required for the score; if the
+number of elements required is greater than the number of
+indices in parentheses, the contents of the parentheses are
+repeated a corresponding number of times.

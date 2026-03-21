@@ -1,0 +1,37 @@
+7.4 Rest 83
+7.4 REST : | |
+
+Rests, like entry delays and durations, are expressed in
+seconds. The "chart" contains not only the four standard entries but | 1
+also a fifth one for the “mode".
+In the case of rests, too, we can also speak of entry delay :
+
+and duration: the entry delay from one rest to the next, and the dur- :
+ation of the rest. But whereas with tones the entry delay and duration |
+are calculated starting from the same entry point, the rest delay starts !
+at the end of the rest. This arrangement was made because rests ought © |
+not to overlap in the same way as tones do, and their entry delays may |
+therefore not be smaller than their durations. In order to clarify the .
+terms we shall speak of "rest duration" (PD) and "rest delay" (PE). | |
+We shall call the rests which are inserted because of the REST parameter :
+"autonomous rests", and those resulting from the duration of a tone |
+‘being shorter than its entry delay "pseudo rests". Fig. 7-11 shows
+graphically the difference between the entry delay and the rest delay. :
+The first rest delay in a structure variant is calculated starting :
+from the beginning of the variant. . |
+To determine the rest entry we have the terms "sound entry" and |
+"seneral entry". Sound entry is used to denote every entry point at which :
+a tone begins, regardless of previous tones which might still be :
+"sounding". A general entry, on the other hand, is a sound entry not |
+overlapped by sustained tones; it can be said to be preceded by a :
+"oeneral rest" (whose value can be 0). The composer can use the "mode"
+(entry 43) to indicate whether the autonomous rests should start instead |
+of a sound entry or instead of a general entry. If they should start |
+instead of a sound entry, any tones that might still be "sounding" are |
+sustained according to their duration. But all tones starting at the
+sound entry, and all tones starting later, are shifted on in time by |
+the length of the rest. It can occur here that the rest duration is ,
+shorter than the duration of the sustained tones. In this case the rest |
+is "covered" ("concealed rests"). Rests are always calculated and :
+inserted per layer. | . | |
+|

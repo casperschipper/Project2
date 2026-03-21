@@ -1,0 +1,42 @@
+110 Addtttonat data
+eee
+9 ADDITIONAL DATA
+The additional data serve purposes not provided for by the
+parameter programmes, but which regulate the interplay of the parameters
+and perform auxiliary functions. In this category are the organization
+of the time structure, control over vertical density, the hierarchy of
+the parameters and other purposes to be discussed in this section.
+Since the composer must provide data for these operations, these data
+are explained in the light of the various programme entries.
+
+9.1 TIME STRUCTURE
+
+The time structure is governed by the parameters ENTRY DELAY
+
+(7.2), DURATION (7.3) and REST (7.4), supplemented by data on structure
+duration and tempo (9.1.3, 9.1.4). It is important to visualize the
+interaction of all the time quantities in PR-2. The "entry point" and
+the "average entry delay" play a significant part.
+
+| 9.1.1 Entry points
+
+The duration of a structure variant is divided up into entry
+points, which result from the continuous addition of the entry delays.
+Each entry point is characterized by the entry of a tone or chord; to
+keep things simple we shall speak of the entry of a chord and at the |
+same time indicate the number of tones in the chord (which may be a
+minimum of 1 or a maximum of tr). Percussive sounds of indeterminate
+pitch also count as chord tones of course. .
+
+Every entry point is given one or more durations: one duration
+if it is a single tone or achord with equal durations, several durat-
+ions if it is a chord with independent durations. We Might say that a
+
+| duration is selected either per tone or per entry point. The end point
+of a tone accordingly results from the sum of entry point and duration.
+
+Rests ("pseudo rests'') occur automatically if the duration is
+shorter than the entry delay; duration and entry delay of a tone or
+chord are calculated starting from the same time point (compare 7-11).
+If a previous tone is still sustained the "pseudo rest" is "concealed".
+Additional "autonomous" rests inserted because of the REST parameter

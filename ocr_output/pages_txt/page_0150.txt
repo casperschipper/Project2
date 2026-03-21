@@ -1,0 +1,34 @@
+150 . Output
+ee
+the first digit showing the number of subdivisions, the second the
+intended divisional point. A non-subdivided metre therefore only has
+a single metrical point: 11 (or 21, 31, etc.). A duplet consists of
+| the metrical points 21 and 22, a triplet of 31, 32 and 33. More than
+8 subdivisions will not be used as a rule. But still finer subdivisions
+can be clearly represented, e.g. subdivision into eleven: 111, 112, sees
+1110, 1111, | |
+Both starting points and ends of tones are represented in this
+fashion. The respective metrical quantity indicates for the beginning
+of a tone its entry point, but for its end the entry point of the next .
+rest or of another tone. If a tone's metrical duration is (42,43) it is
+a quarter of a metre, if the duration is (83,87) it lasts four eighths
+of a metre (starting at the third eighth). However, it can happen that
+a tone is given a duration of, say, (33,33) because the subdivision .
+for the whole metre is calculated as three parts and the end of the
+| tone is rounded off to 33. The tone is then actually shorter than a
+third of the metre and might be marked staccato.
+| The duration of the metre is arrived at per variant according
+to the metronome tempo, and also applies to several layers. If the
+metronome tempo is fast the metres can be so short that it is impossible
+| to apply further subdivisions. The metres are numbered so that each
+tone is completely defined with regard to its position in time by the
+number of the metre and its metrical two divisional points.
+A part is produced for each instrument used in the score in
+the order of the instruments in the instrument list. The comments are
+not reprinted. Each tone occupies two lines, one for the entry point,
+the other for the end point. These two lines are not always together, |
+but can be recognized by their same index (column 1). The 7~column
+— tables for the parts are captioned per variant with the current number
+of the variant and the name of the respective instrument, and also per
+| instrument with the "specification". The seven columns contain the
+following information:

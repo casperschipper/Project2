@@ -1,0 +1,34 @@
+26 | Seleetton and permutation
+eee
+(b) "Scattered repetition"
+In this case the elements of the supply may be repeatedly selected before
+the entire supply has been used up. However, the repetitions do not occur
+in groups but are scattered over the whole permutation. For this purpose
+each element is given a ratio factor (see 4.3) which indicates the .
+relative frequency of its recurrence. Scattered repetition is known as
+"RATIO" in PR-2.
+(c) "Repetition in groups" | .
+By this we mean a repetition COMMAND. For each element, an indication
+is given as to how often it must be repeated (the group size). The
+elements themselves, and the permitted group sizes too, can be selected
+with or without repetition check, i.e. according to the SERIES or ALEA
+principles. The principle of repetition in groups is called "GROUP" in
+PR-2. :
+Apart from using these selection principles, the composer can
+also determine the selection himself by giving explicit instructions
+as to the order in which the elements (table-groups or ensemble indices)
+are to be selected. This principle, known in PR-2 as "SEQUENCE" is used
+in any case by the composer when making the tables.
+| A last principle can also be mentioned here ("TENDENCY") with
+which it is possible to have directed selection. Here the repetition
+check is shifted, as it were, over the ensemble elements so that a .
+different connected group of ensemble elements is available for each
+act (or acts) of selection. - The selection principles are discussed
+in detail in section 4.
+3.3 SELECTION
+Elements (or indices) for lists, tables, the ensemble and the
+score are either "given" by the composer or selected according to a
+selection programme. Fig. 3-1 is a diagrammatic survey of the manner
+in which the final data selection for the score is made. The following
+observations on selection and permutation (see also 3.4) refer to
+this diagram. OS

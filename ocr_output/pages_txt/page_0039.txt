@@ -1,0 +1,34 @@
+4.1 ALEA / 4.2 SHRIES / 4.8 RATIO 39 !
+ee :
+For the repetition check the programme has an array r which |
+contains element indices. A counter c indicates how many elements are |
+still available. The instruction for the selection of an index for an |
+element is: |
+. i r= x [ALEA (1, ¢)] |
+The repetition check is applied by means of the following instructions: |
+c:=ec~ | |
+If selection programme SERIES is to be called, it is sufficient :
+to indicate call number 2. The programme automatically inserts the
+actual parameters a and z. | .
+4.3 RATIO (p,P>-++5P)
+Call number: 3 . 2
+Selection programme RATIO chooses elements of a given supply |
+at random, each element being given a ratio factor p. The factor p :
+indicates how often the "sample" may be selected before it disappears
+from the supply. p is an absolute quantity in a single selection cycle, |
+but is a relative quantity with regard to several selection cycles. In |
+any case the relative rate of the elements is defined, their order and |
+repetition both being left to chance. As soon as the supply (and repet~ |
+itions) is exhausted, it and the ratio factors are regenerated automat~
+ically. The random selection applies each time to the total number of |
+elements still available (including repetitions). | |
+- If selection programme RATIO is to be called, not only call |
+number 3, but also a ratio factor must be indicated for each list~- |
+element. The first ratio factor refers to the first element, the second
+one to the second element, etc. Ratio factor 0 is allowed; in this case |
+the relevant element is blocked. | .
+RATIO can only be applied to an ensemble which contains one or
+more groups. Each group is. defined by one or more list indices, a ratio
+factor corresponds to each element index. The respective ratio factor )
+is therefore applied as often as the. relevant element occurs in the |
+ensemble. See example 4-1. i | oS |

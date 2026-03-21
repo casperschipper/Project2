@@ -1,0 +1,38 @@
+|
+9.6  Combtnatton 123 |
+9.6 COMBINATION |
+The purpose of combination is to link the instrument groups |
+selected in the INSTRUMENT parameter with similar groups (groups with |
+the same indices) of other parameters. The selection of the groups is
+in this case only made for INSTRUMENT, the selected index order being :
+automatically adopted for the combined parameters. The selection princ-— |
+iples assigned to the combined parameters are not taken into account. )
+For the non-combined parameters, a group is assigned to the respective |
+ensemble according to the respective selection principle. The tables of
+combined parameters must always contain the same number of groups; the
+tables of non-combined parameters are free. Compare section 6.1]. |
+Fig. 9-13 is the survey. | :
+The rules in the commentary to fig. 9-13 can place the composer |
+in an awkward position if he has to define dummy groups for combined |
+parameters. Let us assume that the composer has prepared lists and tables ,
+for all variant groups, and that he intends to activate the combination :
+for a particular variant group. Perhaps he has declared 6 instrument |
+groups, but only needs the first three for the combination. However, |
+the rules mean that he must declare 6 groups for each of the parameters |
+to be combined, although only the first three participate in the combin- |
+ation. If he will be needing 6 groups anyhow, the situation is simple: |
+only the groups corresponding to INSTRUMENT will be used for the combin- :
+ation. Otherwise he must declare dummy groups, perhaps like this: |
+GABLE: tyt,.0.50 |
+Egtgreeyt
+| Lytyeeegt
+| 7 . | |
+The disadvantage of this way is that the composer can .
+first only use selection principle SEQUENCE for INSTRUMENT during |
+combination, in order to avoid groups 4, 5 and 6 being quoted; and
+secondly. after de-activating the combination in the previously com-
+bined parameters, he has to deal with dummy groups which in |
+- their turn can only be manipulated by SEQUENCE. |
+In view of these consequences, special tables should be declared |
+for variant groups with combination, tables containing no dummies. A |
+7 |

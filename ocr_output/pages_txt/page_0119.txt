@@ -1,0 +1,22 @@
+| |
+. 9.8 The pttch-time grid 119 |
+CALL ;
+é a | | ‘Fig. 9-7
+SO Survey of PITCH-TIME GRID ) :
+tr = number of tones per octave (1 < tr < 99),
+. fr = maximum number of metrical subdivisions, .
+. | d = smallest time-value for metrical subdivision (in seconds).
+Example 9-8 | |
+Given tempo: 100 |
+| DIVISION: 12, 10, 0.08 | 3 |
+_ subdiviston -| duration of : | | |
+tnto metrie subdtvtston
+7. 0.6 seconds | | |
+| 2 08 :
+a 5 0.72 .
+- ar, 0.086 :
+| G8 0.075 ;
+| 9 0.067
+oe 10 0.06 7 |
+Sinee d is 0.08 here, the subdivistons into 8, 9 and 10 are not |
+taken tnto constderatton. |

@@ -1,0 +1,49 @@
+44 The selectton programmes
+ee
+
+4.6 TENDENCY (d,al,a2,z21,22,...,d,al,a2,z1,22)
+
+Call number: 6
+
+Selection programme TENDENCY (abbreviated TEND) provides the
+possibility of defining a particular part in the ensemble and of making
+selections in this part with ALEA. For this purpose the entire ensemble
+is covered by a "mask" which only reveals the required part. The limits
+of the part are called the "edges" of the mask. Since the number of
+ensemble elements if often unknown, the mask's edges are expressed in
+percentages.
+
+In a structure variant the mask can assume any number of
+positions, in which case we speak of "sub-tendencies". The number of
+positions refers to the total number of entry points or tones in the
+variant, and is also expressed in percentages, (See 9.1 for the number
+of entry points.) The percentages for the mask's edges and the number
+of positions accompany the call for TENDENCY as actual parameters.
+
+The mask can not only take up fixed positions, but can also
+move at regular speed during the period of time available for a given
+position (defined as the number of entry points). The two edges of the
+mask can move independently: towards each other, away from each other,
+parallel, crosswise.
+
+The actual parameters are defined as follows: .
+
+d "duration" of the sub-tendency, expressed in percentages of the
+number of entry points or tones,
+
+al. left (lower) edge of mask at the beginning of a sub-tendency,
+
+a2 right (upper) edge of mask at the beginning of a sub-tendency,
+
+zl left (lower) edge of mask at the end of a sub-tendency,
+
+za right (upper) edge of mask at the end of a sub-tendency.
+
+Each sub-tendency is defined by these five parameters; the sum of all
+
+d's must be 100 (=100%). Fig. 4-3 shows how TENDENCY works.
+
+Since all mask positions with regard to both axes are given in
+percentages, the call (see fig. 4-3) could be applied to ensembles of
+any size and variants of any length. However, it sometimes happens that
+the contents of the ensemble are known precisely, and that the ensemble

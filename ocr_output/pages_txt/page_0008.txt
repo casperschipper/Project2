@@ -1,0 +1,51 @@
+8 Introduction
+ae
+INTRODUCTION -
+
+The purpose of PROJECT 2 (PR-2) is to "calculate musical ,
+structure variants". By this we mean the forming of musical texts
+(scores) according to musical data such as instruments, durations,
+dynamics etc., but also according to given compositional rules (selec-
+tion and permutation of parameter values, dependency of parameters on
+one another). The programme is fashioned in such a way that its user
+(whom we shall call the "composer" from now on) defines the compositional
+rules and also provides the data. Seen in this light, the computer does
+not "compose"; it merely carries out the orders which it is given. It
+performs a mechanical task which the composer would otherwise be forced
+to perform. Of course, the computer's high calculation speed enables oe
+it to do mechanical work which the composer is unable to do because of
+the time involved. In other words, the computer can help solve problems
+which previously had to remain unsolved because of the time it took to
+solve them; for instance, it can combine data to form any number of
+constellations, thus providing the composer with a clearer survey of
+the solutions inherent in a problem.
+
+In the following, we shall call compositional rules RULES,
+musical quantities (durations, dynamics etc.) DATA or ELEMENTS. The
+characteristics of the musical sound (pitch, timbre, attack etc.) will
+be called PARAMETERS. The specific combination of rules and elements
+going to make up a problem will be known as the STRUCTURE FORMULA, and
+the various combinatorial possibilities resulting from a structure
+
+formula will be called VARIANTS. Variants resulting from one single
+structure formula give us a VARIANT GROUP. To put it in simple terms:
+
+the composer sets up a structure formula (consisting of rules
+
+and elements for several parameters) and has the computer
+
+work out one or more variants. .
+
+The structure formula is governed by a number of instructions
+which will be explained in this manual. Among them are:
+
+- the giving of elements and their grouping (section 2),
+
+- the selection and permutation of elements and groups of elements
+(section 3), |
+
+- the available permutation principles (section 4),
+
+~ the hierarchy of the parameters and vertical density (section 5),
+
+- attaching groups to a common selection principle, division of the

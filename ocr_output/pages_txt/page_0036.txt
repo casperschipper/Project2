@@ -1,0 +1,47 @@
+36 Seleetton and permutation
+
+Finally it must be mentioned that none of the four stages (list, |
+table, ensemble, score) may be omitted; it is not possible to transport
+list-elements directly to the ensemble, or table-groups directly to the
+score. If list-elements are not to be grouped, and several groups are
+not to be put together to form an ensemble, the list-elements can be
+copied as a group into the table, and this one group can be taken to
+the ensemble. The final selection of data for the score always takes
+place in the ensemble.
+
+3.5 NUMBER OF RESULTS
+
+In permutations with groupwise or scattered repetitions (see 3.2)
+the result is bigger than the stock of elements. If the repetition pro-
+hibition only applies to using the supply once (classic "serial" case),
+the size of the result is the same as that of the supply. If, however,
+
+a selection is made from among the element supply without any check
+whatsoever, the result can theoretically be infinitely great. It is
+therefore a good idea to speak about the "number of results" of a permut-
+ation (or selection); we shall regard the "result" as complete when the
+selection principle has been satisfied once, and call it "selection cycle".
+The "selection cycle" is
+
+- of infinite length without repetition check,
+
+- as long as the supply with "serial" repetition check,
+
+~ as long as the sum of all ratio factors with scattered
+
+repetitions,
+
+~ dependent, in the case of groupwise repetitions
+
+(a) on whether there are more elements than group sizes
+(or vice versa),
+
+(b) on the principle according to which elements or group
+sizes are selected. .
+
+Since there is only a finite number of time-points in a struc~—
+ture among which the elements can be distributed according to selection
+or permutation, it is important to define a reasonable relationship
+between this number of time-points and the length of the selection cycle.
+For if the number of time-points is smaller than that of the results,
+the selected permutation principle does not come completely into its own;

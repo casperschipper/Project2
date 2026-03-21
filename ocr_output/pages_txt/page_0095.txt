@@ -1,0 +1,40 @@
+8.1 Inetrwnent 95 |
+In the following commentary to the survey 8-1, the entries for . |
+INSTRUMENT are dealt with singly. For purposes of orientation, a line
+from the survey heads each explanation. , , . i
+For each instrument a "name" is given, a name being in the form
+of a symbol. The symbol may not contain the comma {,) or semicolon (3).
+The names in the instrument list should differ in at least one sign so |
+that they are unambiguous in the score output. They are adequately iden-
+tified by their list index for the programme. If for any reason an |
+instrument is to be named more than once, it is advisable to provide
+the name with a continuous number, e.g. VC1, VC2, VC3, etc. Instruments
+occurring multiply in the orchestra (choral setting) need only be named
+once in the list; it is sufficient to state their index a corresponding |
+number of times in one of the table-groups.
+i modes of | 7 AMB~PERF | A4Z,A,yZye0058,5e | 3.
+performance | mA ,~Zy eee y7G,7Z |.
+- For each instrument a performance range is given, referring to.
+the L-PERF list (see 7.6). The limit values a and z must be indices. and |
+indicate modes of performance which the relevant instrument may execute.
+Both limit values must be either positive or negative; positive limit
+values contain the "allowed" modes of performance, negative values
+contain "prohibited" ones, themselves belonging to the "allowed" ones.
+Example: (3,5) means that elements with an index <3 or >5 may not be
+used. (-3,-5) means that elements wtth an index >3 and <5 may
+not be used. Note that these indices always refer to the Itst !
+(thus not to the ensemble). Posttive and negative patre of |
+- numbers are alternatives; tt is not posstble to combine indtces
+with different stgnea.
+Each pair of numbers is registered by the programme under a :
+common index, so that a performance range corresponds to each instrument
+under the same index. If different instruments are to be given the same |
+mode of performance or vice versa, the L-PERF list must be constructed —
+in such a way (if necessary by stating the same mode of performance - .
+. several times) that each instrument can be characterized by a single
+range; it is then impossible to name several ranges for one instrument. |
+The performance range participates in the hierarchy: for a given
+instrument, only modes of performance can be selected which are in the.
+performance range; for a given mode of performance, only instruments can
+be selected which may use this mode of performance. If an allowed element
+can not be found, a "wrong" one is inserted and provided with a comment.

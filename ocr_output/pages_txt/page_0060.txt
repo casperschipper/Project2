@@ -1,0 +1,31 @@
+60 Group formation and layers
+
+Two examples can illustrate this.
+
+In fig. 6-1 we see the tables of the INSTRUMENT parameter (I)
+and the tables of any other two parameters (X and Y). Each table contains
+3 groups of any length. In order to form the instrument ensemble a sel-
+ection principle is called which in its turn depends on a decision
+regarding the number of groups. The number of groups can only be stated
+for the INSTRUMENT parameter; for all other parameters the number of
+groups is "one" apart from parameters X and Y, which because of their
+combination with the INSTRUMENT parameter have the same number of
+groups. The selection principle for the choice of groups can also be
+freely selected for each parameter, again with the exception of para-
+meter X and Y, which because of the combination are also coupled with
+the INSTRUMENT parameter with regard to the group selection. The number
+and selection of groups are accordingly determined for the INSTRUMENT
+parameter; the decision arrived at is adopted for the combined parameters
+X and Y. The selected groups are transferred to the appropriate ensembles.
+The selection principles for the score are however outside the range
+of the combination: each parameter (also X and Y) can be called by its
+own selection principle. Note however that the chosen selection princ-
+iple applies to the entire ensemble; if several groups are to be in the
+ensemble they are mixed arbitrarily by selection principles ALEA and
+GROUP; RATIO could however under cireumstances block the elements of a
+particular group. Only if both the number and the selection of the
+groups were determined by SEQUENCE could the assembly of the score be
+controlled by SEQUENCE.
+
+The construction in fig. 6-1 is however primarily intended for
+aleatoric decisions for number and selection of groups. |

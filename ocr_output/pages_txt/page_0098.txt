@@ -1,0 +1,58 @@
+98 Devtatting parameters
+which basically is independent of the chord size, depends on the selected
+instrument, or is given by an already selected chord, or has priority
+above all other parameters as "autonomous" density: the chord size ind-
+icates the number of tones with which the respective instrument particip-
+ates in the entire chord. If the vertical density depends on the instrument
+(INSTRUMENT then being main parameter), vertical density and chord size
+are identical; the chord size selected aleatorically between a and z
+
+for the respective instrument determines at the same time the total
+density of the respective entry point. In the other two cases the vert-—
+ical density, stated as a chord or "autonomous", must still be scored
+
+for instruments, which means that another instrument must be selected,
+and for it a chord size between a and z, and that this must go on
+happening until the total density is reached. The chord size of the
+instrument last selected is reduced if necessary to the remaining number
+of tones in the entire chord.
+
+This is done by selecting an instrument, and for it a chord size
+between a and z (corresponding to the instrument definition). The pitches
+of the chord are then compared with the instrument definition one by
+one, the instrument only being inserted for "allowed" (absolute) pitches
+and not more times than provided for between a and z. If there are fewer
+"allowed" tones than intended for the instrument, the number of tones
+for the instrument is reduced. If all the tones in the chord have been
+checked, or if enough "allowed" tones have been found beforehand, another
+instrument and chord size (between the appropriate limit values) is sel-
+ected. This goes on until all chord tones have been "scored".
+
+Since the chord sizes for percussion instruments are also defined,
+percussion instruments - and for each one a randomly selected number of
+tones between a and z - can participate in the "scoring" of the vertical
+density. A condition for this is however that the hierarchy has not
+already established pitches or registers which automatically exclude all
+percussion instruments.
+
+Here we must recall (but compare section 3 too) the selection
+cycle, which is different for each selection principle. Apart from ALFA,
+the principles have finite selection cycles which are repeated as soon
+as the "supply" is exhausted. In this way very short selection cycles
+can mean that an instrument is selected several times in the same chord,
+although only one example of this instrument is present in the orchestra.
+This danger is especially acute in the case of chords with many tones
+played by instruments which can only play one tone at a time. However,
+the programme "expects" there to be enough instruments in the vertical
+density to score the entire chord without instrument repetition. If
+there are not enough instruments, each repeated instrument is provided
+with a comment which under normal circumstances tells the composer that
+the rules could not be adhered to. This mechanism might prove misleading
+if the composer is writing for, say, piano, determines the actual chord
+size by means of the vertical density (see 9.2) and defines the range
+of allowed chord sizes as (1,n). Since a random selection must occur
+between 1 and n, the entire chord might have to be performed by several
+pianos, not available in the supply. It is therefore advisable always
+to define the chord size as (n,n) for solo pieces; if necessary this
+chord size will then be reduced to the vertical density without comment
+during the "scoring". _

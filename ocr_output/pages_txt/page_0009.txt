@@ -1,0 +1,40 @@
+| Introduetton 9
+-. geore into. "layers" (section 6), 000°" Ca ob BE |
+- in sections 7 and 8 the individual parameters are discussed, -.  °. . |
+~ in section 9 the additional structure data, :
+~ in section 10 the data form and. - a ee a |
+- ‘in section 11! the layout of all check data and of ‘the composed. results. :
+-. The. appendix contains -a survey of all-programme entries:in the. :
+form of. a table. “In sections 2-6 only the basic principles are discussed. |
+Details as to how the composer must write down his structure formulae. °
+are in sections 7-9. A list. of illustrations and an alphabetical register :
+| complete the manual. oo Be a re |
+_. .In order to make PR-2 serve as many purposes as possible, all — :
+important musical parameters have been taken into account: (instrument,
+harmony, register, entry delay, duration, rest, dynamics, and mode of »- |
+performance). The harmony parameter has. been worked ‘out in three alter- 7
+natives, all of. which generate any number of pitches per. octave. Clusters
+and other divergences can be programmed by resorting: to the "mode of. :. _ :
+performance". The parameters mentioned depend on one another in .that
+once a parameter has been composed in a variant, it can not be altered; |
+the following parameters must adapt to those already composed. —~in: the * |
+framework of the structure formula set up by the composer. The composer |
+determines the order in which the parameters are inserted in’ the score. 2
+_. .The present form of the programme is a, compromise.between great.
+flexibility on the computer's part and clarity for. the composer,.to =. :
+whom the input system (data form) appears as the operational. panel of — :
+a machine. It would doubtlessly be theoretically. possible to have. more . |
+parameters, more rules and especially more opportunities for variation
+in a variant, but this would affect the programme's "operability"; and ,
+those very composers with little experience in planning a structure in :
+_ advance - who should be encouraged by this programme to gain such ex-
+. ‘perience ~ would be placed in situations difficult for them to assess. |
+When this programme was being made, the idea was to place a few elements |
+- according to elementary selection and permutation principles - in 2
+
+| manifold constellations and to alter these constellations in small
+stages. This philosophy could make the structure of the programme appear ,
+more complicated than necessary, for the composer's data can contradict :
+each other, thus preventing a sensible result. Programme errors can
+also be made if unsuitable data cause the wrong run instructions for
+certain indices. This is why it must be stated here that useful results |

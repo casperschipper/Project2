@@ -1,0 +1,62 @@
+Example 3-4 | :
+
+LIST | a bed e |
+
+TABLE | 7 2 3 4 5
+
+34 5 |
+
+7 7 7 2 2
+
+(a) number: 2 (S or R) | :
+
+selection: 3 4 2 (8)
+
+ENSEMBLE: 3 4 6 7 a :
+
+(b) number: 3 (S or R) .
+
+selectton: 65 2 (8)
+
+ENSEMBLE: 7 7 7 2 2 7 2 7 «7 7 2 2
+
+(2) number: 3 (S or BR) |
+
+selection: 8 4 4 (R)
+
+ENSEMBLE: 3 4 6 7 7 ne |
+
+(d) mumber: 4 .. . (R) . . 7 So |
+
+selection: 2 3. (8). a: ee |
+
+ENSEMBLE: 1 2.3 45 72 8 45 7)  -"
+
+ALEA and SERIES are both indicated by R, SEQUENCE by S. All |
+
+examples refer to the same list and table. | .
+
+In (a) and (b) the number of selected groups does not agree with :
+
+| the given "number"; this is in any case only possible if the "selection" a
+
+is made with SEQUENCE. In (a) the extra index is therefore ignored,
+whereas in (b) the list of group indices is used as often as necessary |
+
+(a second time in the example). Compare "selection cycle" in the defin-
+
+itions. OO , |
+
+Example (¢) shows that if ALEA is used, indices can be repeated .
+
+(this would not have been possible with SERIES). Since the "selection"
+
+was made with "R", the number of indices agrees with the "number".
+
+_ Lastly, in (d) the "selection" is fixed, the "number" (4 in this |
+
+case) being left to chance. One (or both) of the two halves of the series
+
+always arrives in the ensemble, regardless of which number (bétween 1. |
+
+and 5).is found according to the "R"-principle. . Oo

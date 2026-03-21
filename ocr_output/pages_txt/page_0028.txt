@@ -1,0 +1,39 @@
+28 Seleetton and permutation
+
+Selection is the choice of elements from a given supply. This
+supply only contains individual examples, "samples", as it were. The
+composer can "order" any number of each sample. The sample itself can
+not be removed from the supply. The rules of the musical composition
+game decree that occasionally only one example of the sample can be had,
+sometimes the supply of examples is limited, sometimes unlimited. Put .
+in musical terms: a particular element can only be used once, repeated
+within limits or selected as often as desired.
+
+. The first selection occurs when the composer makes a list of
+all conceivable data from his imagined supply. Basically each "sample"
+may occur in the list as often as he wants; but in practice only one
+example of each sample will be put on the list.
+
+The computer plays no part in this first selection; the composer
+writes down the elements, whereupon they are "read" into the computer.
+An existing list can be replaced by a different one at any time. PR-2
+does not have a principle according to which the computer can make a
+list (based on a calculation, for example).
+
+The second selection occurs when the composer makes a table
+based on an already existing list. Here each element of the list counts
+as a "sample", regardless of how often it occurs in the list; repeated
+elements, just as new ones, are distinguished by their indices. In the
+table the list-elements are indicated by their indices; it goes without
+saying that in the table the only indices which may be named are those
+corresponding to the elements in the most recent list. See example 3-2.
+
+| This selection can also only be made by the composer. The
+table, like the list, may be replaced by any other one at any time.
+In a table-group, too, each element is basically mentioned only once,
+although it is possible to have repetitions. The fifth group in fig. 3-2
+only makes sense when all the elements in the ensemble are to be selec-
+ted the same number of times. If, on the other hand, a principle is first
+to be applied in the ensemble saying that the rate at which the elements
+occur is in a particular ratio, the fifth group is superfluous; it can
+be replaced by the second one.

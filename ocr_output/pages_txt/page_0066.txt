@@ -1,0 +1,38 @@
+66 Group formation and layers
+Example 6-5 oe |
+Given three tables: 7 | OF
+I: |7 2 8 Kp [oo L: |7 2 8 .
+4 5 6 2 3 45 |, °
+7 8 @ 4 60 6 6 . |
+Assuming the number of groups for the I-parameter to be "two"
+and the selection principle to have chosen the following groups for the
+three parameters, we have: . 7
+T: 13 7 2 8 kK: 27 38 2 be {7 8 7 Bf
+These group indices are of course only selected as required;
+but 4 indices have been stated each time in order’ to demonstrate in the
+following how the indices are used. - We distinguish the following. |:
+four cases: Oo os
+(a) | combination / union
+(b) combination / no union
+(c): no combination / union — i
+(d) no combination / no union |
+and would have the following list-elements for two variants:
+| 7st layer | 2nd layer 7st layer énd layer
+(a) | I | 789723 | 456789 |
+K 4567 826 45 6
+L 723 6
+(db) L 789. | 72.3 | 456 78 8
+K 456 {| 7 2s. 456
+| o )723 °8| 6 1 7 28 45
+(ce) I 7897238 | ¢56789
+K 28 7 |
+L 7268 6
+| (4) | I | 7869 123 | 4656 78 9
+| kK | 23. 4} 7 456 — 28 a
+L 728 6 1268 © a)
+Commentary |
+(a) Because of the union, only one layer occurs. In the combined
+parameter the same group indices are selected as in the I-para- .
+meter. L only has one group. For the second variant the follow-
+ing group indices are taken into account each time for all
+parameters. 7 .

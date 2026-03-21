@@ -1,0 +1,19 @@
+8.1 Instrument | 101 |
+order 14 | SEQ-INSTR , | 7
+
+. 3 (P>Py+++»P)
+| | 5 (i,i,...,i) |
+
+6 (d,al,a2,z1,22,...)
+
+After the ensemble has been formed, the score is assembled .
+according to the selection principle for SEQ-INSTR. The chosen selection
+principle extends to the entire ensemble if s = 0, per layer to the next
+group respectively if s = 1 or s = 2, | :
+If selection programme TENDENCY is called for the "order", the
+
+mask's edges are calculated per time-point. If surprises are toavoided,
+either a large mask should be provided so that a choice of several in-
+struments is possible in the chord; or the instruments should play |
+entire chords; or to be quite safe vertical density should depend on
+the instruments. Compare remark on "scoring" in AMB-CHORD. | |

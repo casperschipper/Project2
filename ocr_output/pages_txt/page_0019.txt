@@ -1,0 +1,18 @@
+re 19 |
+Example: 2-1 Ss Cs — oe |
+| LIST — tndem 7 2 3 4°55 |
+; | elements: A BC DE Oo
+TABLE 7.2 8 4 5 + colum indew |
+ne | |
+
+2 6 4 6 } list indices —_
+
++ |
+
+- group tndex
+
+Order of groups: 2 7 |
+ENSEMBLE indes: 12 3 45 6 7 8 | 2
+
+; List tndices: 8 465 7 28 4 6
+corresponding to: C D E ABCODE

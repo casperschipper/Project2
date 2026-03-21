@@ -1,0 +1,54 @@
+40 The seleetton programmes
+a
+Example 4-1
+LIST abede
+TABLE 7268465
+774
+| 7 2
+
+(a)
+
+number of groups: 7
+
+seleetton of groups: 7 ENSEMBLE 723465
+
+selectton: 3 (3 7 20 4) SCORE (7 eyctle) baeecaeaee
+
+— (or aleatoric)
+
+(b)
+
+number of groups: 7
+
+selection of groups: 2 © E'NSEMBLE 774
+
+selection: 3 (8 1 2 0 4) SCORE (1 eyele) a@aaaaaa
+
+(2)
+
+number of groups: 2
+
+selection of groups: 3 2 ENSEMBLE 72774
+
+selection: 3 (3 720 4) SCORE (1 cycle) a2aabaaaaaaa
+The list contains 5 elements, the table has 3 groups.
+
+(a) If only the first group is selected for the ensemble, each
+element is available for each selection cycle as often as
+indicated by the ratio factors in the selection instruction
+
+(it is advisable to place the actual parameters in brackets).
+The fourth element is blocked.
+
+(bd) If the second group is selected for the ensemble, the first
+element arrives in the ensemble twice, and is accordingly
+available six times.
+
+(c) if two groups are selected for the ensemble and both groups
+contain the same element, the ratio factor has its turn a cor-
+
+responding number of times. |
+
+The selection cycle in the score would of course be different if another
+
+sequence of ratio factors had been chosen.

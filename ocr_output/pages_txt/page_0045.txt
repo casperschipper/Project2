@@ -1,0 +1,35 @@
+4.6 TENDENCY =~ 45 |
+eeO tee Co oe ae .. " :
+: ee ks MASK Ft Oo
+
+_ ELEMENT a :
+
+100% -+ . - ee , a2 . .
+go% + 7 , — - I | :
+| \ 2z2/a2— 22
+
+| jal zi/at | |
+
+4% —zifal ral , ,
+Fig. 4-3 | :
+
+Fig. 4-3(a) shows the ensemble, the momentary position of the
+
+mask and an element which is indicated inside the mask by ALEA. |
+Fig. 4-3(b) shows four sub-tendencies, the momentary position
+
+of the mask in the fourth sub-tendency and an aleatorically determined
+element. The first sub-tendency begins with a mask whose edges leave
+the area between 0% and 90% of the ensemble visible; the mask narrows
+down to 12% to 42%. |
+For the second and third sub-tendency the mask occupies fixed
+positions between 12% and 42% and 32% and 82% of the ensemble respec-
+tively. |
+In the fourth sub-tendency the mask starts at 32% to 100% to
+
+narrow down to the lower 4%. :
+The complete call for this quadruple tendency would be: |
+
+6 (22.4, 0, 90, 12, 42, 16, 12, 42, 12, he, |
+
+32, 32, 82, 32, 82, 29.6, 32, 100, 0, 4).

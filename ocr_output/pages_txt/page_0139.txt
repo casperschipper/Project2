@@ -1,0 +1,37 @@
+11.17 Composer's data / 17.2 Cheek data I 139 |
+«V1.1 COMPOSER'S DATA _ | | :
+The output starts with the printout of the composer's data in |
+
+5 columns: | :
+(1) asterisk for "new" data; not printed before data automatically |
+taken over from the last set of data; |
+
+(2) call number of respective call; |
+(3) code text of respective entry; |
+(4) data count, of no importance to the composer; |
+(5) data; the numeric material appears in 10 columns to two decimal
+places exactly. |
+
+In order to adapt PR-2 to the existing system at the computer :
+
+centre, it was divided up into three programme~parts. The programme texts
+are in disc storage, the data for the transition from one part of the |
+‘programme to the next pass through drum storage (compare fig. 1-1). |
+The first part of the programme is for the feeding of the |
+composer's data and for the selection of a tempo, a duration for the |
+‘structure, the formation of an ensemble for the various parameters, the |
+calculation of the average entry delay and the resulting number of entry :
+points. As well as this, the hierarchy and the order of the chord sizes :
+are established. ' | , |
+Check data I are followed by a printout of the data placed in |
+
+drum storage during the transition to the second part of the programme. |
+They are used for checking errors in the programme, and are in general |
+of no interest to the composer. If this printout is missing, it was |
+removed previously in the institute for checking purposes. |
+Fig. 11-2 shows the check data I which are printed per variant. |
+
+The "specification" (entry 2) is printed per variant at the top right~ |
+hand side for purposes of more rapid orientation. The numbers in the |
+first column of fig. 11-2 are not printed; they are merely references :
+for the commentaries to the table. - |

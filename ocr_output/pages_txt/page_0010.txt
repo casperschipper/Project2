@@ -1,0 +1,33 @@
+10 Introduetton
+a
+can only be expected if the composer carefully studies the instructions
+in this manual and acts according to them.
+
+PR-2 is written in ALGOL 60 and consists of three parts with a
+preliminary programme (see fig. 1-1). In the first part the composer's
+data are fed in and printed; a number of overall decisions are also
+made as to the order of the parameters, the duration of the variants,
+grouping of elements etc. In the second part the score is put together,
+parameter for parameter. Finally, in the third part the time-values
+are worked out into metric quantities, and the score and parts are
+printed in the form of tables. The great length of the programme made
+it necessary for it to be divided up into three parts in this manner.
+
+The preliminary programme converts the composer's data into
+code, since the data format for the first part of PR-2 is impractical
+for the composer, necessitating a great deal of writing and thus pro-
+viding a greater risk of errors. The output of the preliminary pro-
+gramme then serves as input for the first part of PR-2.
+
+It should also be stated here that - although PR-2 is considered
+
+to be complete - a few more alterations are to be expected in the near >
+future. Users of PR-2 will be kept informed of such alterations.
+
+There are also "test programmes" which the composer can use to
+get acquainted with individual problems of PR~2 and which may be ob-
+tained on request (data forms and explanations). These test programmes
+are called ALEA, SERIES, RATIO, GROUP, TENDENCY, DYNAMICS, HARMONY,
+
+-TXCL and TIME. For application possibilities of the test programmes see
+the description of these functions in the manual.

@@ -1,0 +1,76 @@
+| 155 |
+
+DYNAMICS. :
+
+44 list :
+45 table (tf combination, number of groups =
+
+| number of I-groups)
+
+46 group selection 1 ALEA SO
+
+2 SERIES
+
+5 SEQ: ,
+
+47 order 1 ALEA |
+
+| 3 RATIO: |
+4 GROUP a: az: type: 1 2 3 4
+
+6 TEND d: als a2: zl: 22:
+
+48 mode 0 equal intensities in chord
+
+. . 1 different intensities in chord |
+49 TEMPO, list |
+50 order 1 ALEA 7
+| 2 SERIES |
+
+. : | 5 SEQ:
+
+51 STRUCTURE DURATION, | oe
+list
+
+52 order 1 ALEA
+
+. 2 SERIES . :
+
+a | 5 SEQ: oS
+
+53 | VERTICAL DENSITY 0 depends on INSTRUMENT
+
+| po | at z: (autonomous density)
+54 order - | 1 ALEA |
+
+3 RATIO: |
+
+| . 4 GROUP a: 2: type: 1 2 3 4
+
+| 55 | blocking no yes
+instrument 0O 1 |
+
+| harmony Oo 1 |
+
+poe register 0 1
+
+| intensity 0 1 : . :
+
+56 | hierarchy «| O SERIES | |
+
+| | 1 instrument | . |
+
+| . | | 2 harmony | |
+| 3 register .
+
+| 4 entry delay
+
+| 5 duration |
+
+6 dynamics
+
+| 7 performance
+| 37 output 1 score
+| 2 score, parts |
+3 score, parts, notation
+| 4 punch tape

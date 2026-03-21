@@ -1,0 +1,65 @@
+96 Deviating parameters
+a
+‘pitches AMB~FRQ tl,t2,tl,t2,...,tl,t2
+O,n,0,n,...,0,n
+
+The pitch range is given in the form of a pair of numbers for
+each instrument, the numbers being registered by the programme under a
+common index. The pairs of numbers (t1,t2) and (0,n) are alternatives
+and can not be mixed.
+
+t1 and t2 are absolute pitches for melody instruments, t1 in-
+dicating the lower limit, t2 the upper one (e.g. 408,612). The pair of
+numbers (0,n) indicates percussion instruments; the constant 0 informs
+the programme that a percussion instrument is meant and that n ranges
+are available (e.g. 0,3 for a percussion instrument with three ranges,
+perhaps low, medium, high). ALEA selects among these ranges for the
+score. The PERFORMANCE parameter can be used for a more differentiated
+description of a percussion instrument; in this case n=1 would be
+stated and perhaps a separate instrument declared for each range if
+several are to be provided.
+
+Pitch compass participates in the hierarchy: registers can only
+be selected for a given melody instrument if they have at least one
+tone in common with the respective pitch compass; a pitch is sought in
+the remaining compass. If the harmonic principle means that no pitch is
+available, a "wrong" pitch is inserted and provided with a comment.
+
+Pitches can only be selected for a given melody instrument if
+they occur in its pitch compass (the programme only works with instrum-
+ents with compasses of at least one octave). A suitable register is
+
+| sought for the selected pitch; if not available, a "wrong" register is
+inserted and provided with a comment.
+. For a given percussion instrument, O-pitch and O-register are
+
+automatically inserted.
+
+These rules also apply the other way round:
+
+A melody instrument can only be used if its pitch compass has at
+least one tone in common with the given register.
+
+A percussion instrument can only be used if the 0,0 register or
+pitch O have been selected beforehand. If no instrument can be found
+because of this condition, a "wrong" melody or percussion instrument is
+inserted and provided with a comment (compare fig. 7-6).
+
+durations AMB-DUR A,Z,4,Z2,..+,4,2
+“Ay Zy eee Way -Z
+
+Independently of the list L-DUR (see 7.3), a duration range is
+
+indicated in seconds for each instrument; a and z marking the shortest
+
+and longest duration which the instrument may play. Both limit values
+must be either positive or negative; positive limit values contain the
+
+"allowed" durations, negative limit values contain "prohibited" durat-
+
+lions, themselves belonging to the "allowed" ones.
+
+Example: (0,7) means that only short durations up to and tneluding one
+second may be played. (-0.8,~-3.5) means that the duratton range
+between >0.8 and <8. ts blocked (values 0.8 and 3.5 themselves
+are sttll allowed) and that therefore only very short or very

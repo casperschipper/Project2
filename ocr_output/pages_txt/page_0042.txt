@@ -1,0 +1,33 @@
+42 | The selection programmes
+Where SERIES can not be called, but RATIO can, it is possible
+to substitute SERIES for RATIO; the ratio factor | is then given with
+each list element.
+4.4 GROUP (a,z,type)
+Call number: 4
+Selection programme GROUP produces repetitions in groups. Two
+decisions are necessary for this: (a) choice of an element, (b) choice
+of a group size. Both decisions can be made by ALEA as well as by
+SERIES. The number of elements available for selection results from the
+respective supply, and is automatically inserted by the programme as an
+actual parameter. The "allowed" group sizes are always between a and z
+(a < z). The selection mode is defined by the parameter "type"; the
+four possible combinations of ALEA and SERIES for element and group size
+can be seen in the table below:
+call number |. element ‘group’ size. :
+’ for type selected by selected by |.
+I ALEA ALEA
+. 2 ALEA SERIES
+3 SERIES ALEA
+4 SERIES SERIES
+If selection programme GROUP is to be called, not only call
+number 4, but also the limit values a and z must be indicated for the
+group sizes and also a call number for the type.
+The length of the selection cycle depends on the type:
+type 1: one element (repeated if necessary),
+type 2: each group size once,
+type 3: each element once (repeated if necessary), |
+type 4: each group size once if n< mh,
+each element once if n> Mm,
+oso. s = number of elements, - a
+"= number of group sizes (m = z-atl).
+See example 4-2.

@@ -1,0 +1,17 @@
+32. ; Selection and permutation
+Example 3-5
+| elements | perwnutations | results
+(a) | a be de } 7 28 € 4€ § | &2& be de |
+| 6 @€ 8 @ 7 }| e@ d aba
+| | 2 4 8 & 7. bd ¢@ea
+f(b) | @ 6 38-47 4 4 @ Bede | beead |} | ,
+| _— e deb @ daeeob
+| oe a-ee bd | @4d4 ea b
+fe} | 7 2 8 4 8 a bo@e de | apbpede
+7 f g AW GZ F g ht fj
+| kK bL mno | k £ mno |
+Tn (bp) and (c), various lists are read one after the other,
+but permateted according to the same principle.
+.. .. Ifa given selection is to be permutated several times, one of
+the possible permutations is selected each time. In this sense the
+selected permitation is in its turn a. selection. .

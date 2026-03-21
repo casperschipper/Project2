@@ -1,0 +1,36 @@
+152 : Appendtx
+eee
+APPENDIX : DATA FORM
+I user |
+2 specification .
+3 number of variants
+4 combination 0 no combination
+3 register
+4 entry delay
+5 duration
+6 dynamics
+7 performance
+8 rest
+5 start number
+INSTRUMENT
+6 list |
+7 modes of performance
+8 pitches
+9 durations
+10 intensities
+1] chord sizes
+12 table
+13 number of groups 1 ALEA
+2 SERIES
+5 SEQ:
+13 group selection 1 ALEA
+2 SERIES
+| 5 SEQ:
+13 union OQ one layer
+1 several layers (common harmony)
+| 2 several layers (separate harmony)
+14 | order 1 ALEA
+3 RATIO:
+4 GROUP a: Zz: type: 1 2 3 4
+5 SEQ:
+. 6 TEND d: al: a2: zi: z2:

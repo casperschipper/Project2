@@ -1,0 +1,26 @@
+78 Sehematte parameters
+TT
+7.2 ENTRY DELAY | |
+Entry delays are expressed in seconds. In the check printout of
+the composer's data and in the score only two decimal places are printed; |
+however, the programme calculates to a maximum degree of accuracy and
+accepts up to 12 decimal places, (The same applies to durations and
+rests.)
+With regard to the relation between entry delay and duration
+see 7.3 Fig. 7-7 is a survey of the programme entries.
+If selection principle TENDENCY is called for the "order", the
+mask's position is calculated for each entry point.
+. CALL |
+CALL NUMBER CODE FORMAT
+delay list 29 L~ENTRY  Lylyeer yh
+delay table 30 | TAB-ENTRY L,i,..e,i
+Lylyeouyl
+group selection 31 SEQ-GR-ENTRY 1 |
+2 A
+| 5 (1,i,...,i)
+order | 32 SEQ-ENTRY i |
+3 (PoPyeee5P)
+| 4 (a,z,type)
+an 5 (i,i,...,i)
+6 (d,al,a2,z1,22,...)
+Survey of ENTRY DELAY parameter

@@ -1,0 +1,46 @@
+14 Defintttons
+ens
+Parameter. This term is used in PR-2 to.indicate the characteristics of
+the musical structure that can be applied to individual tones. These are:
+the name of the instrument which is to play the tone, pitch, register,
+duration, time-lag before the next tone (entry delay), interpolated rests,
+intensity and mode of performance (or articulation). Interpolated’ rests
+and performance are usually used in forming groups of tones. ~ The term
+parameter must not be confused with "actual parameter", which is used to
+denote a variable accompanying a sub-programme, for example a selection
+programme.
+Pitch grid. Division of the octave into single tones (>relative pitches),
+tone system,
+Programme entry. The possibility of conveying the PR-2 data for a partic-
+ular purpose. The composer's >structure formula can at present be read
+via 63 programme entries. The data for a programme entry must be written
+in a particular +format. |
+Provisional entry point. For -autonomous rests, a provisional entry point
+is first of all obtained by aleatoric means within a given entry range.
+The +definite entry point is then sought, starting from this provisional
+entry point. .
+Pseudo chord. Two or more tones commencing simultaneously because of the
+entry delay 0.
+Pseudo rest. Occurs if the duration of a tone is shorter than its entry
+delay.
+Relative pitch. Pitch index within the interval of an octave, expressed
+in the form of a two-digit number between | and 99. Relative pitch 0
+(O-pitch) means a percussion instrument.
+Rest duration. The duration of an ~autonomous rest, not to be confused
+with >pseudo rest.
+Rhythmic context. The totality of all time-data (sentry points and ends
+of tones) in chronological order.
+Row principle. One of three harmonic principles. Several tones form a
+stockpile which can be transposed according to various principles.
+Selection. The choice of elements in a given stockpile resulting ina
+new stockpile (or a final result) representing a permutation of the
+old one.
+Selection cycle. Unique and complete application of a +selection prin-
+ciple, with a finite or infinite number of selected elements. Finite
+selection cycles are repeated if more elements are required; infinite
+and finite selection cycles are stopped when the required number of
+results has been obtained. oe
+Selection principle. A rule according to which a >selection is made
+among the elements of a given stockpile. :
+Series. Arrangement of the elements of a >parameter according to a
+particular principle. The composer is free in his arrangement of the

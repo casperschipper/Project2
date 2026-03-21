@@ -1,0 +1,56 @@
+84 Schematte parameters
+| CALL | ,
+CALL | NUMBER CODE FORMAT |
+rest list 39 L-REST Vy,oee5F |
+rest table 40 TAB-REST | Lylyeaegi | |
+1,i,...,i |
+group selection 4 SEQ-GR-REST l |
+_ |
+| | 5 (i,i,...,1)
+order 42 SEQ-REST l |
+3 (PsPy---sP) |
+4 (a,z,type)
+5 (i,i,...,1)
+mode 43 MOD-REST 0 (no rests)
+1 (d1,d2) (rest before next |
+| sound entry)
+2 (dl,d2) (rest before neat
+| | general entry)
+Fig. 7-10
+Survey of REST parameter
+
+Selection programme TENDENCY is missing here from the entry
+SEQ-REST, because the number of rests to be inserted is not generally
+large enough for a "transition".
+
+In the last entry the REST parameter can be de-activated by means
+of MOD-REST=0. The data for entries 39 to 42 are then ignored. This can
+be useful for altering the other parameters if there is a large number of
+tests, whilst leaving the rest-data unchanged, and only "activated" when
+required. If the REST parameter should basically be not used at all,
+dummies (see APPENDIX) can be given for entries 39 to 42,
+
+In the cases of MOD-REST=1 and MOD-REST=2, rests are inserted
+after all the other parameters have been computed; in other words,
+
+REST always comes last and has no part in the hierarchy (can thus never
+be main parameter). Exceptions:
+(a) "no union, layers with common harmony" (see 6.2);
+
+Since the common harmony of several layers cannot be computed until
+. the rhythmic context (including rests) has been established, REST
+
+is computed in this case at the last place but one, HARMONY coming
+
+last.
+(b) "performance per rest" (see 7.6);
+
+Since performance cannot be computed until the rests have been
+
+established, REST is computed at the last place but one,
+
+PERFORMANCE coming last.
+
+(c) combination of (a) and (b);
+order of the last three parameters in the hierarchy: REST,
+PERFORMANCE, HARMONY.

@@ -1,0 +1,69 @@
+a | 7 |
+
+B THE STRUCTURE FORMULA | |
+
+7 SCHEMATIC PARAMETERS 70 | |
+
+7.1 Register 74 ,
+
+7.2 Entry delay 78 :
+
+. 7.3. Duration 79 |
+
+. | 7.4 Rest 83 : |
+
+. 7.5 Dynamics 88 :
+
+7.6 Performance 90 |
+
+8 DEVIATING. PARAMETERS 93 |
+
+oe 8.1 Instrument 93 :
+
+a 8.2 Harmony 102 :
+
+9. ADDITIONAL DATA 110 |
+
+. 9.1 Time structure 110 | Oo ,
+
+9.1.1 Entry points 110 |
+
+ce 9.1.2 Average entry delay Ml . | :
+9.1.3 Structure duration 113 |
+
+. 9.1.4 Tempo 114 |
+
+. 9.2 Vertical density 115 :
+| 9.3 The pitch-time grid 18 :
+9.4 Blocking | 120 | |
+
+9.5 Hierarchy | 121 |
+
+9.6 Combination | 123 . |
+
+: 9.7 Random generator 125 a
+9.8 Number of variants 126
+
+9.9 Programme specification 126
+
+| | C INPUT AND OUTPUT a |
+i OUTPUT 137 |
+
+11.1 Composer's data 139 |
+
+11.2 Check data I 139 |
+11.3 Check data II 14] |
+
+11.4 Score 146 |
+
+11.5 Comment 147 |
+
+11.6 Parts 149
+
+APPENDIX: Data form 152 |
+
+. LIST OF ILLUSTRATIONS 157 |
+
+INDEX 159 |
+
+|

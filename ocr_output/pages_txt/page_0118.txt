@@ -1,0 +1,34 @@
+118 Addtttonal data
+ee
+other hand the time structure ts already established, the minimum dens-
+tty (a) ts tf necessary not reached when the chord ¢s selected.
+Durattons for percussion instruments also count as "tones" here.
+9.3 THE PITCH-TIME GRID |
+The pitch-time grid, like the PERFORMANCE parameter, is a later
+addition to PR-2. The three variables for the pitch-time grid were
+originally constants. Fig. 9-7 is a survey of the entries.
+The pitch-time grid provides the composer with the opportunity of
+(a) — determining the number of tones per octave; this number is the |
+. same for all octaves,
+(b) determining the maximum number of metrical subdivisions; this
+information is only taken into consideration for the printout
+of the parts, and is of no account for the score (in seconds),
+(c) fixing the smallest time-value which is applicable to the sub-
+division of the metre (triplets, quintuplets, etc.). All sub-
+divisions below this limit value are then ignored.
+The tones within the octave are numbered; the composer is free
+to interpret the numbers of the tones. Since the octave numbers are
+integral multiples of 102 for the representation of "absolute" pitches,
+a maximum of 99 tones per octave is available.
+For the printout of the parts, all time-values are converted
+into metric expressions. For this purpose the duration of the metre is
+first calculated according to the metronome tempo: dm = 60/tempo. The
+absolute durations of the metric subdivisions are accordingly dm/1,
+dm/2, dm/3, ..., dm/fr.
+| If we assume that not more than 10 tones per second can be
+| played on a particular instrument, we must have d = dm/fr > O.!1.
+(However, tr, fr and d apply to all instruments of a structure variant.)
+But since dm/fr depends on the tempo, which can change in each structure
+variant, the smallest time-value d is not dependent on the shortest .
+entry delay of the list L-ENTRY. Example 9-8 is an example of the calcul-
+ation of the durations of. the metric subdivisions. _

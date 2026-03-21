@@ -1,0 +1,30 @@
+|
+
+UIE UU UII SIIEnISINIIEIENREEEEEEE
+The data computed by PR-2 are printed by a line printer in the |
+form of tables (text .and numbers). The composer is therefore forced to |
+: | transcribe these tables into legible notation (traditional or musical
+graphics). Although the organization of the score tables and parts |
+offer the composer a maximum of convenience, traditional notation (or |
+even musical graphics with composer~defined symbols) would be prefer- |
+able. |
+
+_ With the cooperation of the computer centre at Utrecht Univers- |
+
+ity, a PLOT programme was developed at the Institute of Sonology for a |
+simplified form of notation. This plot programme has not been used yet, |
+since not enough computing time is available. So as to manage with less :
+computing time, the plot programme has been adapted for the line printer. |
+However, this notation form did not turn out to be expedient: on the — :
+one hand the space between the symbols is too large so that there is. |
+only room for a little amount of text on one page, and on the other hand :
+the composer still has to copy the printout. |
+
+| For these. reasons the line printer programme has been removed ~ :
+from PR-2. Both notation programmes can however be reactivated for | |
+special purposes. :
+Finally, the score data can be requested in a punch tape version, |
+which however is intended as input material for PROJECT 3 (in preparation) :
+and therefore of little use as yet. We shall not deal with the notation :
+and punch tape versions (call numbers 3 and 4) here; they only appear
+in fig. 11-1 for the sake of completeness. | | - |

@@ -1,0 +1,46 @@
+:
+
+Definitions | 13
+Entry point. Point in time at which a tone, >chord or ~autonomous rest
+commences. : . ;
+_ Entry range. Time range in which the +provisional entry point of an
+. >autonomous rest is found by aleatoric means. .
+Format. Read instruction for the manner and number of data required for |
+each >programme entry. Infringements of the format prevent the computer
+from identifying the data. ee
+General entry. ~Entry point of a tone or +chord not superposed by a —
+"sustained" tone or chord. a |
+Group. Elements of a +list which are to be put into an ~ensemble |
+together. The composer assembles groups to form a +table. Bot,
+Hierarchy. The order in which the >parameters are used in the score. .
+If the parameters are interdependent the hierarchy can acquire great
+significance; it is established by the composer or by aleatoric means.
+Infinite row. Sequence of pitches generated according to the +interval-
+principle as a consequence of an interval matrix. | one
+Initial set. The first +set of data, which must contain data for all the
+“programme entries. Unchanged data are automatically adopted for. a
++subsequent sets. |
+Instrumentation. The allocation of instruments to ~>entry points, pitches,
+durations, intensities or modes of performance. In a stricter sense, .
+instrumentation applies to already given tones in +chords; the rules of
+-vertical density must be obeyed here. a oo
+Interval principle. One of three harmonic principles. An interval matrix,
+either given by the composer or calculated by PR~2 and containing the ©
+intervals allowed or forbidden to follow each given interval, results —
+in an >infinite row, the tones of which are used to occupy the time-
+points in the score in chronological order. | oe :
+Layer. Musical structure in which the values of each individual >parameter |
+are taken from a uniform stockpile (+ensemble) in chronological order in
+accordance with a particular >selection principle. A layer is either .
+based on a single group in the ensemble or on the >union of several
+groups. Without union several layers occur, and appear one after the.
+other in the printout of the score. For the printout of the parts, the :
+layers are fitted together in such a way that all time values are in -
+chronological order. Several layers always have the same >structure
+duration and metronome tempo... |
+List. A stockpile of data provided by the composer for a particular .
++parameter. List elements are assembled in the +table to form ~groups. |
+Main parameter. The first +parameter in the +hierarchy. The +selection
+principle for the main parameter can do its work without interference,
+but creates conditions which in certain circumstances restrict the other
+parameters.

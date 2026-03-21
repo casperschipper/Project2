@@ -1,0 +1,64 @@
+|
+
+a re 131 |
+It is sufficient to state the call number for each entry (repeat |
+for each group in the case of tables); the code text is superfluous. The |
+data are separated for each entry (or group of tables) by a semicolon |
+(;); list elements are separated by commas (,). All decimal numbers can
+have up to 12 decimal places, only 2 of which, however, are printed in the |
+output. Non-English readers note that a decimal point must always be |
+written, since commas are only for the distinction of elements. Wherever |
+selection programmes are called, it is advisable to put round brackets |
+around the actual parameters. See example 10-1.
+The input data finish - in the call number column ~ with a zero. 7
+
+| (0) if a further set of data is to come, and with -1 if no further set _ :
+of data is to come. Co . ae a )
+Example: 7 resend Oo Ho
+
+. seeees a
+
+. eseees | |
+
+63 cee uF |
+ae ee - . 7 |
+
+. suceed |
+
+0 | ne 7 ,
+
+. ceeees . |
+
+. sees . _ :
+
+-1 : -
+
+The entries must be stated in ascending sequence for each set |
+
+of data. |
+
+Since subsequent sets can only be given for entire variant |
+
+groups, it is important to make a distinction between data which can be |
+
+used per variant and those used pev variant group. Fig. 10-2 is a table | |
+
+showitig which data are ‘to be taken into account per variant group, per
+
+variant and. per-time-point .(or tone). It does not matter whether the :
+
+data aré re-défined or adopted automatically from the previous set of . |
+
+datacer fu ose es on a _ ; | . |
+
+The table shows clearly that lists and tables are basically. |
+
+taken into account per variant group; the selection of the groups (the |
+
+_ formation of groups“into an. ensemble). occurs per variant, the order ; | ,
+
+‘Being’ established per time-point, per tone or according to other view |
+
+points. foes 7 cee : 7 | oo | |
+
+| |

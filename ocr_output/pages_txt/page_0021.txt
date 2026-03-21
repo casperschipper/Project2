@@ -1,0 +1,30 @@
+2.7 List / 282 Table 21 |
+Example 2-2 Sy BES _ |
+LIST 0.1 0.2 0.8 0.5 0.7 1.0 1.4 28.0 a ,
+
+| TABLE 723465678 ~~. | |
+
+7 2 6
+
+| 67 8 | a _
+
+7 77 8 8 38 ee Oo
+
+The list consists of 8 elements. The table consists of 5 :
+
+groups, whose sizes are 8, 3, 3, 4, 6. The first group corresponds
+to the list; it tells us that - if the first group is selected - the :
+entire list is at our disposal. 7
+The second group only contains the first three elements, the
+
+third only the last three. The fourth group is a sort of cross-section.
+The fifth group contains some repetitions. If the fifth group is selected
+we have element 1 three times, element 3 twice and element 5 once. =
+| | If. we just look at the fifth group, the following alternatives :
+are equivalent: i . |
+“Alternative 1 | LIST: 0.1 0.28 0.3 0.5 0.7 1.0 1.4 20 2
+
+| TABLE: 7 7 7 3 8 6 | |
+
+| Alternative 2 | LIST: 0.17 0.17 0.7 0.3 0.38 0.7 |
+TABLE: 71 2 38 4 5 6 |

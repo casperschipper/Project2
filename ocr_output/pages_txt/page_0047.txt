@@ -1,0 +1,70 @@
+4.6 TENDENCY 47 |
+
+oe a= 100 +—+ : a = lower limit of mask } in Z |
+
+| b = upper limit of mask } °° 2
+
+| . . _ i = index of first element |
+
+. 2 = 100 x4 - j = index of last element’ |
+
+o> nm = size of ensemble (number of elements
+
+SO | in ensemble)
+
+Bg be ,
+
+1 2 3 one + indices i
+
+0 1 2 3 n-1 on + limitations
+
+The programme first converts. the percentages of the mask edges
+
+into limitations, and also the percentages of the durations of the sub-
+
+tendencies into “number of results". This number of results refers to :
+
+the total number of entry points or tones in the given variant. The
+
+mask's edges are calculated for
+start position: lower limit: Al = ate
+
+. ae xn :
+
+upper limit: Ae = 760
+
+end position: lower limit: Z1 = al
+
+. zexn
+
+upper limit: ae = —T00 |
+
+The "number of results" is calculated for a sub-tendency as |
+
+ax N , .
+
+D= 507 d = duration of sub-tendency (in 2)
+
+N = number of time-points in variant :
+
+During the sub-tendency the mask must be shifted as often as time-points |
+
+| must be occupied. The shift is calculated with increments
+
+shug = ee for the lower limit, :
+
+shog = wae for the upper limit.
+
+The calculated values for the respective mask positions are rounded off
+
+to integers in the usual manner and interpreted as limitations. Limitation
+
+and index are identical for the upper limits, and the limitation is in-
+
+creased by 1 for the lower limit. If the limitation of the upper Limit
+
+should become 0, it is replaced by index 1. i
+
+|
+
+|

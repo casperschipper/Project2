@@ -1,0 +1,33 @@
+124 | Addtttonal data
+CALL
+CALL NUMBER CODE FORMAT
+combination 4 COMB 0 (no combination)
+i,i,...,i (combinatton of
+| | stated parameters
+| with INSTRUMENT;
+38<7t < 8)
+Fig. 9-13
+Survey of COMBINATION
+. If COMB = 0, no combination occurs. For INSTRUMENT, as many
+groups are assembled to form an ensemble as indicated in N-GR-INSTR
+(call 13). For all other parameters (including REST) only one group
+per variant is used.
+
+Otherwise the parameters mentioned explicitly are combined with
+INSTRUMENT. A maximum of 6 parameters may be named (parameters 3 to 8).
+For the parameters stated, the ensemble is formed from groups with the
+indices which have been stated or selected for INSTRUMENT in SEQ-GR-
+INSTR (call 13). For the unstated parameters, only one group per variant
+(and per layer if UNION = 1 or UNION = 2 in call 13) is used (as in the
+case of COMB = 0).
+
+The groups forming the ensemble are treated as. one single group
+if UNION = 0. If UNION = 1 or UNION = 2, the groups are separated; one
+layer per group is calculated.
+
+IMPORTANT: With combination the number of groups in the tables
+
+of parameters to be combined must be the same as the number of
+
+groups in the INSTRUMENT parameter, although this number is
+free in the parameters which are not to be combined.

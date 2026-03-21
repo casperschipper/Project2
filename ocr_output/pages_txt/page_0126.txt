@@ -1,0 +1,31 @@
+126 Addittonal data
+eee
+9.8 | NUMBER OF VARIANTS
+CALL
+CALL NUMBER CODE FORMAT oS
+number of 3 N-VARIANTS n (m > 7)
+varlants
+Fig. 9-15
+Survey of NUMBER OF VARIANTS
+For every set of input data, the number of variants to be calc-
+ulated according to the structure formula must be Stated. If the variants
+themselves consist of several layers, these layers do not count as
+variants, although they are treated as such in terms of programme tech-
+nique (see section 10). .
+Example: number of vartants: 4 |
+| number of groups for layer composition: 3
+_. vesult: 4 variants, each with 3 layers.
+Note that all selection principles used per variant .
+(except tempo and structure duration) are called 12
+times in this case.
+| 9.9 PROGRAMME SPECIFICATION I
+CALL
+CALL | NUMBER CODE FORMAT
+user | USER W
+specification | 2 ‘CHIFFRE wW |
+a ) Fig. 9-16
+. Survey PROGRAMME SPECIFICATION
+Each set of input data must contain information about the
+composer, at least his name. As well as this, the composer can provide
+each individual variant group with an explanatory commentary. The
+following symbols can be used for these data:

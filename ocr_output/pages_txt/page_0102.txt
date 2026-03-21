@@ -1,0 +1,27 @@
+102 Deviating parameters
+| 8.2 HARMONY
+
+For the computation of the harmony, there are three harmonic
+principles, named CHORD, ROW and INTERVAL. The last two are occasionally
+both placed under the heading of "row principles". Although only one
+of these principles may be used in a variant group, data must still be |
+given for all of them. Dummies which can be used for this can be seen
+
+: in the. APPENDIX. :
+Basically, if HARMONY is main parameter and use is made of the
+CHORD principle, the vertical density is given together with the selected
+chord; in this case the vertical density can therefore neither be
+autonomous nor depend on the instrument. The distribution of the in-
+struments among given chords (the "scoring'"’) obeys the rules already
+quoted (8.1, commentary to AMB-CHORD; see also 9.2). Vice versa, no use
+can be made of the CHORD principie if HARMONY is not the main parameter.
+However, these restrictions do not apply to harmonic principles ROW and
+INTERVAL.
+
+For HARMONY, only relative pitches are given, including the 0
+for percussion instruments; the 0 then keeps a place free, as it were,
+for a percussion instrument if HARMONY comes before INSTRUMENT.
+
+In the commentary to survey 8-3, the entries for HARMONY are
+dealt with singly. For purposes of orientation, a line from the survey
+heads each explanation.

@@ -1,0 +1,31 @@
+|
+
+7.8 Entry delay / 7.38 Duratton 79 - !
+7.3 DURATION oO |
+‘Durations, like entry delays, are expressed in seconds. The |
+"chart" of DURATION has two entries more, in order to be able to determine |
+the ratio to the entry delays and durations in chords with several |
+tones. |
+For the ratio of the entry delay to the duration, there is a )
+choice of three alternatives (see fig. 7-8, DUR-ENTRY). |
+Basically, rests occur if the duration is shorter than the |
+
+entry delay (this has nothing to do with REST); no rests occur if entry |
+delay and duration are equal; superpositions occur if the duration is :
+longer than the entry delay. See example 7-9 for the treatment of these
+two parameters. | :
+. | As well as the possible dependency of duration on entry delay | |
+(or vice versa), there is also a basic dependency on the instrument. |
+If INSTRUMENT comes first, only one allowed duration can be selected :
+for the respective instrument; if DURATION comes first, the choice of :
+instruments is confined to those which are allowed to play the given :
+duration (see 8.1). ,
+‘The "mode" (entry 38) regulates the relationship of durations |
+
+in the chord. (see fig. -7-8, MOD-DUR). OO . :
+If selection principle TENDENCY is called for the "order", the :
+calculation of the positions of the mask depends on the mode; it occurs |
+- if MOD-DUR = O per entry point, | . .
+- if MOD~DUR = 1 per tone. |
+If the duration list contains the duration 0, there must be at |
+least one instrument with a lower duration limit of 0. a

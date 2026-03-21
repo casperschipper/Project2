@@ -1,0 +1,25 @@
+116 _ . Additional data.
+DENS and SEQ-DENS .
+SEQ-DENS irrelevant
+
+#2 | | #1
+HARMONY INSTRUMENT main
+becomes main becomes main parameter
+parameter parameter free
+. one chord } one instr. autonomous
+per entry k Pi oper entry density per |:
+point | point entry point
+Bo Fig. 9-5
+Oo If DENSITY = 0, the indications for SEQ-DENS are ignored.
+INSTRUMENT automatically becomes main parameter, even if the composer
+has decided otherwise. For each entry point, ALEA is used to determine
+the number of chord tones in the chord size of the selected instrument.
+The harmony can.be determined by means of a row or the interval table.
+If DENSITY = a,z , any parameter may be main parameter, although
+, the CHORD principle may not be selected for HARMONY since HARMONY would ,
+then automatically become main parameter, and entries 53 and 54 would
+be ignored. The illustration clearly shows the contexts:
+oS : first the harmonic principle is tested, and only if ROW or
+INTERVAL are selected is the vertical density tested. If it depends on
+the instrument, INSTRUMENT is main parameter, if not, it is "autonomous".
+In this case, any parameter can be main parameter.

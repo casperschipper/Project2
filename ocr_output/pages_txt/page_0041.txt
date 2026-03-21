@@ -1,0 +1,23 @@
+4.4 GROUP - 4}
+Example 4-2 | | |
+(a) eall: GROUP (1,3,1) 7
+
+result: bbjle|bl|laaal|leeleee|ldd- |
+
+(b) call: GROUP (3,5,2)
+
+result: dddaaaaabbbbl|l|eeeeeaaaaddd
+
+(a) eall: GROUP (2,2,3) | |
+
+result: bbecaaddee|ddaabbecee
+
+(d) eall: GROUP (1,4, 4) :
+
+result: dbbecececeeeaaaleceebbbbaaadddd |
+
+The four examples refer to supply abcde. Selection cycles |
+
+are separated by a vertical line. For the score, as many selection |
+
+cycles are produced as required for the duration of the structure.

@@ -1,0 +1,15 @@
+ELECTRONIC MUSIC REPORTS |
+published by the Institute of Sonology at Utrecht State University |
+No. 3 . | | December 1970
+EDITORIAL STAFF _
+Gottfried Michael Koenig, Stan Tempelaars, Frits Weiland
+Appears aperiodically once or twice annually. | .
+Single numbers 2.35 guilders (outside Europe $ 1.00),
+subscription for five numbers 10.50 guilders ($ 4.60).
+If use is not made of an International Post Order the prices will
+be increased by 1.50 guilders ($0.40).
+No article may be reproduced without permission from the author.
+Gottfried Michael Koenig PROJECT 2
+
+| Computer programme for the calculation |
+| ' of musical structure variants

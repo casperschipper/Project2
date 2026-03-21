@@ -1,0 +1,45 @@
+9.4 Blocking / 9.65 Hterarchy 121. |
+9.5 HIERARCHY
+
+The purpose of hierarchy is to establish the order in which the |
+individual parameters are to be calculated. If the parameters are inter- |
+dependent, it is only possible to choose elements for the second para- |
+meter which do not contradict those of the first parameter. The same |
+applies to the elements of the third parameter with regard to those of
+the first two, and so forth. If the ensembles of all the parameters are
+"compatible", i.e. if every element of one parameter can be combined |
+with all the elements of all the other parameters, hierarchy is not :
+relevant.
+So that the hierarchy can be established, each parameter has a |
+
+call number, as shown in fig. 9-10. Fig. 9-11 is a survey of the necess-
+ary data. |
+. An automatic check ensures that the REST parameter is always :
+last in the hierarchy (but compare the restrictions), and that the hier- |
+archy is corrected if necessary. These corrections are made if :
+- the CHORD principle is used in HARMONY: HARMONY is main parameter;
+— the vertical density has to depend on the instrument (compare 9.2): )
+INSTRUMENT is main parameter;
+
+- several layers with the same harmony have to be calculated: REST
+is last parameter but one, HARMONY comes last; |
+
+- the mode of performance has to change at each rest: PERFORMANCE |
+“is last parameter but one, REST comes last; |
+
+- the mode of performance changes at each rest and several layers )
+have to be calculated with common harmony: HARMONY is last :
+
+. parameter, PERFORMANCE is last but one, with REST just before it. |
+
+Any corrections are made so that the relevant parameter is put :
+
+in its correct place and the other parameters are shifted to the right |
+or left as necessary. | :
+Example: HIERARCHY: 54627138 |
+(HARMONY according to CHORD principle, 4 oO :
+whtech ts why there must be a correction): 2546717 6 8
+
+Fig. 9-12 shows in table form the eight cases in which the |
+hierarchy is corrected if necessary. |
+|

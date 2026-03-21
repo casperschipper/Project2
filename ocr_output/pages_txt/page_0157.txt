@@ -1,0 +1,68 @@
+157 |
+
+| LIST OF ILLUSTRATIONS | |
+
+I~] Block diagram of working system of PROJECT 2 |
+
+2-] Example of indices in list, table and ensemble |
+
+2-2 Example of group formation in the table |
+
+3-1 _ Survey of data selection for the score according to the |
+LIST-TABLE-ENSEMBLE principle a |
+
+3-2 Example of group formation in the table |
+
+3-3 Example of group formation in the table |
+
+3-4 Example of group selection for the ensemble |
+
+. 3-5 Example of permutation
+3-6 Example of ways of transferring list elements to the score :
+
+4-] Example of the RATIO principle . :
+
+4-2 Example of the GROUP principle |
+
+4-3 Diagram of the TENDENCY principle
+
+4nd Formulae for calculating mask edges for TENDENCY
+
+4-5 Indices and limits for TENDENCY |
+
+5-1 Table of dependent parameters :
+| 6-1 Combination | | :
+
+| 6-2 Construction to facilitate group separation in the ensemble |
+6-3 Example of the mask's movements in construction 6-2 |
+
+. 6-4 Diagram of layer composition , :
+6-5 Example of combination with and without union |
+
+7-1 Diagram of schematic parameters :
+
+7-2 Example of SEQUENCE |
+
+7-3 Survey of REGISTER
+
+77-4 Example of registers |
+
+7-5 Example of registers |
+
+7-6 Flowchart for hierarchy of register, harmony and instrument
+
+7-7 Survey of ENTRY DELAY
+
+77-8 Survey of DURATION . |
+
+7-9 Example of relation between entry delay and duration
+
+7-10 Survey of REST . |
+
+7-11 Diagram of pseudo rests and autonomous rests
+
+7-12 Diagram of interpolation of autonomous rests
+
+‘7-13 Survey of DYNAMICS — ; |
+
+7-14 Survey of PERFORMANCE | |

@@ -1,0 +1,14 @@
+48
+For the ratio of the lower limitation (ug) to the upper limi-
+ation (og) there are three possibilities:
+
+(a) ug < og (the most frequent case): the elements from which ALEA
+selects are: Xuet1? Xugt2? ones Cog’
+
+(b) ug > og (occurs if the mask's edges cross or if the actual
+parameters are given carelessly): the values for ug
+and og are exchanged, so that we have ug < og again.
+
+(c) ug = og (occurs if the sub-tendency curve results in acute
+angles): ug and og indicate the same element
+(ot ~ og) .

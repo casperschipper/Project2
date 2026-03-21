@@ -1,0 +1,44 @@
+90 Sehematte parameters
+ee
+
+7.6 PERFORMANCE
+
+Manners of performance are expressed as symbols. The "chart"
+contains an extra entry for a mode by which manners of performance can
+be altered for each tone, chord or rest. The selection principle to be
+indicated for entry 61 refers to this mode.
+
+PERFORMANCE is a later addition to PR-2. This is why the entries
+
+| of this parameter come after entry 57, originally the last entry, in-
+stead of following entry 48.
+
+The indication "performance" does not express exactly the
+possibilities offered by this parameter. Apart from the mode it does .
+not really differ from DYNAMICS: the lists of both contain symbols,
+both adhere to the LIST-TABLE-ENSEMBLE principle, the same selection
+principles are available to both, both can be main parameters, both
+depend on the INSTRUMENT. The difference, however, is in the possible
+
+| dependency of the REST. By "performance", we do not only mean perfor-
+mance techniques in the stricter sense (staccato, legato, flutter~ :
+tongue, etc.), but also instructions for phrasing in general, directions
+for performance, tempo indications (metronome tempi, "faster", "slower",
+’ ete.); in short, PERFORMANCE is an articulation parameter.
+
+If the REST parameter's only task is to divide the structure
+variant up into groups to which the articulation parameter then refers,
+we can work with the rest value of 0. In this case nothing is changed
+in the rhythmic context, a new mode of performance occurring where the
+O rest is inserted. The two parameters, DYNAMICS and PERFORMANCE, are |
+of course interchangeable, so that the articulation can be composed
+with the former and the intensity with the latter. Care must however |
+be taken that this does not change anything in the instrument definition
+(8.1). |
+
+The list of modes of performance should be worked out together
+with the INSTRUMENT parameter (see 8.1}, since each instrument must be
+characterized by a range of articulation. By. "range" we mean an un-
+interrupted sequence of list-elements. If several instruments are to .
+use the same modes of performance in different combinations, it can
+be difficult to arrange the elements in such a way that each instrument

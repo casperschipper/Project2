@@ -1,0 +1,18 @@
+3.4 -Permutatton 33 |
+_ | | :
+Example 3-6 — |
+(a) (bd (2) (d) |
+
+TABLE 72846 77722 72 7 2
+ENSEMBLE 7123846 77722 77722 7 2
+In example 3-6 we have a schematic example of the alternatives
+
+jn the LIST-TABLE-ENSEMBLE principle for passing on elements from the |
+list to the score. The rate of two elements is to be placed in a certain
+
+- vatio: this can be done in list (a), in table (bo), in ensemble (c) or
+not until the score (ad). If only one variant is to be composed, the |
+alternatives are more or less equal. If however several variants are to |
+be worked out, versions (c) or (d) would be preferable, because there
+are selection programmes for ensemble and score which operate per variant,
+whilst list or table have to be fed in again for each variant.

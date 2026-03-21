@@ -1,0 +1,67 @@
+9.2 Vertical density . 117 |
+oe The number of possible chord sizes in the vertical density is
+z-at1. The same number of ratio factors must be given to selection pro- |
+gramme RATIO in call 54. The number of i's for SEQUENCE may not exceed
+the sum of z-at+1.
+Example 9-6 |
+(a) Only. one tnstrument ts to enter at each entry potnt: |
+
+_ HARM _ 2or 3 7 :
+DENSITY 0 a ar
+
+SEQ-DENS 1 (dummy )
+
+HIER 1... (otherwtse INSTRUMENT ts automatically tn ©
+
+oe ; : the ftrst place)
+: The vertical density depends on the instruments selected for the
+score, and on how these instruments are defined according to: |
+
+their chord sizes (entry 11). The vertical density for each
+
+entry point can never be greater than the maximum chord size of |
+
+the respective instrument.
+
+(b) Autonomous denstty: | | oO :
+HARM 2 or 3
+DENSITY a, Zz | i
+
+SEQ-DENS _— | | |
+
+HIER ... (free)
+
+| The vertical density is autonomous, only restricted by the :
+numbers for a and z (entry 53). The vertical density is indepen-
+
+dent of the instruments playing a chord together. | |
+
+: (ec)  Vertteal density according to the CHORD principle: |
+HARM | 1 oe
+
+~ TAB=CHORD i :
+
+| SEQ-CHORD wee
+
+- -TRANSP=CHORD | | |
+DENSITY ... (trrelevant) |
+SEQ-DENS | ... (trrelevant) _ 7
+
+HIER 2... (otherwtse HARMONY ts automatically in the :
+
+first place)
+
+. The vertical density is identical to the size of the chord sel-_.
+ected for each entry point; HARMONY/CHORD is main parameter.
+
+_ Of course the actual vertical denstty can be much greater tf |
+
+. durattons are longer than entry delays, resulting in superpositions of
+chords. However, an automatie check tn the programme prevents more than |
+tr tones from ever overlapping. In examples (a) and (ce) INSTRUMENT or |
+
+| HARMONY are main parameters, the chord selection thus takes place before
+the time structure was establtshed. For the caleulation of the time |
+parameters however, suitable choice of entry delays and durattons ensures
+that no more than tr tones overlap. The same appltes to example (b) tf
+the chords are fixed before the time structure ts established. If on the |

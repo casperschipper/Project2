@@ -1,0 +1,45 @@
+154 | Appendtx .
+, ;
+, ENTRY DELAY
+| 29 | List :
+| 30 table (tf combination, number of groups =
+number of I~groups)
+31 group selection 1 ALEA .
+2° SERIES .
+| 5 SEQ:
+32 | order | 1 ALEA
+3 RATIO:
+. 4 GROUP a: Zs type: 1 2 3 4
+5 SEQ:
+6 TEND d: al: a2: zl: Z2:
+DURATION dummies
+33 list 0
+34 table (tf combination, number of groups =
+number of I-groups) 1
+35 group selection 1 ALEA I
+2 SERIES
+5 SEQ: :
+36 order 1 ALEA l :
+3 RATIO:
+4 GROUP a: 2: type: 1234
+se 5 SEQ:
+6 TEND d: al: a2: zl: 22:
+37 relation O independent of entry delay
+nt 1 duration = entry delay l
+a 2 duration < entry delay
+38 mode QO equal durations in chord ~~ 0
+1 different durations in chord
+| REST dummies
+39 list 0
+40 table (tf combination, number of groups =
+number of I-groups) 1
+4) group selection 1 ALEA |
+po we 7 2 SERIES
+. . . — . 5 SEQ:
+(42 | order — a | ALEA’ |
+3. RATIO:
+4 GROUP a: z: type: 1234
+5 SEQ:
+43 mode QO no rests 0
+1 di: d2: (sound entry)
+2 di: d2: (general entry)

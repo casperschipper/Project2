@@ -1,0 +1,45 @@
+76 Schematte parameters
+
+Example 7-4
+
+L-REG 507, 309, 305, 407, 309, 405, 407, 409, 405, 507, 409, 505,
+5071, 509, 505, 607
+
+TAB-REG 7, 2, 8, 4, 5, 6, 7, 8
+
+SEQ-GR-REG 7 (dummy for the impossibility of selecting among several
+
+groups )
+
+SEQ-GR 6 (100, 0, 12.6, 87.8, 100)
+
+If HARMONY or INSTRUMENT should precede REGISTER, 0,0 register
+is indicated for pitch 0 or a percussion instrument, whilst the "mask"
+of the TENDENCY principle still keeps moving. If no tone is available
+in the "current register" (the "visible" section of the ensemble) for
+the previously selected instrument, this "wrong" register is still
+inserted, provided with a comment. The same applies vice versa if the
+instrument chosen later cannot play any tones in the already selected
+register. If however, as in the example, a register has been fixed
+(not 0,0), a relative pitch is inserted in HARMONY and thus a melody
+instrument in INSTRUMENT, should it follow.
+Example 7-5 |
+L-REG O, 0, 807, 809 ... (as tn example 7-4) ... 505, 607
+TAB~REG 7, 4, 8, 7, 4, 5, 7, 6, 7, 71, 8, 9
+SEQ-GR-REG 7 |
+SEQ-REG 6 (100, 0, 16.6, 83.3, 700) (percentages altered because
+
+| . now 2 elements in mask)
+
+If it were desired to have REGISTER first and still have a
+possibility of percussion instruments, the 0,0 register would have to
+be inserted from time to time. Since selections from the "visible" part
+of the ensemble are made by ALEA, it is possible, if the mask leaves
+registers 1 and 2 visible, to select either the 0,0 register or the
+tone register. Further decisions as to pitch and instrument (or vice
+versa ) would then depend on this selection. The same applies the other
+way round: if pitch and/or instrument have already been fixed, a suit-
+able register is sought within the mask. If there is no suitable reg-
+ister (e.g. (2,3) in the mask after pitch 0 or a percussion instrument
+has been fixed), a comment is provided, indicating the conflicting
+circumstances. : |

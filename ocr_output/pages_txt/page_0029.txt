@@ -1,0 +1,23 @@
+3.3 Selection — | | 29 |
+Example 3-2 7 | | |
+qist | a be de |
+
+TABLE | 7 2,8 4 6 -
+34:5 | |
+
+7 7 7 2 2 .
+
+The first group quotes the entire list. Groups 2 and 3 are
+excerpts which can be put together to make up the entire list (groups
+2 and 3 then form an ensemble). The fourth group isolates a single
+element. The fifth group places two elements in the ratio 2:3 with
+regard to the rate at which they occur. |
+Example 3-3 | |
+| TABLE | 7 | '
+
+| 4 | . |
+
+In this case more than one group should form the ensemble. |
+
+This is however only possible under certain circumstances (see section 6). |
+!

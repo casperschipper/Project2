@@ -1,0 +1,46 @@
+104 Devtating parameters
+principle 15 HARM 1 (CHORD)
+. 2 (ROW)
+| 3 (INTERVAL)
+
+The required principle is selected by call numbers 1, 2 and 3.
+Although indications are only necessary for the chosen principle, they
+must be made for all entries (by means of dummies if necessary).
+
+CHORD table | TAB-CHORD tytyeeeyt
+| t,t,-..,t
+Any number of chords can be given, one chord per group. Maximum
+number of tones per group = pitch grid tr (compare 9.3). Each t can
+assume all values between O and tr inclusive (0 = percussion instrument).
+Chords starting with O are excluded from transposition, regardless of .
+the numbers which follow. Chords only consisting of O's are allowed.
+sequence of 17 SEQ-CHORD ]
+chords 3 (p,Ps--++5p)
+- 4 (a,z,type) |
+: 5 (i,i,.++,1)
+
+The values for i (for SEQUENCE) may not be greater than the |
+number of chords which have been given; the number of i's may not exceed
+the number of chords either.
+
+: transposition TRANSP-CHORD 0 (no transposttton)
+of chords | 1 (transposttton with ALEA)
+| 2 (transposttton with
+| SERIES)
+. 3 (t,t,...,t) (transpos-
+ttton with given row)
+
+As soon as a chord has been used, it is transposed and inserted
+
+. in the table again. The starting tones of the chords given by the com-
+poser are stored separately and used as reference tones for transposition.
+Transposition is carried out by means of a transposition interval made
+available by ALEA, SERIES or a tone-row given by the composer. The chord-
+tones in the form prescribed by the composer are raised by the transpos-
+ition interval modulo tr (according to the reference tones). Zeros (= no
+pitch) are ignored. ALEA and SERIES provide transposition intervals bet-
+ween 1 and tr (transposition by tr is the same as transposition by 0,
+thus resulting in the original pitch); the composer's transposition row
+may also only contain relative pitches between i and tr inclusive.
+
+Example 8-4 shows some examples of transposition.

@@ -1,0 +1,26 @@
+11.3 Cheek data Il 145 |
+Commentary to fig. 11-3 . :
+(3) | The check data for the individual parameters are printed in the :
+order of the respective hierarchy. |
+(5) p = number of elements in the ensemble, : :
+i = enumeration of the list indices. | .
+(6) p = number of ensemble elements. The reductions referred to in
+fig. 11-3 only occur if the order of the elements was selected
+with GROUP (with type = 2 or type = 4), and the number of
+possible group sizes is greater than the number of ensemble
+elements. This line only appears in this case. |
+| (7) Is only printed if the order of the elements was determined by
+(8) Order in which the elements were selected for the score.
+(16) Is only printed if rests were calculated.
+(17) Table with 6 columns. :
+REL.T. = provisional rest delay between the end of the last |
+| rest and the provisional entry point dp (compare
+fig. 7-12). |
+ABS.T. = provisional rest delay, counting from the start of
+the variant.
+; INDEX = entry point, referring to line index of the score. —
+BEGIN = definite rest delay, counting from the start of the .
+variant.
+REST = duration of rest.
+END = definite end of rest, counting from the start of the |
+variant. -

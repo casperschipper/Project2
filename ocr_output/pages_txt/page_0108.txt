@@ -1,0 +1,42 @@
+108 Devitating parameters
+
+The interval principle only produces tones between 1 and tr
+inclusive, which excludes percussion instruments if HARMONY comes first.
+If however INSTRUMENT comes first, the interval principle is skipped for
+
+--  @ach percussion instrument, so that the remaining pitches appear chron-
+ologically in the order produced by the matrix conditions. The interval
+principle is started pro variant or pro layer. If a chord is given in-
+stead of a matrix (see CHORD-INT), we must have TAB-INT = 2,
+
+chord 22 CHORD-INT tyt,..,t
+| O (matrtx tnstead of chord)
+
+If a matrix is given, we must have CHORD~-INT = 0, otherwise a
+chord of relative pitches (1 - tr) can be given at that place and
+analyzed according to its interval content. This results in the corres-
+ponding matrix. When the interval content is calculated, every possible
+interval in the chord is compared with the other tones, as is shown in
+example 8-6.
+
+forbidden tones 23 XCL~-~FRQ . tyt,..-,5t
+| 0 (no forbidden tones)
+
+The relative pitches (1 - not more than tr) stated for this
+entry are forbidden, so that they are excluded from the "infinite row".
+Care must be taken that tones are only forbidden if there is at least
+one alternative for them in the matrix. When the first tone of the
+infinite row is selected, forbidden tones are of course not taken into
+account. If no tones are forbidden, we must have XCL-FRQ = 0.
+
+inversion 24 BIT 1 (inversion of matrix)
+0 (no inversion)
+
+Call number 1 causes the matrix to be inverted, which means that
+all forbidden intervals become allowed, and vice versa. If the matrix is
+not to change, we must have BIT = O.
+
+The forbidden tones in entry XCL-FRQ are not affected by this
+because the matrix only calculates intervals; the tones resulting from
+
+the intervals are compared with the list of forbidden tones.

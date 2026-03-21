@@ -1,0 +1,39 @@
+11.3 Check data II | 143 |
+Commentary to fig. 11-3
+(1) The matrix TXCL is only printed if the INTERVAL principle is used. :
+(2) n = number of locations still available in the computer. This |
+quantity gives the composer an idea as to the storage space which
+could still have been occupied by data. Since the need for space
+for various auxiliary quantities increases with the amount of data,
+the number of locations actually available to the composer is less. :
+(3) The check data for the individual parameters are printed in the
+order of the respective hierarchy.
+(4) These indications are omitted if INSTRUMENT is main parameter and
+: was thus already calculated in the first part ofthe programme.
+| In this case see CHECK DATA I (fig. 11~2).
+(5) p = number of elements in the ensemble, |
+i = enumeration of the list indices. —
+(6) -p = number of ensemble elements. The reductions referred to in |
+fig. 11-3 only. occur if the order of the elements was selected
+with GROUP (with type = 2 or type = 4), and the number of possible
+. group sizes is greater than the number of ensemble elements. This |
+line only appears in this case. .
+(7) Is only printed if the order of the elements was determined by | |
+(8): Order in which the elements were selected for the score.
+(9) The instrument numbers refer to tones in the order in which they
+are selected by the programme (compare "scoring" of chords in i
+8.1).
+(10) The data for 11, 12-15 and 16 refer to the CHORD, ROW and INTERVAL
+principle respectively, and are only printed as required. |
+(11) Is only printed if HARMONY is last parameter.
+i = line index of score. |
+(12) Order of transposition intervals; only printed if TRANS-CHORD
+= | or = 2. The order of the chords is printed in CHECK DATA I.
+(13) Row given by composer, forbidden tones being omitted.
+—_ (14) Indications 13-15 designate the selected transposition interval
+for each transposition (only if TRANSP-ROW = 1 or = 2), the |
+transposed row and the resulting row of "allowed" tones. The |
+three indications are repeated for each transposition. |
+(15) Row of relative pitches generated according to the INTERVAL |
+principle. Any inserted O-pitches for percussion instruments
+are not printed.

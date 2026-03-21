@@ -1,0 +1,16 @@
+52 Horizontal and vertical arrangement
+aan ne TT TL PsP iinet
+. given
+parameter dependent parameters
+instrument H R D A M
+pitch I R
+i H .
+register I I = instrument
+entry delay D P H = pitch .
+. R = register
+duration I E P | E = entry delay
+rest M D = duration
+. . P = rest
+intensity t A = intensity
+- performance I M = performance
+| Fig. 5-1

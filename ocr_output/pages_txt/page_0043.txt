@@ -1,0 +1,41 @@
+4.5 SEQUENCE | : 43 |
+:
+4.5 SEQUENCE (i,i,---,i) 7 |
+Call number: 5 a. |
+The composer uses selection programme SEQUENCE (abbreviated SEQ)
+to define the order of the elements himself. The indices of the respec- . :
+tive supply (table-groups, list elements, ensemble elements) are given )
+as actual parameters. There can be any number of the indices if SEQ is :
+applied to an ensemble; this number may not exceed that of the table-
+groups if SEQ is used to form an ensemble. The indices may not exceed
+the number of elements in the respective supply (list, table, ensemble).
+The selection cycle produced by SEQ is identical with the elements
+named by the composer. | | | |
+_ . Selection programme SEQUENCE can only be used where the number
+of available elements is known with certainty. This is not always the
+case, We can distinguish three cases schematically: | .
+(a) (1) SEQ is applied directly to a list (tempi, structure
+_ durations) ; Oo
+(2) SEQ determines the number of groups which are to form :
+Loe the ensemble. : | mo |
+
+Since the "supply" is given by the composer in both cases, the
+. number of elements (and thus the highest index) is always known.
+SEQ can be used without any difficulty.
+(b) SEQ is applied to an ensemble which has been formed by aleatoric |
+means (with regard to number and selection of the groups). The :
+
+total number of elements in the ensemble is therefore unknown.
+SEQ can not be used. | | | a
+(c) - SEQ is applied to an ensemble, the formation of which is known.
+| Examples: | .
+(1) All table-groups are of equal length, the same number |
+- . : of groups is always selected (again with SEQ), the
+selection can be aleatoric. The total number of elements |
+_ in the ensemble is known.
+(2) The table-groups are of varying lengths; SEQ always |
+selects (aleatorically). only one group and does not
+specify more elements than are contained in the shortest
+group. Here the total number of ensemble elements is
+unknown. | |
+SEQ can be used with caution. —

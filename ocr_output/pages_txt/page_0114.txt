@@ -1,0 +1,29 @@
+114 : Addtttonat data
+eee
+9.1.4 Tempo
+jx | Som
+CALL | NUMBER CODE FORMAT
+z
+order 50 SEQ-TEMP 1 (order with ALEA)
+. 2 (order with SERIES)
+5 (i,i,...,1) (order with
+SEQUENCE, number of t's
+| < number of tempt)
+| Fig. 9-3
+Survey of TEMPO |
+The metronome tempo is defined as the number of metres per
+minute (decimals permitted); we shall therefore regard the metre as a
+time-unit (= beat). The tempo is irrelevant for the computation of the
+time structure in seconds. The tempo is, however, taken into account
+when the parts are printed in metrical notation (see section 11). A list
+contains any number of metronome indications; the order of the tempi |
+can be defined by means of three selection programmes.
+The selection cycle runs through all variants of a variant
+group and is repeated if necessary.
+
+In the printout of the parts the rhythmic context is subdivided
+into metres which the composer can arrange as bars in any way he pleases.
+The duration of a metre = tempo/60. All metres of a structure variant
+are of equal length. Additional metronome indications given perhaps in
+PERFORMANCE have no influence on the calculation of the duration of the
+metre. ;

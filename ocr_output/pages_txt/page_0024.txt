@@ -1,0 +1,22 @@
+24 ; Seleetton and permutation
+_ _. _ | _
+3 | SELECTION AND PERMUTATION ~~ :
+In accordance with the LIST~TABLE-ENSEMBLE principle the elements
+(indicated only by their list indices in the table and ensembl@ "wander",
+as it were, from one stage to the next. The arrangement of these three
+stages could thus be said to work in a selective manner, treating a
+given supply several times and eventually placing a final selection in
+a particular order in the structure variant. - ©
+In order to clarify this process, we shall indicate the elements
+only by their indices. A list-element can be indicated by L(i) if L =
+list and i = the number of its position in the list. Every table-element
+accordingly is in the form L(i), but the number of its position is
+TAB(g,s) if g = group index and s = column index. For the assembly of
+the ensemble only groups which are used in their entirety are selected.
+An ensemble-element is also in the form L(i), but its place number is
+ENS(TAB(g,s)), which can be substituted by ENS(j). The index notation .
+is not converted back into elements until the transition to the score
+is made. Since it has become unimportant as to which position an
+'  ensemble-element occupied in the table, we can write down the score
+element SCORE(k) = ENS(j), and must of course look for the corresponding
+place in the list for each ENS(j): SCORE(k) = L(ENS(3)). | ;

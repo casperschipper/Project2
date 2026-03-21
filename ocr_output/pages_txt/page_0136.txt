@@ -1,0 +1,14 @@
+136 The data form
+ee
+As already mentioned above, each set of data finishes with a 0
+if more sets are to follow. As soon as a ~1 appears at the end of a set
+of data, the computer is no longer able to take in any more composer's
+data. If the composer should wish to continue his work on the same
+project at a later date, he would have to write an initial set again.
+If such a continuation is planned (perhaps because the computer output
+has to be transcribed before further decisions can be made), and if the
+continuation is to refer to the last set of data, ~2 can be written at
+the end of the last set of data instead of -1. PR-2 then produces a |
+transitional punch tape which will later enable the preliminary programme
+to accept a subsequent set referring to the last set of data before the
+interruption.

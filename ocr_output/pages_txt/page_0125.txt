@@ -1,0 +1,41 @@
+9.6 Combination / 9.7 Random generator . 125 |
+special consideration should be the purpose for which the combination
+
+is to be activated; this purpose is particularly unambiguous if several |
+layers are to be composed so that a new group is employed for each ~ |
+layer (compare section 6).
+
+9.7 RANDOM GENERATOR i
+
+CALL . NUMBER CODE FORMAT ©
+Fig. 9-14 |
+
+~- + Survey RANDOM GENERATOR —
+
+All random decisions in PR-2 are made by a RANDOM programme
+
+which generates equally distributed numbers between 0 and 1. This random
+generator is called by selection programmes ALEA, SERIES, RATIO and 7 |
+GROUP, and also in the mask of TENDENCY. The index which makes an . ;
+arbitrary selection among given elements is calculated by |
+t= entier ((z-at1) «x RANDOM + a) | |
+
+a and z being the limits of the range. The number sequence produced by :
+RANDOM is reproducible; this makes it possible for a mainly random :
+
+_. programme run to be repeated literally. © . .
+| The start number, which must be less than 1, has no predictable
+influence on the further course of the programme. It can therefore also :
+be used for the classification of various tests or several variant | . :
+groups (e.g. 0.1, 0.11, 0.12, 0.2, etc.).
+
+| The random generator must be provided with a start number at | :
+least once, in the first set of data. This start number is automatically |
+
+| : re-inserted for each variant group if the composer does not provide a . :
+new start number. It is therefore advisable to provide a new start
+number for each variant group in order to avoid identical decisions. |
+
+This is especially important if the next variant group is calculated for |
+
+a structure formula which barely differs from the previous one. . |

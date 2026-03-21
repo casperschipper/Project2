@@ -1,0 +1,46 @@
+7.1 Register 75 |
+, oe CALL |
+CALL NUMBER | CODE FORMAT
+register list 25 L-REG | t1,t2,t1,t2,...,tl,t2
+register table 26 TAB-REG isigeeegh
+Tdyi,esssl .
+
+group selection | -27 SEQ-GR-REG | 1 |
+2 -
+
+order 28 SEQ-REG a :
+: 3 (PsPyr+-+sP) - |
+
+| 4 (a,z,type)
+
+5 (i,i,...,i) |
+
+| 6 (d,al,a2,z1,22,...) |
+
+Fig. 7-3 | |
+
+Survey of REGISTER parameter |
+
++1 and t2 are the lower and upper limits of a register (tist2)
+
+and form a pair of numbers with a common index. If percussion instruments
+also occur in the INSTRUMENT list (but only if they do), register 0,0
+must be given; it may only occur once in the list and must be at the
+top of it (is thus always indicated by the index 1 in the table). The
+function of the 0,0 register depends on the position of the REGISTER
+parameter in the hierarchy (see fig. 7~6): | |
+- if REGISTER precedes HARMONY, a O-pitch is selected for the
+' 0,0 register;
+
+- if REGISTER precedes INSTRUMENT, no melody instruments are
+selected for the 0,0 register; . |
+
+= _ if HARMONY precedes REGISTER, the 0,0 register can not be used i
+_ for tones already selected; if the relative pitch 0 has been _
+
+| selected for HARMONY, the C,0 register is inserted;
+
+- if INSTRUMENT precedes REGISTER, the 0,0 register can not be
+selected for a melody instrument, but 1s inserted for a per=
+
+cussion instrument. :

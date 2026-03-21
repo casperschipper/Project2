@@ -1,0 +1,24 @@
+8.2 Harmony. | , 109 |
+Example 8-6 (assuming that tr = 12) | a
+Given chord: 5 6 10 |
+Anatysis: given interval allowed succeeding interval |
+| 5/6 =17 6/10 = 4
+5/10 = § 10/6 = 8 |
+6/10 = 4 10/6 =? |
+6/5 = 11 5/10 = §
+a 10/5 = 7 8/6 =7 | | :
+— 10/6 = 8 6/6 = 11 — |
+Matrta 1770777777929 | |
+| 7777777774 7°72 |
+| 777 77 7.7 7°79 °9°4 |
+[707777707779 49 |
+; 77777770977 7 | |
+otnrdtt7777-7 a |
+| | 771777777 7 7 «0 a |
+| 77770777 7°7°+7 | !
+_ In this example, which only contains different intervals, there
+is only one possible succeeding interval for each given interval; this
+means that the matrix can only produce one single chord (a transposition
+of the given chord), which is repeated continuously. The harmonic scope
+is wider if the given chord consists of more tones, or at least contains
+interval repetitions (examples: 345, 468 or 25 11).
