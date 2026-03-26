@@ -1,5 +1,13 @@
 open Tools
 
+module UnitFloat : sig
+  type t = private float
+  val make : float -> t option
+end = struct
+  type t = float
+  let make x = if x >= 0.0 && x <= 1.0 then Some x else None
+end
+
 (* as we are indexing the table groups, we use arrays *)
 type ptable =
   Table of int Array.t Array.t
@@ -49,14 +57,42 @@ let instr_table = of_nested_list [
   [0];
 ] 
 
-type tendency_section = 
-  TendencySection of { t1 : int 
-  ; t2 : int
-  ; min1: int
-  ; max1 : int
-  ; min2 : int
-  ; max2 : int 
+type tendency_section =
+  TendencySection of {
+    weight    : float;
+    start_min : UnitFloat.t;
+    start_max : UnitFloat.t;
+    end_min   : UnitFloat.t;
+    end_max   : UnitFloat.t;
   }
+
+let lerp a b t = a +. t *. (b -. a)
+
+let section_sq n (TendencySection s) =
+  Seq.init n (fun i ->
+    let t = if n <= 1 then 0.0 else Float.of_int i /. Float.of_int (n - 1) in
+    let lo = lerp (s.start_min :> float) (s.end_min :> float) t in
+    let hi = lerp (s.start_max :> float) (s.end_max :> float) t in
+    let lo, hi = if lo <= hi then lo, hi else hi, lo in
+    lo +. Random.float (hi -. lo))
+
+let tendency_mask count sections =
+  let weights = List.map (fun (TendencySection s) -> s.weight) sections in
+  let total   = List.fold_left ( +. ) 0.0 weights in
+  let exact   = List.map (fun w -> w /. total *. Float.of_int count) weights in
+  (* largest remainder method for integer allocation *)
+  let floors  = List.map (fun x -> int_of_float (floor x)) exact in
+  let fracs   = List.map2 (fun x f -> x -. Float.of_int f) exact floors in
+  let allocated = List.fold_left ( + ) 0 floors in
+  let remainder = count - allocated in
+  (* distribute remainder to sections with largest fractional parts *)
+  let indexed = List.mapi (fun i f -> (i, f)) fracs in
+  let sorted  = List.sort (fun (_, a) (_, b) -> Float.compare b a) indexed in
+  let bonus_arr = Array.make (List.length sections) 0 in
+  List.iteri (fun rank (orig_i, _) ->
+    if rank < remainder then bonus_arr.(orig_i) <- 1) sorted;
+  let counts  = List.mapi (fun i f -> f + bonus_arr.(i)) floors in
+  List.map2 section_sq counts sections |> List.to_seq |> Seq.concat
 
 type group_selection =
   | GroupAlea
