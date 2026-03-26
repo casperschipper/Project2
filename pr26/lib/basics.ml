@@ -58,12 +58,25 @@ type tendency_section =
   ; max2 : int 
   }
 
+type group_selection =
+  | GroupAlea
+  | GroupSeries
+
+type group_spec =
+  GroupSpec of { element :group_selection ;repetition : group_selection; min_rep : int ; max_rep : int }
+
 type selection_principle =
   | Alea
   | Series
   | Ratio of int list
-  | Group of { size : int ; reps : int }
+  | Group of group_spec
   | Tendency of tendency_section list
+
+let mkGroup elm rep min_rep max_rep = 
+  let mi = min min_rep max_rep in
+  let ma = max min_rep max_rep in
+  GroupSpec { element = elm ; repetition = rep ; min_rep = mi ; max_rep = ma }
+
 
 let alea_sq ensemble = 
   let n = Array.length ensemble in
@@ -90,10 +103,47 @@ let rec repeat x n =
     [] 
   else x :: (repeat x (n-1))
 
+let rec range a b =
+  if a > b then []
+  else a :: range (a + 1) b
 
-let ratio lst =
+let choose lst = 
+  let arr = lst |> Array.of_list in
+  let n = Array.length arr in
+  Seq.repeat () |> Seq.map (fun () ->  (arr.(Random.int n)))
+
+let  ch_series lst = 
+  let arr = lst |> Array.of_list in
+  let n = Array.length arr in
+  series_sq n |> Seq.map (fun i -> arr.(i))
+
+
+let ratio_sq lst =
   let start = lst |> List.concat_map (fun (x,n) -> repeat x n) |> Array.of_list in
   series_select start
+
+let random_value a b = 
+  let range = abs (b - a) in
+  let mini = min a b in 
+  mini + Random.int range 
+
+let repeat_n elm n = 
+  Seq.repeat elm |> Seq.take n  
+
+let group_sq ensemble (GroupSpec { element  ;repetition ; min_rep  ; max_rep  }) = 
+  match (element, repetition) with
+  | (GroupAlea, GroupAlea) -> 
+    choose ensemble |> Seq.concat_map (fun elm -> repeat_n elm (random_value min_rep max_rep))
+  | (GroupSeries, GroupAlea) -> 
+    ch_series ensemble |> Seq.concat_map (fun elm -> repeat_n elm (random_value min_rep max_rep))
+  | (GroupSeries, GroupSeries) -> 
+    (let elms = ch_series ensemble in
+    let reps = ch_series (range min_rep max_rep) in
+    Seq.map2 repeat_n elms reps |> Seq.concat )
+  | (GroupAlea, GroupSeries) -> 
+    (let elms = choose ensemble in
+    let reps = ch_series (range min_rep max_rep) in
+    Seq.map2 repeat_n elms reps |> Seq.concat)
 
 
 
