@@ -59,7 +59,7 @@ let instr_table = of_nested_list [
 
 type tendency_section =
   TendencySection of {
-    weight    : float;
+    portion    : float;
     start_min : UnitFloat.t;
     start_max : UnitFloat.t;
     end_min   : UnitFloat.t;
@@ -77,9 +77,9 @@ let section_sq n (TendencySection s) =
     lo +. Random.float (hi -. lo))
 
 let tendency_mask count sections =
-  let weights = List.map (fun (TendencySection s) -> s.weight) sections in
-  let total   = List.fold_left ( +. ) 0.0 weights in
-  let exact   = List.map (fun w -> w /. total *. Float.of_int count) weights in
+  let portions = List.map (fun (TendencySection s) -> s.portion) sections in
+  let total   = List.fold_left ( +. ) 0.0 portions in
+  let exact   = List.map (fun w -> w /. total *. Float.of_int count) portions in
   (* largest remainder method for integer allocation *)
   let floors  = List.map (fun x -> int_of_float (floor x)) exact in
   let fracs   = List.map2 (fun x f -> x -. Float.of_int f) exact floors in
