@@ -1,19 +1,14 @@
-let print_int_list label lst =
-  Printf.printf "%s:\n [%s]\n" label
-    (lst |> List.map string_of_int |> String.concat "; ")
 
 
 open Pr26.Basics
+open Pr26.Tools
 
-let print_float_list label lst =
-  Printf.printf "%s:\n [%s]\n" label
-    (lst |> List.map (Printf.sprintf "%.3f") |> String.concat "; ")
 
 (* convenience: we know these literals are valid, so unwrap directly *)
 let uf x = UnitFloat.make x |> Option.get
 
-let mk weight smin smax emin emax =
-  TendencySection { weight; start_min = uf smin; start_max = uf smax;
+let mk portion smin smax emin emax =
+  TendencySection { portion; start_min = uf smin; start_max = uf smax;
                              end_min   = uf emin; end_max   = uf emax }
 
 let test_tendency_mask () =
@@ -23,12 +18,13 @@ let test_tendency_mask () =
     mk 1.0  0.0 1.0  0.0 0.1;   (* narrowing : window shrinks inward         *)
     mk 1.0  0.2 0.8  0.8 0.2;   (* crosswise : boundaries cross at midpoint  *)
   ] in
-  tendency_mask 100 sections
+  tendency_mask_raw 100 sections
   |> List.of_seq
   |> print_float_list "tendency_mask (parallel / widening / narrowing / crosswise)"
 
 let () =
   let _ = Random.init 5 in
+  let print_int_list = Pr26.Tools.print_int_list in
   print_string "lets run some simple tests\n";
   test_tendency_mask ();
   ratio_sq [(1,1);(42,3);(3,10)] |> Seq.take 100 |> List.of_seq |> print_int_list "ratio (1,1) (42,3) (3,10)";
@@ -40,3 +36,35 @@ let () =
   group_sq ensemble (mkGroup GroupSeries GroupSeries 1 5) |> take30 "group_sq SeriesElem / SeriesRep";
   group_sq ensemble (mkGroup GroupAlea   GroupSeries 1 5) |> take30 "group_sq AleaElem  / SeriesRep";
   test_tendency_mask ()
+
+
+let _end_to_end () =
+  (* define instruments *)
+  let violin = inst "violin" (chordsize 1 2) in
+
+  let piano = inst "piano" (chordsize 1 10) in
+
+  let basedrum = inst "basedrum" (chordsize 1 1) in
+
+  (* note: the list from list-table-ensemble in PR2 is actually array
+  , as we want to index them using ints *)
+  let _instruments_array = [| violin; piano; basedrum |] in
+
+  let _instr_table = of_nested_list [
+    [0;1;2];
+    [0;1];
+    [0;3];
+    [0];
+  ] in
+                           (* 0 1 2 3 4 5 6 7 8 9  10 11 12 13 14 15*)
+  let _entry_delay_array = [| 1;2;3;4;5;6;7;8;9;10;11;12;13;14;15;16 |] in
+  let _entry_delay_table = [
+    [0;1;2;3;4;5];
+    [0;1;3];
+    [0;7;15];
+    [0;1;2;6;10;12];
+    [0;1;2;3;4;5;6;7;8;9;10;11;12;13;14;15]
+  ] |> List.map (List.map (fun x -> float_of_int x *. 0.1)) in
+  let lst = (_entry_delay_table.(0) |> Array.of_list) in
+  let _ = expected_value Alea lst |> debug_float "estimate alea" in
+  ()
