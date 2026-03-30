@@ -40,8 +40,13 @@ let choose lst =
   let n = Array.length arr in
   Seq.repeat () |> Seq.map (fun () ->  (arr.(Random.int n)))
 
+let choose_arr arr =
+  arr.(Random.int (Array.length arr))
+
 let choose_lst lst =
-  (Array.of_list lst).(Random.int (List.length lst))
+  choose_arr (Array.of_list lst)
+
+
 
 let repeat_n elm n = 
   Seq.repeat elm |> Seq.take n  

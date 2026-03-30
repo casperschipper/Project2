@@ -14,7 +14,7 @@ type entrydelay =
   Entrydelay of float
 
 
-
+(* a value *)
 type _ value = 
   | Inst : instr -> instr value
   | Entry : entrydelay -> entrydelay value
@@ -52,12 +52,18 @@ let mk_par_list constructor lst =
 type 'a ensemble =
   Ensemble of ('a group list)
 
+
+let contruct_ensemble parlist table principle number_of_groups =
+  match principle with
+  | EnsembleGroupAlea -> 
+    
+  | EnsembleGroupSeries -> 
+  | EnsembleGroupSequence seq -> 
+
+
 let of_nested_list lstlst = 
   lstlst |> List.map Array.of_list |> Array.of_list |>  fun x -> Table x
 
-  
-
-  
 
 type chordsize =
   Chordsize of { minsize : int ; maxsize : int }
@@ -204,12 +210,6 @@ let group_sq ensemble (GroupSpec { element  ;repetition ; min_rep  ; max_rep  })
     (let elms = choose ensemble in
     let reps = ch_series (range min_rep max_rep) in
     Seq.map2 repeat_n elms reps |> Seq.concat)
-
-let contruct_ensemble table principle max_number_of_groups =
-  match principle with
-  | EnsembleGroupAlea -> 
-  | EnsembleGroupSeries -> 
-  | EnsembleGroupSequence seq -> 
 
 let expected_value selection_principle ensemble =
   (* calculates the expected (average) value produced by the selection principle over the ensemble *)
