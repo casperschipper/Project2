@@ -1,9 +1,11 @@
 open Tools
 
 
-(* as we are indexing the table groups, we use arrays *)
+(* as we are indexing the table groups, we use arrays of ints *)
 type ptable =
   Table of int Array.t Array.t
+
+
 
 type instr =
   Instrument of string
@@ -11,9 +13,26 @@ type instr =
 type entrydelay = 
   Entrydelay of float
 
+
+
 type _ value = 
   | Inst : instr -> instr value
   | Entry : entrydelay -> entrydelay value
+
+let mk_instr str = 
+  match str with 
+  | "" -> raise (Failure "instrument cannot be empty string")
+  | nonEmpty -> Inst (Instrument nonEmpty)
+
+let mk_entrydelay ed =
+  if ed < 0.0 then 
+    raise (Failure "entrydelay cannot be smaller than zero")
+  else
+    Entry (Entrydelay ed)
+
+(* This is the full list of parameters *)
+type 'a parameter_list =
+  ParameterList of 'a value Array.t
 
   (* we keep indexes that produced a value from the list, they may be useful *)
 type 'a element =
@@ -23,8 +42,10 @@ type 'a element =
 type 'a group = 
   'a element Array.t
 
-type 'a parameter_list =
-  ParameterList of 'a element Array.t
+
+let mk_par_list constructor lst = 
+  ParameterList (lst |> List.map constructor |> Array.of_list)
+
 
 
 (* an ensemble is a list of groups, we keep the group structure, as they may still be used as separate layers *)
