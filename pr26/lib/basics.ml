@@ -40,7 +40,7 @@ type 'a element =
   ; value : 'a value }
 
 type 'a group = 
-  'a element Array.t
+  EnsembleGroup of ('a element Array.t)
 
 
 let mk_par_list constructor lst = 
@@ -53,12 +53,6 @@ type 'a ensemble =
   Ensemble of ('a group list)
 
 
-let contruct_ensemble parlist table principle number_of_groups =
-  match principle with
-  | EnsembleGroupAlea -> 
-    
-  | EnsembleGroupSeries -> 
-  | EnsembleGroupSequence seq -> 
 
 
 let of_nested_list lstlst = 
@@ -137,7 +131,7 @@ type group_selection =
 type ensemble_group_selection = 
   | EnsembleGroupAlea
   | EnsembleGroupSeries
-  | EnsembleGroupSequence
+  | EnsembleGroupSequence of int list
 
 type group_spec =
   GroupSpec of { element :group_selection ;repetition : group_selection; min_rep : int ; max_rep : int }
@@ -156,9 +150,9 @@ let mkGroup elm rep min_rep max_rep =
   GroupSpec { element = elm ; repetition = rep ; min_rep = mi ; max_rep = ma }
 
 
-let alea_sq ensemble = 
-  let n = Array.length ensemble in
-  let f () = Some (ensemble.(Random.int n), ()) in
+let alea_sq arr = 
+  let n = Array.length arr in
+  let f () = Some (arr.(Random.int n), ()) in
   Seq.unfold f ()
 
 let series_select start = 
@@ -211,6 +205,29 @@ let group_sq ensemble (GroupSpec { element  ;repetition ; min_rep  ; max_rep  })
     let reps = ch_series (range min_rep max_rep) in
     Seq.map2 repeat_n elms reps |> Seq.concat)
 
+(* ensemble formation *)
+
+let lookup_index (ParameterList arr) i = 
+  arr.(i)
+
+let lookup_arr arr i =
+  arr.(i)
+
+let group_from_indexes  plist group = 
+  EnsembleGroup (group |> List.map (fun i -> { index = i; value = lookup_index plist i }) |> Array.of_list)
+
+  
+let contruct_ensemble parlist table principle number_of_groups =
+  match principle with
+  | EnsembleGroupAlea -> 
+    alea_sq table |> Seq.take number_of_groups |> Seq.map group_from_indexes |> Array.of_seq
+  | EnsembleGroupSeries -> 
+    series_select table |> Seq.take number_of_groups |> Seq.map group_from_indexes |> Array.of_seq
+  | EnsembleGroupSequence sq -> 
+    sequence sq |> Seq.map (lookup_arr table) |> Seq.take number_of_groups |> Seq.map group_from_indexes |> Array.of_seq
+
+
+  
 let expected_value selection_principle ensemble =
   (* calculates the expected (average) value produced by the selection principle over the ensemble *)
   let array_average arr =

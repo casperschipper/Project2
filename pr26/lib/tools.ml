@@ -47,7 +47,6 @@ let choose_lst lst =
   choose_arr (Array.of_list lst)
 
 
-
 let repeat_n elm n = 
   Seq.repeat elm |> Seq.take n  
 
@@ -59,3 +58,6 @@ let debug_float label x =
 let print_float_list label lst =
   Printf.printf "%s:\n [%s]\n" label
     (lst |> List.map (Printf.sprintf "%.3f") |> String.concat "; ")
+
+let bangs count = 
+  Seq.repeat () |> Seq.take count
