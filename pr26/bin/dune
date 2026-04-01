@@ -1,5 +1,6 @@
 (executable
  (public_name pr26)
  (name main)
- (flags (:standard -w -26))
+ (flags
+  (:standard -w -26))
  (libraries pr26 seq))

@@ -1,6 +1,10 @@
 (library
- (name            jackMidi)
+ (name jackMidi)
  (libraries bigarray ctypes.foreign)
  (ocamlopt_flags -O3)
- (foreign_stubs (language c) (names caml_jack_midi) (flags -I/opt/homebrew/include))
- (flags (-cclib -ljack -cclib -L/opt/homebrew/lib)))
+ (foreign_stubs
+  (language c)
+  (names caml_jack_midi)
+  (flags -I/opt/homebrew/include))
+ (flags
+  (-cclib -ljack -cclib -L/opt/homebrew/lib)))
