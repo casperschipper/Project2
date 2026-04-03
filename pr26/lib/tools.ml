@@ -8,6 +8,9 @@ end = struct
   let make x = if x >= 0.0 && x <= 1.0 then Some x else None
 end
 
+let tuple_map f (x, y) = (f x, f y)
+let tuple_reduce f (x, y) = f x y
+
 let shuffle arr =
   let arr = Array.copy arr in
   let n = Array.length arr in

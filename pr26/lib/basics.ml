@@ -19,14 +19,14 @@ let mk_instr str =
   | nonEmpty -> Instrument nonEmpty
 
 let mk_entrydelay ed =
-  if ed < 0.0 then raise (Failure "entrydelay cannot be smaller than zero")
+  if ed < 0.0 then raise (Failure "entrydelay cannot be smaller than zero ??")
   else Entrydelay ed
 
 (* This is the full list of parameters *)
-type 'a parameter_list = ParameterList of 'a value Array.t
+type 'a parameter_list = ParameterList of 'a Array.t
 
 (* we keep indexes that produced a value from the list, they may be useful *)
-type 'a element = { index : int; value : 'a value }
+type 'a element = { index : int; value : 'a }
 type 'a group = EnsembleGroup of 'a element Array.t
 
 let mk_par_list constructor lst =
@@ -56,6 +56,7 @@ let inst name chordsize = Instrument { name; chordsize }
 
 (* test materials *)
 
+(* For the group selection principle both group size and amount of reps is controlled by Alea or Series *)
 type tendency_section =
   | TendencySection of {
       portion : float;
@@ -65,6 +66,32 @@ type tendency_section =
       end_max : UnitFloat.t;
     }
 
+type tendency_mask_spec = TendencyMask of tendency_section list
+type group_selection = GroupAlea | GroupSeries
+
+(* for formation of the ensemble Alea, Series or Sequence will pick the groups from the table *)
+type ensemble_group_selection =
+  | EnsembleGroupAlea
+  | EnsembleGroupSeries
+  | EnsembleGroupSequence of int list
+
+type group_spec =
+  | GroupSpec of {
+      element : group_selection;
+      repetition : group_selection;
+      min_rep : int;
+      max_rep : int;
+    }
+
+type selection_principle =
+  | Alea (* random choice with possible repetition *)
+  | Series (* random choice but exhaust all other options before repetition *)
+  | Ratio of (int * int) list (* weighted choice, repetition allowed *)
+  | Group of group_spec
+    (* controlled repetition, various selection options for element and its repetitions *)
+  | Tendency of tendency_mask_spec
+  | Sequence of int list (* user defined order, looped *)
+
 let section_sq n (TendencySection s) =
   Seq.init n (fun i ->
       let t = if n <= 1 then 0.0 else Float.of_int i /. Float.of_int (n - 1) in
@@ -73,7 +100,7 @@ let section_sq n (TendencySection s) =
       let lo, hi = if lo <= hi then (lo, hi) else (hi, lo) in
       lo +. Random.float (hi -. lo))
 
-let tendency_mask_raw count sections =
+let tendency_mask_raw count (TendencyMask sections) =
   (* Claude wrote this, still needs to be tested if it acts like we want *)
   (* output between zero and one *)
   let portions = List.map (fun (TendencySection s) -> s.portion) sections in
@@ -101,31 +128,40 @@ let tendency_mask ensemble count sections =
   |> Seq.map (fun x ->
       x *. float_of_int l |> floor |> int_of_float |> index ensemble)
 
-(* For the group selection principle both group size and amount of reps is controlled by Alea or Series *)
-type group_selection = GroupAlea | GroupSeries
+let group_selection_to_string gs =
+  match gs with GroupAlea -> "alea" | GroupSeries -> "series"
 
-(* for formation of the ensemble Alea, Series or Sequence will pick the groups from the table *)
-type ensemble_group_selection =
-  | EnsembleGroupAlea
-  | EnsembleGroupSeries
-  | EnsembleGroupSequence of int list
+let group_spec_to_string (GroupSpec { element; repetition; min_rep; max_rep }) =
+  "group (elements:"
+  ^ group_selection_to_string element
+  ^ "), repetition:"
+  ^ group_selection_to_string repetition
+  ^ ")" ^ Int.to_string min_rep ^ "-" ^ Int.to_string max_rep ^ ")"
 
-type group_spec =
-  | GroupSpec of {
-      element : group_selection;
-      repetition : group_selection;
-      min_rep : int;
-      max_rep : int;
-    }
+let tendency_to_string sections =
+  let section_str (TendencySection s) =
+    Printf.sprintf "%.2f:[%.2f-%.2f->%.2f-%.2f]" s.portion
+      (s.start_min :> float)
+      (s.start_max :> float)
+      (s.end_min :> float)
+      (s.end_max :> float)
+  in
+  "tendency(" ^ (sections |> List.map section_str |> String.concat " ") ^ ")"
 
-type selection_principle =
-  | Alea (* random choice with possible repetition *)
-  | Series (* random choice but exhaust all other options before repetition *)
-  | Ratio of int list (* weighted choice, possible repetition *)
-  | Group of group_spec
-    (* controlled repetition, various selection options for element and its repetitions *)
-  | Tendency of tendency_section list
-  | Sequence of int list (* user defined order, looped *)
+let principle_to_string p =
+  match p with
+  | Alea -> "alea"
+  | Series -> "series"
+  | Ratio lst ->
+      "ratio "
+      ^ (lst
+        |> List.map (fun t ->
+            t |> tuple_map Int.to_string |> tuple_reduce ( ^ ))
+        |> String.concat " ")
+  | Group group_spec -> group_spec |> group_spec_to_string
+  | Tendency (TendencyMask t) -> tendency_to_string t
+  | Sequence ilst ->
+      "sequence " ^ (ilst |> List.map Int.to_string |> String.concat " ")
 
 let mkGroup elm rep min_rep max_rep =
   let mi = min min_rep max_rep in
@@ -223,7 +259,7 @@ let ensemble_to_array_union (Ensemble ensemble) =
   ensemble
   |> List.map (fun (EnsembleGroup eg) -> eg)
   |> Array.concat
-  |> Array.map (fun { value; _ } -> value)
+  |> Array.map (fun { value; _ } -> value |> entry_to_float)
 
 let expected_value selection_principle ensembles =
   let ensemble = ensembles |> ensemble_to_array_union in
@@ -237,14 +273,15 @@ let expected_value selection_principle ensembles =
   | Series -> array_average ensemble
   | Ratio ratios ->
       (* ratios are weights parallel to ensemble elements *)
-      let pairs = List.combine (Array.to_list ensemble) ratios in
+      let pairs = ratios |> List.map (fun (i, w) -> (ensemble.(i), w)) in
+      let weights = ratios |> List.map (fun (_, w) -> w) in
       let weighted_sum =
         List.fold_left
           (fun acc (v, w) -> acc +. (v *. float_of_int w))
           0.0 pairs
       in
-      let total_weight = List.fold_left ( + ) 0 ratios in
-      weighted_sum /. Float.of_int total_weight
+      let total_weight = List.fold_left ( + ) 0 weights in
+      weighted_sum /. float_of_int total_weight
   | Group _group_spec ->
       (* element selection is uniform over the ensemble regardless of group/rep mode *)
       array_average ensemble
