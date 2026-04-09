@@ -19,5 +19,6 @@ But probably it will work for more recent versions as well.
 ## Building & running
 
 You should be able to run it with:
-`dune build`
+
+`dune build`  
 `dune exec bin/main.exe`
