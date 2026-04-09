@@ -52,3 +52,12 @@ let print_float_list label lst =
 
 let bangs count = Seq.repeat () |> Seq.take count
 let lookup_arr arr i = arr.(i)
+
+let rec chunk chunkSize sq () =
+  let open Seq in
+  match chunkSize () with
+  | Nil -> Nil
+  | Cons (n, ntl) ->
+      let current_chunk = take n sq in
+      let sqTail = drop n sq in
+      Cons (current_chunk, chunk ntl sqTail)

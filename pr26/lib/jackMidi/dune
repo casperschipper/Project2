@@ -1,6 +1,6 @@
 (library
  (name jackMidi)
- (libraries bigarray ctypes.foreign)
+ (libraries bigarray ctypes.foreign midi)
  (ocamlopt_flags -O3)
  (foreign_stubs
   (language c)

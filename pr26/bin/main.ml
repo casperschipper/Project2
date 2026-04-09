@@ -37,9 +37,15 @@ let groupspec =
     }
 
 let test_tendency_mask () =
-  test_mask |> tendency_mask_raw 100 |> List.of_seq
-  |> print_float_list
-       "tendency_mask (parallel / widening / narrowing / crosswise)"
+  let labels =
+    [ "parallel"; "widening"; "narrowing"; "crosswise" ] |> List.to_seq
+  in
+  print_endline "Testing a mask of 100 values, showing the sections by 25";
+  test_mask |> tendency_mask_raw 100
+  |> chunk (Seq.repeat 25)
+  |> Seq.zip labels
+  |> Seq.iter (fun (label, vals) ->
+      print_float_list label (vals |> List.of_seq))
 
 let _end_to_end () =
   (* define instruments *)
@@ -96,15 +102,18 @@ let _end_to_end () =
   ()
 
 let () =
+  (* some seed *)
   let _ = Random.init 5 in
   let print_int_list = Pr26.Tools.print_int_list in
-  print_string "lets run some simple tests\n";
+  print_string
+    "Running some tests on selection principles\nFirst: Tendency masks\n\n";
   test_tendency_mask ();
   ratio_sq [ (0, 1); (1, 2); (3, 4) ]
   |> Seq.take 100 |> List.of_seq
-  |> print_int_list "ratio (1,1) (42,3) (3,10)";
+  |> print_int_list "\n\n Selection Principle: ratio (1,1) (42,3) (3,10)";
   alea_sq [| 0; 1; 2; 3; 4; 5 |]
-  |> Seq.take 30 |> List.of_seq |> print_int_list "alea 5";
+  |> Seq.take 30 |> List.of_seq
+  |> print_int_list "\n\nalea 5";
   let ensemble = [ 0; 1; 2; 3; 4 ] in
   let take30 label sq =
     sq |> Seq.take 30 |> List.of_seq |> print_int_list label
