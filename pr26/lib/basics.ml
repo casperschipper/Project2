@@ -293,3 +293,14 @@ let expected_value selection_principle ensembles =
   | Sequence seq ->
       seq |> List.map (fun i -> ensemble.(i)) |> List.fold_left ( +. ) 0.0
       |> fun sum -> sum /. float_of_int (List.length seq)
+
+type combination =
+  | Combination (* index of combined parameters is the same as instrument *)
+  | NoCombination
+(* parameter selects their own group (independent of the groups indexes of instrument) *)
+
+type union =
+  | Union
+  (* ensemble is a single unit, no layers *)
+  | NoUnion
+(* the number of layers is equal to the number of groups in the ensemble, the combined parameters also have same number of groups *)
