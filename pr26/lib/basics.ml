@@ -121,7 +121,7 @@ let tendency_mask_raw count (TendencyMask sections) =
   let counts = List.mapi (fun i f -> f + bonus_arr.(i)) floors in
   List.map2 section_sq counts sections |> List.to_seq |> Seq.concat
 
-let tendency_mask ensemble count sections =
+let tendency_mask count ensemble sections =
   let l = Array.length ensemble in
   let index arr i = arr.(i) in
   tendency_mask_raw count sections
@@ -287,7 +287,7 @@ let expected_value selection_principle ensembles =
       array_average ensemble
   | Tendency sections ->
       let n_samples = 1000 in
-      let values = tendency_mask ensemble n_samples sections |> List.of_seq in
+      let values = tendency_mask n_samples ensemble sections |> List.of_seq in
       let sum = List.fold_left ( +. ) 0.0 values in
       sum /. Float.of_int (List.length values)
   | Sequence seq ->
@@ -304,3 +304,59 @@ type union =
   (* ensemble is a single unit, no layers *)
   | NoUnion
 (* the number of layers is equal to the number of groups in the ensemble, the combined parameters also have same number of groups *)
+
+(* ---- Score generation ---- *)
+
+type score_event = { time : float; instrument : instrument; voices : int }
+
+(* Extract all values from any ensemble as a flat array *)
+let ensemble_values (Ensemble groups) =
+  groups
+  |> List.map (fun (EnsembleGroup g) -> g)
+  |> Array.concat
+  |> Array.map (fun { value; _ } -> value)
+
+(** Build an infinite selection sequence from a principle and an array of
+    values. Tendency is not yet supported (it requires a fixed total count). *)
+let sel_seq_of_array n principle arr =
+  match principle with
+  | Alea -> alea_sq arr
+  | Series -> series_select arr
+  | Ratio ratios ->
+      ratios
+      |> List.concat_map (fun (i, n) -> repeat arr.(i) n)
+      |> Array.of_list |> series_select
+  | Group groupspec -> group_sq (Array.to_list arr) groupspec
+  | Sequence indices -> sequence indices |> Seq.map (fun i -> arr.(i))
+  | Tendency sections -> tendency_mask n arr sections
+
+(** Generate a list of score events. Number of events = floor(structure_duration
+    / avg_entry_delay). Voices per event are selected from the instrument's
+    chordsize using Alea. *)
+let generate_score ~structure_duration ~instrument_ensemble
+    ~instrument_principle ~entry_delay_ensemble ~entry_delay_principle =
+  let avg_ed = expected_value entry_delay_principle entry_delay_ensemble in
+  let n_events = int_of_float (floor (structure_duration /. avg_ed)) in
+  let _ = Printf.printf "estimated events: %d" n_events in
+  let instr_arr = ensemble_values instrument_ensemble in
+  let ed_arr = ensemble_values entry_delay_ensemble in
+  let instr_seq = sel_seq_of_array n_events instrument_principle instr_arr in
+  let ed_seq =
+    sel_seq_of_array n_events entry_delay_principle ed_arr
+    |> Seq.map entry_to_float
+  in
+  let pairs = Seq.zip instr_seq ed_seq |> Seq.take n_events |> List.of_seq in
+  let _, events =
+    List.fold_left
+      (fun (time, acc) (instr, ed) ->
+        let (Instrument { chordsize = Chordsize { minsize; maxsize }; _ }) =
+          instr
+        in
+        let voices =
+          if minsize = maxsize then minsize
+          else Random.int (maxsize - minsize + 1) + minsize
+        in
+        (time +. ed, { time; instrument = instr; voices } :: acc))
+      (0.0, []) pairs
+  in
+  List.rev events

@@ -47,21 +47,7 @@ let test_tendency_mask () =
   |> Seq.iter (fun (label, vals) ->
       print_float_list label (vals |> List.of_seq))
 
-let _end_to_end () =
-  (* define instruments *)
-  let violin = inst "violin" (chordsize 1 2) in
-
-  let piano = inst "piano" (chordsize 1 10) in
-
-  let basedrum = inst "basedrum" (chordsize 1 1) in
-
-  (* note: the list from list-table-ensemble in PR2 is actually array
-  , as we want to index them using ints *)
-  let _instruments_array = [| violin; piano; basedrum |] in
-
-  let _instr_table =
-    of_nested_list [ [ 0; 1; 2 ]; [ 0; 1 ]; [ 0; 3 ]; [ 0 ] ]
-  in
+let test_estimating_entry_delay () =
   (* 0 1 2 3 4 5 6 7 8 9  10 11 12 13 14 15*)
   let entry_delay_array =
     [ 1; 2; 3; 4; 5; 6; 7; 8; 9; 10; 11; 12; 13; 14; 15; 16 ]
@@ -101,6 +87,33 @@ let _end_to_end () =
   in
   ()
 
+let instrument_entry_test () =
+  (* Instruments with chord sizes *)
+  let violin = inst "violin" (chordsize 1 2) in
+  let piano = inst "piano" (chordsize 1 4) in
+  let basedrum = inst "basedrum" (chordsize 1 1) in
+  let instr_list = mk_par_list id [ violin; piano; basedrum ] in
+  let instr_table = of_nested_list [ [ 0; 1; 2 ] ] in
+  let instr_ensemble =
+    construct_ensemble instr_list instr_table EnsembleGroupAlea 1
+  in
+  (* Entry delays in seconds *)
+  let ed_list = [ 0.1; 0.2; 0.3; 0.4; 0.5 ] |> mk_par_list mk_entrydelay in
+  let ed_table = of_nested_list [ [ 0; 1; 2; 3; 4 ] ] in
+  let ed_ensemble = construct_ensemble ed_list ed_table EnsembleGroupAlea 1 in
+  (* Generate 10-second structure with Alea for both parameters *)
+  let events =
+    generate_score ~structure_duration:10.0 ~instrument_ensemble:instr_ensemble
+      ~instrument_principle:Alea ~entry_delay_ensemble:ed_ensemble
+      ~entry_delay_principle:Alea
+  in
+  print_endline "\n=== instrument_entry_test ===";
+  Printf.printf "%-8s %-12s %s\n" "time" "instrument" "voices";
+  List.iter
+    (fun { time; instrument = Instrument { name; _ }; voices } ->
+      Printf.printf "%-8.3f %-12s %d\n" time name voices)
+    events
+
 let () =
   (* some seed *)
   let _ = Random.init 5 in
@@ -127,5 +140,6 @@ let () =
   group_sq ensemble (mkGroup GroupAlea GroupSeries 1 5)
   |> take30 "group_sq AleaElem  / SeriesRep";
   test_tendency_mask ();
-  _end_to_end ();
+  test_estimating_entry_delay ();
+  instrument_entry_test ();
   ()
