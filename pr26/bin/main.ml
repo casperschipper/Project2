@@ -90,20 +90,26 @@ let test_estimating_entry_delay () =
 let instrument_entry_test () =
   (* Instruments with chord sizes *)
   let violin = inst "violin" (chordsize 1 2) in
-  let piano = inst "piano" (chordsize 1 4) in
+  let piano = inst "piano" (chordsize 1 10) in
   let basedrum = inst "basedrum" (chordsize 1 1) in
   let instr_list = mk_par_list id [ violin; piano; basedrum ] in
-  let instr_table = of_nested_list [ [ 0; 1; 2 ] ] in
+  let instr_table = of_nested_list [ [ 0; 1; 2 ]; [ 0; 1 ]; [ 0; 2 ]; [ 1 ] ] in
   let instr_ensemble =
     construct_ensemble instr_list instr_table EnsembleGroupAlea 1
   in
   (* Entry delays in seconds *)
-  let ed_list = [ 0.1; 0.2; 0.3; 0.4; 0.5 ] |> mk_par_list mk_entrydelay in
-  let ed_table = of_nested_list [ [ 0; 1; 2; 3; 4 ] ] in
-  let ed_ensemble = construct_ensemble ed_list ed_table EnsembleGroupAlea 1 in
+  let ed_list =
+    [ 0.1; 0.2; 0.3; 0.4; 0.5; 0.6; 0.7; 0.8; 0.9; 1.0; 1.1; 1.2 ]
+    |> mk_par_list mk_entrydelay
+  in
+  let ed_table =
+    of_nested_list
+      [ [ 0; 1; 2; 3; 4 ]; [ 0; 3; 7; 11 ]; [ 0; 9 ]; [ 0; 1; 3; 7 ] ]
+  in
+  let ed_ensemble = construct_ensemble ed_list ed_table EnsembleGroupAlea 2 in
   (* Generate 10-second structure with Alea for both parameters *)
   let events =
-    generate_score ~structure_duration:10.0 ~instrument_ensemble:instr_ensemble
+    generate_score ~structure_duration:60.0 ~instrument_ensemble:instr_ensemble
       ~instrument_principle:Alea ~entry_delay_ensemble:ed_ensemble
       ~entry_delay_principle:Alea
   in
