@@ -89,13 +89,16 @@ let test_estimating_entry_delay () =
 
 let instrument_entry_test () =
   (* Instruments with chord sizes *)
-  let violin = inst "violin" (chordsize 1 2) in
+  let guitar = inst "guitar" (chordsize 1 2) in
   let piano = inst "piano" (chordsize 1 10) in
   let basedrum = inst "basedrum" (chordsize 1 1) in
-  let instr_list = mk_par_list id [ violin; piano; basedrum ] in
-  let instr_table = of_nested_list [ [ 0; 1; 2 ]; [ 0; 1 ]; [ 0; 2 ]; [ 1 ] ] in
+  let marimba = inst "marimba" (chordsize 1 4) in
+  let instr_list = mk_par_list id [ guitar; piano; basedrum; marimba ] in
+  let instr_table =
+    of_nested_list [ [ 0; 1; 2; 3 ]; [ 0; 1; 3 ]; [ 1; 3 ]; [ 0 ] ]
+  in
   let instr_ensemble =
-    construct_ensemble instr_list instr_table EnsembleGroupAlea 1
+    construct_ensemble instr_list instr_table EnsembleGroupSeries 1
   in
   (* Entry delays in seconds *)
   let ed_list =
@@ -106,12 +109,12 @@ let instrument_entry_test () =
     of_nested_list
       [ [ 0; 1; 2; 3; 4 ]; [ 0; 3; 7; 11 ]; [ 0; 9 ]; [ 0; 1; 3; 7 ] ]
   in
-  let ed_ensemble = construct_ensemble ed_list ed_table EnsembleGroupAlea 2 in
+  let ed_ensemble = construct_ensemble ed_list ed_table EnsembleGroupSeries 2 in
   (* Generate 10-second structure with Alea for both parameters *)
   let events =
     generate_score ~structure_duration:60.0 ~instrument_ensemble:instr_ensemble
-      ~instrument_principle:Alea ~entry_delay_ensemble:ed_ensemble
-      ~entry_delay_principle:Alea
+      ~instrument_principle:(Group groupspec) ~entry_delay_ensemble:ed_ensemble
+      ~entry_delay_principle:Series
   in
   print_endline "\n=== instrument_entry_test ===";
   Printf.printf "%-8s %-12s %s\n" "time" "instrument" "voices";
@@ -122,7 +125,7 @@ let instrument_entry_test () =
 
 let () =
   (* some seed *)
-  let _ = Random.init 5 in
+  let _ = Random.init 4 in
   let print_int_list = Pr26.Tools.print_int_list in
   print_string
     "Running some tests on selection principles\nFirst: Tendency masks\n\n";

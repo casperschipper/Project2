@@ -207,6 +207,9 @@ let random_value a b =
   let mini = min a b in
   mini + Random.int range
 
+let group element repetition min_rep max_rep =
+  Group (GroupSpec { element; repetition; min_rep; max_rep })
+
 let group_sq ensemble (GroupSpec { element; repetition; min_rep; max_rep }) =
   match (element, repetition) with
   | GroupAlea, GroupAlea ->
