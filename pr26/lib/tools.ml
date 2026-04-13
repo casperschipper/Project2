@@ -2,10 +2,18 @@ module UnitFloat : sig
   type t = private float
 
   val make : float -> t option
+  val of_float_exn : float -> t
 end = struct
   type t = float
 
   let make x = if x >= 0.0 && x <= 1.0 then Some x else None
+
+  let of_float_exn x =
+    if x >= 0.0 && x <= 1.0 then x
+    else
+      raise
+        (Invalid_argument
+           (Printf.sprintf "UnitFloat.of_float_exn: %f is not in [0,1]" x))
 end
 
 let tuple_map f (x, y) = (f x, f y)

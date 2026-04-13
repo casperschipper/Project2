@@ -333,9 +333,7 @@ let sel_seq_of_array n principle arr =
   | Sequence indices -> sequence indices |> Seq.map (fun i -> arr.(i))
   | Tendency sections -> tendency_mask n arr sections
 
-(** Generate a list of score events. Number of events = floor(structure_duration
-    / avg_entry_delay). Voices per event are selected from the instrument's
-    chordsize using Alea. *)
+(** Generate a list of score events, using instrument based vertical density *)
 let generate_score ~structure_duration ~instrument_ensemble
     ~instrument_principle ~entry_delay_ensemble ~entry_delay_principle =
   let avg_ed = expected_value entry_delay_principle entry_delay_ensemble in

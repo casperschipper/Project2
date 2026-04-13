@@ -1,4 +1,3 @@
-module Midi = struct
   type byte = int (* invariant: 0–255 *)
   type message = byte * byte * byte
   type stream = message Seq.t
@@ -18,4 +17,4 @@ module Midi = struct
   (* Stream helpers *)
   let of_list = List.to_seq
   let to_list = List.of_seq
-end 
+

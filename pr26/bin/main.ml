@@ -1,8 +1,7 @@
 open Pr26.Basics
 open Pr26.Tools
 
-(* convenience: we know these literals are valid, so unwrap directly *)
-let uf x = UnitFloat.make x |> Option.get
+let uf = UnitFloat.of_float_exn
 
 let mk portion smin smax emin emax =
   TendencySection
@@ -10,7 +9,7 @@ let mk portion smin smax emin emax =
       portion;
       start_min = uf smin;
       start_max = uf smax;
-      end_min = uf emin;
+      end_min = uf emin; 
       end_max = uf emax;
     }
 
@@ -87,6 +86,14 @@ let test_estimating_entry_delay () =
   in
   ()
 
+let write_score filename events =
+  let oc = open_out filename in
+  List.iter
+    (fun { time; instrument = Instrument { name; _ }; voices } ->
+      Printf.fprintf oc "%.3f %s %d\n" time name voices)
+    events;
+  close_out oc
+
 let instrument_entry_test () =
   (* Instruments with chord sizes *)
   let guitar = inst "guitar" (chordsize 1 2) in
@@ -121,7 +128,9 @@ let instrument_entry_test () =
   List.iter
     (fun { time; instrument = Instrument { name; _ }; voices } ->
       Printf.printf "%-8.3f %-12s %d\n" time name voices)
-    events
+    events;
+  write_score "score.projekt2" events;
+  print_endline "Score written to score.projekt2"
 
 let () =
   (* some seed *)
