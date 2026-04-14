@@ -7,8 +7,7 @@ principles draw when assembling the final parameter values for the score.
 Through union and combination, the composer controls how these stockpiles
 (ensembles) are formed from table groups.
  
-In all four cases, INSTRUMENT is the only parameter that can have multiple
-table groups in the ensemble. The number of INSTRUMENT groups entering the
+The number of INSTRUMENT groups entering the
 ensemble is always determined by #13 (Number of Instrument Groups). The
 question is always whether the other parameters follow that multiplicity
 (combination) and whether the resulting multiplicity produces one or several
@@ -57,9 +56,4 @@ vocabularies can only occur per variant, not within a variant.
  
 **(d) No combination, no union.** One layer per selected INSTRUMENT group.
 Since there is no combination, the non-instrument parameters are each assigned
-one group per variant. Each layer therefore has its own INSTRUMENT group, but
-the other parameters draw from the same single group across all layers of a
-given variant. A possible motivation: the composer wants rhythmic or dynamic
-material shared across layers but still wants instrumental differentiation
-through separate layers with distinct INSTRUMENT groups.
-
+one group per layer. Each layer has its own group for each of the parameters. 
