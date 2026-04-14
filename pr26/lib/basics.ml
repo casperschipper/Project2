@@ -310,7 +310,7 @@ type union =
 
 (* ---- Score generation ---- *)
 
-type score_event = { time : float; instrument : instrument; voices : int }
+type score_event = { time : float; instrument : instrument; chordsize : int }
 
 (* Extract all values from any ensemble as a flat array *)
 let ensemble_values (Ensemble groups) =
@@ -353,11 +353,11 @@ let generate_score ~structure_duration ~instrument_ensemble
         let (Instrument { chordsize = Chordsize { minsize; maxsize }; _ }) =
           instr
         in
-        let voices =
+        let chordsize =
           if minsize = maxsize then minsize
           else Random.int (maxsize - minsize + 1) + minsize
         in
-        (time +. ed, { time; instrument = instr; voices } :: acc))
+        (time +. ed, { time; instrument = instr; chordsize } :: acc))
       (0.0, []) pairs
   in
   List.rev events

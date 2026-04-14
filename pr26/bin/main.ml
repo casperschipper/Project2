@@ -89,8 +89,8 @@ let test_estimating_entry_delay () =
 let write_score filename events =
   let oc = open_out filename in
   List.iter
-    (fun { time; instrument = Instrument { name; _ }; voices } ->
-      Printf.fprintf oc "%.3f %s %d\n" time name voices)
+    (fun { time; instrument = Instrument { name; _ }; chordsize } ->
+      Printf.fprintf oc "%.3f %s %d\n" time name chordsize)
     events;
   close_out oc
 
@@ -124,10 +124,10 @@ let instrument_entry_test () =
       ~entry_delay_principle:Series
   in
   print_endline "\n=== instrument_entry_test ===";
-  Printf.printf "%-8s %-12s %s\n" "time" "instrument" "voices";
+  Printf.printf "%-8s %-12s %s\n" "time" "instrument" "chordsize";
   List.iter
-    (fun { time; instrument = Instrument { name; _ }; voices } ->
-      Printf.printf "%-8.3f %-12s %d\n" time name voices)
+    (fun { time; instrument = Instrument { name; _ }; chordsize } ->
+      Printf.printf "%-8.3f %-12s %d\n" time name chordsize)
     events;
   write_score "score.projekt2" events;
   print_endline "Score written to score.projekt2"
