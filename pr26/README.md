@@ -25,6 +25,9 @@ You should be able to run it with:
 
 # TODOS
 
+1. Union and combination
+2. Vertical density
+
 [ ] Implement autonomous density
 [ ] Define input as a runtime prompt?
 [ ] Store input as a reusable file?

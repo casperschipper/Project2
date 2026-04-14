@@ -22,7 +22,7 @@ let mk_entrydelay ed =
   if ed < 0.0 then raise (Failure "entrydelay cannot be smaller than zero ??")
   else Entrydelay ed
 
-(* This is the full list of parameters *)
+(* This is the full list of parameters, currently a should only be instr or entrydelay *)
 type 'a parameter_list = ParameterList of 'a Array.t
 
 (* we keep indexes that produced a value from the list, they may be useful *)
@@ -34,8 +34,14 @@ let mk_par_list constructor lst =
 
 let lookup_index (ParameterList arr) i = arr.(i)
 
+type 'a ensemble_group = IndexedEnsembleGroup of { index : int ; group : 'a group }
+
 (* an ensemble is a list of groups, we keep the group structure, as they may still be used as separate layers *)
-type 'a ensemble = Ensemble of 'a group list
+type 'a ensemble = Ensemble of 'a ensemble_group list
+
+type all_ensembles =
+  WithInstr of instr ensemble 
+  | WithInstrEntry of instr ensemble * entrydelay ensemble 
 
 let mk_ensemble group_list = Ensemble group_list
 
@@ -186,7 +192,7 @@ let series_sq n =
   let start = List.init n id |> Array.of_list in
   series_select start
 
-let ch_series lst =
+let choose_series lst =
   let arr = lst |> Array.of_list in
   let n = Array.length arr in
   series_sq n |> Seq.map (fun i -> arr.(i))
@@ -216,24 +222,26 @@ let group_sq ensemble (GroupSpec { element; repetition; min_rep; max_rep }) =
       choose ensemble
       |> Seq.concat_map (fun elm -> repeat_n elm (random_value min_rep max_rep))
   | GroupSeries, GroupAlea ->
-      ch_series ensemble
+      choose_series ensemble
       |> Seq.concat_map (fun elm -> repeat_n elm (random_value min_rep max_rep))
   | GroupSeries, GroupSeries ->
-      let elms = ch_series ensemble in
-      let reps = ch_series (range min_rep max_rep) in
+      let elms = choose_series ensemble in
+      let reps = choose_series (range min_rep max_rep) in
       Seq.map2 repeat_n elms reps |> Seq.concat
   | GroupAlea, GroupSeries ->
       let elms = choose ensemble in
-      let reps = ch_series (range min_rep max_rep) in
+      let reps = choose_series (range min_rep max_rep) in
       Seq.map2 repeat_n elms reps |> Seq.concat
 
 (* ensemble formation *)
 
-let group_from_indexes plist group =
-  EnsembleGroup
-    (group
+let group_from_indexes selected_group_index plist group =
+  IndexedEnsembleGroup
+    { index = selected_group_index
+    ; group = 
+    EnsembleGroup (group
     |> List.map (fun i -> { index = i; value = lookup_index plist i })
-    |> Array.of_list)
+    |> Array.of_list) }
 
 (** [construct_ensemble parlist table principle number_of_groups] Builds an
     [ensemble] by selecting [number_of_groups] groups from [table].
@@ -246,17 +254,24 @@ let group_from_indexes plist group =
 
     Returns an [ensemble] whose groups contain fully resolved [element] values.
 *)
+
+
+
 let construct_ensemble parlist (Table table) principle number_of_groups =
+  let index_table_groups (Table table) =
+    table |> Array.mapi (fun i item -> (i,item)) 
+  in
   let select_groups grps =
     grps |> Seq.take number_of_groups |> Seq.map Array.to_list
-    |> Seq.map (group_from_indexes parlist)
+    |> Seq.map (fun (IndexedEnsembleGroup { index ; group }) -> group_from_indexes index parlist group)
     |> List.of_seq |> mk_ensemble
   in
   match principle with
-  | EnsembleGroupAlea -> alea_sq table |> select_groups
-  | EnsembleGroupSeries -> series_select table |> select_groups
+  | EnsembleGroupAlea -> table |> index_table_groups |> alea_sq |> select_groups
+  | EnsembleGroupSeries -> table |> index_table_groups |> series_select |> select_groups
   | EnsembleGroupSequence sq ->
-      sequence sq |> Seq.map (lookup_arr table) |> select_groups
+      let itable = index_table_groups table in
+      sequence sq |> Seq.map (lookup_arr itable) |> select_groups
 
 let ensemble_to_array_union (Ensemble ensemble) =
   ensemble
@@ -320,18 +335,21 @@ let ensemble_values (Ensemble groups) =
   |> Array.map (fun { value; _ } -> value)
 
 (** Build an infinite selection sequence from a principle and an array of
-    values. Tendency is not yet supported (it requires a fixed total count). *)
+    values. *)
 let sel_seq_of_array n principle arr =
   match principle with
-  | Alea -> alea_sq arr
-  | Series -> series_select arr
+  | Alea -> alea_sq arr |> Seq.take n
+  | Series -> series_select arr |> Seq.take n
   | Ratio ratios ->
       ratios
       |> List.concat_map (fun (i, n) -> repeat arr.(i) n)
-      |> Array.of_list |> series_select
-  | Group groupspec -> group_sq (Array.to_list arr) groupspec
-  | Sequence indices -> sequence indices |> Seq.map (fun i -> arr.(i))
-  | Tendency sections -> tendency_mask n arr sections
+      |> Array.of_list |> series_select |> Seq.take n
+  | Group groupspec -> group_sq (Array.to_list arr) groupspec |> Seq.take n
+  | Sequence indices ->
+      sequence indices |> Seq.map (fun i -> arr.(i)) |> Seq.take n
+  | Tendency sections ->
+      tendency_mask n arr
+        sections (* note: this has a certain number of events *)
 
 (** Generate a list of score events, using instrument based vertical density *)
 let generate_score ~structure_duration ~instrument_ensemble

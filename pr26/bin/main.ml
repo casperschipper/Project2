@@ -116,7 +116,7 @@ let instrument_entry_test () =
     of_nested_list
       [ [ 0; 1; 2; 3; 4 ]; [ 0; 3; 7; 11 ]; [ 0; 9 ]; [ 0; 1; 3; 7 ] ]
   in
-  let ed_ensemble = construct_ensemble ed_list ed_table EnsembleGroupSeries 2 in
+  let ed_ensemble = construct_ensemble ed_list ed_table EnsembleGroupSeries 1 in
   (* Generate 10-second structure with Alea for both parameters *)
   let events =
     generate_score ~structure_duration:60.0 ~instrument_ensemble:instr_ensemble

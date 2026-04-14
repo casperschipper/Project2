@@ -40,13 +40,21 @@ let lerp a b t = a +. (t *. (b -. a))
 let repeat x n = List.init n (fun _ -> x)
 let range a b = if a > b then [] else List.init (b - a) (fun x -> x + a)
 
+(* 
+  Here we sample a list, allowing repetition
+*)
 let choose lst =
   let arr = lst |> Array.of_list in
   let n = Array.length arr in
   Seq.repeat () |> Seq.map (fun () -> arr.(Random.int n))
 
+(* choose, but only return one value *)
 let choose_arr arr = arr.(Random.int (Array.length arr))
+
+(* return one value *)
 let choose_lst lst = choose_arr (Array.of_list lst)
+
+(* A seq.t of length n, just repeating the value *)
 let repeat_n elm n = Seq.repeat elm |> Seq.take n
 
 let debug_float label x =
