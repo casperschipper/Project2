@@ -36,6 +36,10 @@ let lookup_index (ParameterList arr) i = arr.(i)
 
 type 'a ensemble_group = IndexedEnsembleGroup of { index : int ; group : 'a group }
 
+let values_from_indexed_ensemble (IndexedEnsembleGroup { group ; _ }) =
+  match group with
+  | EnsembleGroup gr -> gr
+
 (* an ensemble is a list of groups, we keep the group structure, as they may still be used as separate layers *)
 type 'a ensemble = Ensemble of 'a ensemble_group list
 
@@ -257,13 +261,13 @@ let group_from_indexes selected_group_index plist group =
 
 
 
-let construct_ensemble parlist (Table table) principle number_of_groups =
+let construct_ensemble parlist table principle number_of_groups =
   let index_table_groups (Table table) =
     table |> Array.mapi (fun i item -> (i,item)) 
   in
   let select_groups grps =
-    grps |> Seq.take number_of_groups |> Seq.map Array.to_list
-    |> Seq.map (fun (IndexedEnsembleGroup { index ; group }) -> group_from_indexes index parlist group)
+    grps |> Seq.take number_of_groups
+    |> Seq.map (fun (index, group_arr) -> group_from_indexes index parlist (Array.to_list group_arr))
     |> List.of_seq |> mk_ensemble
   in
   match principle with
@@ -274,8 +278,8 @@ let construct_ensemble parlist (Table table) principle number_of_groups =
       sequence sq |> Seq.map (lookup_arr itable) |> select_groups
 
 let ensemble_to_array_union (Ensemble ensemble) =
-  ensemble
-  |> List.map (fun (EnsembleGroup eg) -> eg)
+  ensemble 
+  |> List.map values_from_indexed_ensemble 
   |> Array.concat
   |> Array.map (fun { value; _ } -> value |> entry_to_float)
 
@@ -330,7 +334,7 @@ type score_event = { time : float; instrument : instrument; chordsize : int }
 (* Extract all values from any ensemble as a flat array *)
 let ensemble_values (Ensemble groups) =
   groups
-  |> List.map (fun (EnsembleGroup g) -> g)
+  |> List.map values_from_indexed_ensemble
   |> Array.concat
   |> Array.map (fun { value; _ } -> value)
 
