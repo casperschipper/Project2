@@ -28,7 +28,9 @@ type 'a parameter_list = ParameterList of 'a Array.t
 (* we keep indexes that produced a value from the list, they may be useful *)
 type 'a element = { index : int; value : 'a }
 
-let value_from_element { value; index } = ignore index;value
+let value_from_element { value; index } =
+  ignore index;
+  value
 
 type 'a group = EnsembleGroup of 'a element Array.t
 
@@ -47,16 +49,15 @@ let elements_from_indexed_ensemble (IndexedEnsembleGroup { group; _ }) =
 (* an ensemble is a list of groups, we keep the group structure, as they may still be used as separate layers 
   if an ensemble is formed with no_union in another parameter, we only select a single group
 *)
-type 'a ensemble = 
-  Ensemble of 'a indexed_ensemble_group list
-  | SingleGroup of 'a indexed_ensemble_group 
+type 'a ensemble =
+  | Ensemble of 'a indexed_ensemble_group list
+  | SingleGroup of 'a indexed_ensemble_group
 
 type all_ensembles =
   | WithInstr of instr ensemble
   | WithInstrEntry of instr ensemble * entrydelay ensemble
 
 let mk_ensemble group_list = Ensemble group_list
-
 let mk_ensemble_single group = SingleGroup group
 
 let of_nested_list lstlst =
@@ -299,7 +300,7 @@ let group_indexes_from_ensemble instrument_ensemble =
   match instrument_ensemble with
   | Ensemble lst ->
       lst |> List.map (fun (IndexedEnsembleGroup { index; _ }) -> index)
-  | (SingleGroup (IndexedEnsembleGroup { index; _ })) -> [index ]
+  | SingleGroup (IndexedEnsembleGroup { index; _ }) -> [ index ]
 
 let combination_compatibility (Table instrument_table) (Table other_table) =
   Array.length instrument_table == Array.length other_table
@@ -312,16 +313,21 @@ let construct_ensemble_combination parlist table instrument_ensemble =
 
 let ensemble_to_array_union ensemble =
   match ensemble with
-  | Ensemble e -> 
-    (e 
-    |> List.map elements_from_indexed_ensemble
-    |> Array.concat
-    |> Array.map (fun { value; _ } -> value ))
-  | SingleGroup g -> g |> elements_from_indexed_ensemble |> Array.map (fun { value; index } -> ignore index;value)
-
+  | Ensemble e ->
+      e
+      |> List.map elements_from_indexed_ensemble
+      |> Array.concat
+      |> Array.map (fun { value; _ } -> value)
+  | SingleGroup g ->
+      g |> elements_from_indexed_ensemble
+      |> Array.map (fun { value; index } ->
+          ignore index;
+          value)
 
 let expected_value selection_principle ensembles =
-  let ensemble = ensembles |> ensemble_to_array_union |> Array.map entry_to_float in
+  let ensemble =
+    ensembles |> ensemble_to_array_union |> Array.map entry_to_float
+  in
   (* calculates the expected (average) value produced by the selection principle over the ensemble *)
   let array_average arr =
     let sum = Array.fold_left ( +. ) 0.0 arr in
@@ -371,21 +377,23 @@ type score_event = { time : float; instrument : instrument; chordsize : int }
 (* Extract all values from any ensemble as a flat array *)
 let ensemble_values_union ensemble =
   match ensemble with
-  | Ensemble groups -> 
-    groups
-    |> List.map elements_from_indexed_ensemble
-    |> Array.concat
-    |> Array.map value_from_element
-  | SingleGroup elm -> elm |> elements_from_indexed_ensemble |> 
-     Array.map value_from_element
+  | Ensemble groups ->
+      groups
+      |> List.map elements_from_indexed_ensemble
+      |> Array.concat
+      |> Array.map value_from_element
+  | SingleGroup elm ->
+      elm |> elements_from_indexed_ensemble |> Array.map value_from_element
 
 let ensemble_values_no_union ensemble =
   match ensemble with
-  | Ensemble groups -> 
-  (groups
-  |> List.map (fun x ->
-      x |> elements_from_indexed_ensemble |> Array.map value_from_element))
-  | SingleGroup g -> g |> elements_from_indexed_ensemble |> Array.map value_from_element |> fun x-> [x]
+  | Ensemble groups ->
+      groups
+      |> List.map (fun x ->
+          x |> elements_from_indexed_ensemble |> Array.map value_from_element)
+  | SingleGroup g ->
+      g |> elements_from_indexed_ensemble |> Array.map value_from_element
+      |> fun x -> [ x ]
 
 (** Build a finite section of values based on principle and array *)
 let sel_seq_of_array n principle arr =
@@ -416,9 +424,7 @@ let calculate_number_of_events structure_duration entry_delay_principle
 let calculate_layer n_events instrument_principle inst_arr entry_delay_principle
     ed_arr =
   let instr_seq = sel_seq_of_array n_events instrument_principle inst_arr in
-  let ed_seq =
-    sel_seq_of_array n_events entry_delay_principle ed_arr
-  in
+  let ed_seq = sel_seq_of_array n_events entry_delay_principle ed_arr in
   let pairs = Seq.zip instr_seq ed_seq |> Seq.take n_events |> List.of_seq in
   let _, events =
     List.fold_left
@@ -440,18 +446,31 @@ let generate_score ~structure_duration ~instrument_ensemble
     ~instrument_principle ~entry_delay_ensemble ~entry_delay_principle ~union =
   match union with
   | Union ->
-      let entr_arr = entry_delay_ensemble |> ensemble_values_union |> Array.map entry_to_float in
+      let entr_arr =
+        entry_delay_ensemble |> ensemble_values_union
+        |> Array.map entry_to_float
+      in
       let instr_arr = ensemble_values_union instrument_ensemble in
       let n_events =
         calculate_number_of_events structure_duration entry_delay_principle
-        entry_delay_ensemble
+          entry_delay_ensemble
       in
       let _ = Printf.printf "estimated events: %d" n_events in
-      calculate_layer n_events instrument_principle instr_arr
-        entry_delay_principle entr_arr
-  | NoUnion ->
-      let instr_arrays = ensemble_values_no_union instrument_ensemble in
-      instr_arrays |> List.map (fun instr_arr -> 
-        let entr_arr =  entry_delay_ensemble in
+      [
         calculate_layer n_events instrument_principle instr_arr
-        entry_delay_principle entr_arr)
+          entry_delay_principle entr_arr;
+      ]
+  | NoUnion ->
+      (* no union, multiple groups possible for instrument *)
+      let instr_arrays = ensemble_values_no_union instrument_ensemble in
+      instr_arrays
+      |> List.map (fun instr_arr ->
+        (* note we can use union, as we only want 1 group selected *)
+          let entr_arr = ensemble_values_union entry_delay_ensemble |>  in
+          let n_events =
+            calculate_number_of_events structure_duration entry_delay_principle
+              entry_delay_ensemble
+          in
+          let _ = Printf.printf "estimated events: %d" n_events in
+          calculate_layer n_events instrument_principle instr_arr
+            entry_delay_principle entr_arr)
