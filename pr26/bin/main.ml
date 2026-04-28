@@ -122,24 +122,11 @@ let instrument_entry_test () =
   let combination = 
     Combination 
   in
-  (* from here we calculate and print stuff, should be moved to basics.ml *)
-  let structure_duration = 60.0 in
-  let instr_ensemble =
-    construct_ensemble instr_list instr_table EnsembleGroupSeries number_of_layers
-  in
-  let ed_ensemble =
-    match combination with
-    | Combination -> 
-      (* reuse group indexes from the instr_ensemble *)
-      construct_ensemble_combination ed_list ed_table instr_ensemble 
-    | NoCombination ->
-      construct_ensemble ed_list ed_table EnsembleGroupSeries 1 (* only one group if combination *)
-    in
-  (* Generate 60 second structure with Alea for both parameters *)
   let layers =
-    generate_score ~structure_duration:structure_duration ~instrument_ensemble:instr_ensemble
-      ~instrument_principle:(Group groupspec) ~entry_delay_ensemble:ed_ensemble
-      ~entry_delay_principle:Series ~union:NoUnion
+    build_score ~structure_duration:60.0 ~instr_list ~instr_table
+      ~number_of_layers ~ed_list ~ed_table ~combination
+      ~instrument_principle:(Group groupspec) ~entry_delay_principle:Series
+      ~union:NoUnion
   in
   print_endline "\n=== instrument_entry_test ===";
   List.iteri

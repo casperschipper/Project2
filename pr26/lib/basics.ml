@@ -474,3 +474,20 @@ let generate_score ~structure_duration ~instrument_ensemble
           let _ = Printf.printf "estimated events: %d" n_events in
           calculate_layer n_events instrument_principle instr_arr
             entry_delay_principle entr_arr)
+
+let build_score ~structure_duration ~instr_list ~instr_table ~number_of_layers
+    ~ed_list ~ed_table ~combination ~instrument_principle ~entry_delay_principle
+    ~union =
+  let instr_ensemble =
+    construct_ensemble instr_list instr_table EnsembleGroupSeries number_of_layers
+  in
+  let ed_ensemble =
+    match combination with
+    | Combination ->
+        construct_ensemble_combination ed_list ed_table instr_ensemble
+    | NoCombination ->
+        construct_ensemble ed_list ed_table EnsembleGroupSeries 1
+  in
+  generate_score ~structure_duration ~instrument_ensemble:instr_ensemble
+    ~instrument_principle ~entry_delay_ensemble:ed_ensemble
+    ~entry_delay_principle ~union
