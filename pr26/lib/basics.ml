@@ -466,7 +466,7 @@ let generate_score ~structure_duration ~instrument_ensemble
       instr_arrays
       |> List.map (fun instr_arr ->
         (* note we can use union, as we only want 1 group selected *)
-          let entr_arr = ensemble_values_union entry_delay_ensemble |>  in
+          let entr_arr = ensemble_values_union entry_delay_ensemble |> Array.map entry_to_float  in
           let n_events =
             calculate_number_of_events structure_duration entry_delay_principle
               entry_delay_ensemble

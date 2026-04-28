@@ -86,12 +86,16 @@ let test_estimating_entry_delay () =
   in
   ()
 
-let write_score filename events =
+let write_score filename layers =
   let oc = open_out filename in
-  List.iter
-    (fun { time; instrument = Instrument { name; _ }; chordsize } ->
-      Printf.fprintf oc "%.3f %s %d\n" time name chordsize)
-    events;
+  List.iteri
+    (fun i events ->
+      Printf.fprintf oc "# layer %d\n" i;
+      List.iter
+        (fun { time; instrument = Instrument { name; _ }; chordsize } ->
+          Printf.fprintf oc "%.3f %s %d\n" time name chordsize)
+        events)
+    layers;
   close_out oc
 
 let instrument_entry_test () =
@@ -132,18 +136,22 @@ let instrument_entry_test () =
       construct_ensemble ed_list ed_table EnsembleGroupSeries 1 (* only one group if combination *)
     in
   (* Generate 60 second structure with Alea for both parameters *)
-  let events =
+  let layers =
     generate_score ~structure_duration:60.0 ~instrument_ensemble:instr_ensemble
       ~instrument_principle:(Group groupspec) ~entry_delay_ensemble:ed_ensemble
-      ~entry_delay_principle:Series
+      ~entry_delay_principle:Series ~union:NoUnion
   in
   print_endline "\n=== instrument_entry_test ===";
-  Printf.printf "%-8s %-12s %s\n" "time" "instrument" "chordsize";
-  List.iter
-    (fun { time; instrument = Instrument { name; _ }; chordsize } ->
-      Printf.printf "%-8.3f %-12s %d\n" time name chordsize)
-    events;
-  write_score "score.projekt2" events;
+  List.iteri
+    (fun i events ->
+      Printf.printf "\n--- layer %d ---\n" i;
+      Printf.printf "%-8s %-12s %s\n" "time" "instrument" "chordsize";
+      List.iter
+        (fun { time; instrument = Instrument { name; _ }; chordsize } ->
+          Printf.printf "%-8.3f %-12s %d\n" time name chordsize)
+        events)
+    layers;
+  write_score "score.projekt2" layers;
   print_endline "Score written to score.projekt2"
 
 let () =
