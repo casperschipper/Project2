@@ -16,6 +16,9 @@ end = struct
            (Printf.sprintf "UnitFloat.of_float_exn: %f is not in [0,1]" x))
 end
 
+let singleton_array x =
+  [|x|]
+
 let tuple_map f (x, y) = (f x, f y)
 let tuple_reduce f (x, y) = f x y
 

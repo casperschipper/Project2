@@ -11,9 +11,6 @@ Currently, it implements the selection principles and runs some tests on the ent
 * dune (version used 3.22)
 * ocaml (version used 5.4.1)
 
-for midi output (not implemented yet)  
-* jack2 / jacklib (1.9.22)
-
 But probably it will work for more recent versions as well.
 
 ## Building & running

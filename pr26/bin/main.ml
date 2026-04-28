@@ -9,13 +9,13 @@ let mk portion smin smax emin emax =
       portion;
       start_min = uf smin;
       start_max = uf smax;
-      end_min = uf emin; 
+      end_min = uf emin;
       end_max = uf emax;
     }
 
 let test_mask =
   TendencyMask
-    [
+    [ 
       mk 1.0 0.2 0.3 0.8 0.9;
       (* parallel  : window stays fixed           *)
       mk 1.0 0.0 0.1 0.1 1.0;
@@ -65,7 +65,7 @@ let test_estimating_entry_delay () =
   in
   let entry_delay_ensemble =
     construct_ensemble entry_delay_array entry_delay_table EnsembleGroupAlea 2
-  in
+  in 
   let test_expected_value principle =
     print_string (principle_to_string principle);
     expected_value principle entry_delay_ensemble |> Printf.printf "\n%f";
@@ -78,7 +78,7 @@ let test_estimating_entry_delay () =
       Alea;
       Series;
       Ratio [ (0, 1); (1, 3); (2, 4) ];
-      Group groupspec;
+      Group groupspec; 
       Tendency test_mask;
       Sequence [ 0; 3; 5 ];
     ]
@@ -104,9 +104,8 @@ let instrument_entry_test () =
   let instr_table =
     of_nested_list [ [ 0; 1; 2; 3 ]; [ 0; 1; 3 ]; [ 1; 3 ]; [ 0 ] ]
   in
-  let instr_ensemble =
-    construct_ensemble instr_list instr_table EnsembleGroupSeries 1
-  in
+  let number_of_layers = 1 in
+  
   (* Entry delays in seconds *)
   let ed_list =
     [ 0.1; 0.2; 0.3; 0.4; 0.5; 0.6; 0.7; 0.8; 0.9; 1.0; 1.1; 1.2 ]
@@ -116,8 +115,23 @@ let instrument_entry_test () =
     of_nested_list
       [ [ 0; 1; 2; 3; 4 ]; [ 0; 3; 7; 11 ]; [ 0; 9 ]; [ 0; 1; 3; 7 ] ]
   in
-  let ed_ensemble = construct_ensemble ed_list ed_table EnsembleGroupSeries 1 in
-  (* Generate 10-second structure with Alea for both parameters *)
+  let combination = 
+    Combination 
+  in
+  (* from here we calculate and print stuff, should be moved to basics.ml *)
+
+  let instr_ensemble =
+    construct_ensemble instr_list instr_table EnsembleGroupSeries number_of_layers
+  in
+  let ed_ensemble =
+    match combination with
+    | Combination -> 
+      (* reuse group indexes from the instr_ensemble *)
+      construct_ensemble_combination ed_list ed_table instr_ensemble 
+    | NoCombination ->
+      construct_ensemble ed_list ed_table EnsembleGroupSeries 1 (* only one group if combination *)
+    in
+  (* Generate 60 second structure with Alea for both parameters *)
   let events =
     generate_score ~structure_duration:60.0 ~instrument_ensemble:instr_ensemble
       ~instrument_principle:(Group groupspec) ~entry_delay_ensemble:ed_ensemble
