@@ -123,7 +123,7 @@ let instrument_entry_test () =
     Combination 
   in
   (* from here we calculate and print stuff, should be moved to basics.ml *)
-
+  let structure_duration = 60.0 in
   let instr_ensemble =
     construct_ensemble instr_list instr_table EnsembleGroupSeries number_of_layers
   in
@@ -137,7 +137,7 @@ let instrument_entry_test () =
     in
   (* Generate 60 second structure with Alea for both parameters *)
   let layers =
-    generate_score ~structure_duration:60.0 ~instrument_ensemble:instr_ensemble
+    generate_score ~structure_duration:structure_duration ~instrument_ensemble:instr_ensemble
       ~instrument_principle:(Group groupspec) ~entry_delay_ensemble:ed_ensemble
       ~entry_delay_principle:Series ~union:NoUnion
   in
