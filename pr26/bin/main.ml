@@ -109,18 +109,18 @@ let instrument_entry_test () =
     of_nested_list [ [ 0; 1; 2; 3 ]; [ 0; 1; 3 ]; [ 1; 3 ]; [ 0 ] ]
   in
   (* this variant *)
-  let number_of_instrument_groups = 3 in
+  let number_of_instrument_groups = 2 in
   (* Entry delays in seconds *)
   let ed_list =
-    [1.0; 2.0;3.0]
+    [0.1;0.2;0.3;1.0;2.0;3.0;10.0;20.0;30.0]
     |> mk_par_list mk_entrydelay
   in
   let ed_table =
     of_nested_list
-      [ [ 0;1 ]; [ 0; 1 ]; [ 0; 1 ]; [ 0; 1] ]
+      [ [ 0;1;2 ]; [3;4;5];[0;1;2;3;4;5;6;7;8];[6;7;8]]
   in
   let combination = 
-    NoCombination 
+    Combination 
   in
   let layers =
     build_score ~structure_duration:60.0 ~instr_list ~instr_table
@@ -143,7 +143,7 @@ let instrument_entry_test () =
 
 let () =
   (* some seed *)
-  let _ = Random.init 4 in
+  let _ = Random.init 1 in
   let print_int_list = Pr26.Tools.print_int_list in
   print_string
     "Running some tests on selection principles\nFirst: Tendency masks\n\n";

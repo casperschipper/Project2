@@ -282,7 +282,8 @@ let select_groups number_of_groups parlist grps =
 let index_table_groups (Table table) =
   table |> Array.mapi (fun i item -> (i, item))
 
-let construct_ensemble ?(verbose = true) parlist table principle number_of_groups =
+let construct_ensemble ?(verbose = true) parlist table principle
+    number_of_groups =
   let result =
     match principle with
     | EnsembleGroupAlea ->
@@ -333,11 +334,31 @@ let group_indexes_from_ensemble instrument_ensemble =
 let combination_compatibility (Table instrument_table) (Table other_table) =
   Array.length instrument_table == Array.length other_table
 
-let construct_ensemble_combination parlist table instrument_ensemble =
+let construct_ensemble_combination ?(verbose = true) parlist table instrument_ensemble  =
   let indexes = group_indexes_from_ensemble instrument_ensemble in
   let n_groups = List.length indexes in
   let itable = index_table_groups table |> Array.to_list in
-  sequence itable |> select_groups n_groups parlist
+  let result = sequence itable |> select_groups n_groups parlist in
+  if verbose then begin
+  let principle_str =
+      "combination"  in
+    Printf.printf "construct_ensemble: principle=%s, number_of_groups=%d\n"
+      principle_str n_groups;
+    let groups =
+      match result with Ensemble lst -> lst | SingleGroup g -> [ g ]
+    in
+    List.iter
+      (fun (IndexedEnsembleGroup { index; group }) ->
+        let elements = match group with EnsembleGroup arr -> arr in
+        let elem_idxs =
+          elements
+          |> Array.map (fun e -> string_of_int e.index)
+          |> Array.to_list |> String.concat ", "
+        in
+        Printf.printf "  group[%d]: [%s]\n" index elem_idxs)
+      groups
+  end;
+  result
 
 let ensemble_to_array_union ensemble =
   match ensemble with
@@ -492,30 +513,33 @@ let generate_score ~structure_duration ~instrument_ensemble
   | NoUnion ->
       (* no union, multiple groups possible for instrument *)
       let instr_arrays = ensemble_values_no_union instrument_ensemble in
-      instr_arrays
-      |> List.map (fun instr_arr ->
-        (* note we can use union, as we only want 1 group selected *)
-          let entr_arr = ensemble_values_union entry_delay_ensemble |> Array.map entry_to_float  in
-          let n_events =
-            calculate_number_of_events structure_duration entry_delay_principle
-              entry_delay_ensemble
-          in
-          let _ = Printf.printf "estimated events: %d" n_events in
-          calculate_layer n_events instrument_principle instr_arr
-            entry_delay_principle entr_arr)
+      let entr_arr =
+        ensemble_values_no_union entry_delay_ensemble
+        |> List.map (Array.map entry_to_float)
+      in
+      let layer_from_group_arrays instr_array antr_array =
+        let n_events =
+          calculate_number_of_events structure_duration entry_delay_principle
+            entry_delay_ensemble
+        in
+        let _ = Printf.printf "\nestimated events: %d " n_events in
+        calculate_layer n_events instrument_principle instr_array
+          entry_delay_principle antr_array
+      in
+      List.map2 layer_from_group_arrays instr_arrays entr_arr
 
-let build_score ~structure_duration ~instr_list ~instr_table ~number_of_instrument_groups
-    ~ed_list ~ed_table ~combination ~instrument_principle ~entry_delay_principle
-    ~union =
+let build_score ~structure_duration ~instr_list ~instr_table
+    ~number_of_instrument_groups ~ed_list ~ed_table ~combination
+    ~instrument_principle ~entry_delay_principle ~union =
   let instr_ensemble =
-    construct_ensemble instr_list instr_table EnsembleGroupSeries number_of_instrument_groups
+    construct_ensemble instr_list instr_table EnsembleGroupSeries
+      number_of_instrument_groups
   in
   let ed_ensemble =
     match combination with
     | Combination ->
         construct_ensemble_combination ed_list ed_table instr_ensemble
-    | NoCombination ->
-        construct_ensemble ed_list ed_table EnsembleGroupSeries 1
+    | NoCombination -> construct_ensemble ed_list ed_table EnsembleGroupSeries 1
   in
   generate_score ~structure_duration ~instrument_ensemble:instr_ensemble
     ~instrument_principle ~entry_delay_ensemble:ed_ensemble
