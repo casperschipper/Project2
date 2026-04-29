@@ -108,23 +108,23 @@ let instrument_entry_test () =
   let instr_table =
     of_nested_list [ [ 0; 1; 2; 3 ]; [ 0; 1; 3 ]; [ 1; 3 ]; [ 0 ] ]
   in
-  let number_of_layers = 1 in
-  
+  (* this variant *)
+  let number_of_instrument_groups = 3 in
   (* Entry delays in seconds *)
   let ed_list =
-    [ 0.1; 0.2; 0.3; 0.4; 0.5; 0.6; 0.7; 0.8; 0.9; 1.0; 1.1; 1.2 ]
+    [1.0; 2.0;3.0]
     |> mk_par_list mk_entrydelay
   in
   let ed_table =
     of_nested_list
-      [ [ 0; 1; 2; 3; 4 ]; [ 0; 3; 7; 11 ]; [ 0; 9 ]; [ 0; 1; 3; 7 ] ]
+      [ [ 0;1 ]; [ 0; 1 ]; [ 0; 1 ]; [ 0; 1] ]
   in
   let combination = 
-    Combination 
+    NoCombination 
   in
   let layers =
     build_score ~structure_duration:60.0 ~instr_list ~instr_table
-      ~number_of_layers ~ed_list ~ed_table ~combination
+      ~number_of_instrument_groups ~ed_list ~ed_table ~combination
       ~instrument_principle:(Group groupspec) ~entry_delay_principle:Series
       ~union:NoUnion
   in
@@ -166,6 +166,7 @@ let () =
   |> take30 "group_sq SeriesElem / SeriesRep";
   group_sq ensemble (mkGroup GroupAlea GroupSeries 1 5)
   |> take30 "group_sq AleaElem  / SeriesRep";
+  series_sq 5 |> take30 "series" ;
   test_tendency_mask ();
   test_estimating_entry_delay ();
   instrument_entry_test ();

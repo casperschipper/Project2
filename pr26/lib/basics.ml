@@ -282,19 +282,47 @@ let select_groups number_of_groups parlist grps =
 let index_table_groups (Table table) =
   table |> Array.mapi (fun i item -> (i, item))
 
-let construct_ensemble parlist table principle number_of_groups =
-  match principle with
-  | EnsembleGroupAlea ->
-      table |> index_table_groups |> alea_sq
-      |> select_groups number_of_groups parlist
-  | EnsembleGroupSeries ->
-      table |> index_table_groups |> series_select
-      |> select_groups number_of_groups parlist
-  | EnsembleGroupSequence sq ->
-      let itable = index_table_groups table in
-      sequence sq
-      |> Seq.map (lookup_arr itable)
-      |> select_groups number_of_groups parlist
+let construct_ensemble ?(verbose = true) parlist table principle number_of_groups =
+  let result =
+    match principle with
+    | EnsembleGroupAlea ->
+        table |> index_table_groups |> alea_sq
+        |> select_groups number_of_groups parlist
+    | EnsembleGroupSeries ->
+        table |> index_table_groups |> series_select
+        |> select_groups number_of_groups parlist
+    | EnsembleGroupSequence sq ->
+        let itable = index_table_groups table in
+        sequence sq
+        |> Seq.map (lookup_arr itable)
+        |> select_groups number_of_groups parlist
+  in
+  if verbose then begin
+    let principle_str =
+      match principle with
+      | EnsembleGroupAlea -> "Alea"
+      | EnsembleGroupSeries -> "Series"
+      | EnsembleGroupSequence sq ->
+          Printf.sprintf "Sequence [%s]"
+            (sq |> List.map string_of_int |> String.concat ", ")
+    in
+    Printf.printf "construct_ensemble: principle=%s, number_of_groups=%d\n"
+      principle_str number_of_groups;
+    let groups =
+      match result with Ensemble lst -> lst | SingleGroup g -> [ g ]
+    in
+    List.iter
+      (fun (IndexedEnsembleGroup { index; group }) ->
+        let elements = match group with EnsembleGroup arr -> arr in
+        let elem_idxs =
+          elements
+          |> Array.map (fun e -> string_of_int e.index)
+          |> Array.to_list |> String.concat ", "
+        in
+        Printf.printf "  group[%d]: [%s]\n" index elem_idxs)
+      groups
+  end;
+  result
 
 let group_indexes_from_ensemble instrument_ensemble =
   match instrument_ensemble with
@@ -446,6 +474,7 @@ let generate_score ~structure_duration ~instrument_ensemble
     ~instrument_principle ~entry_delay_ensemble ~entry_delay_principle ~union =
   match union with
   | Union ->
+      (* flatten all the indexed groups into one *)
       let entr_arr =
         entry_delay_ensemble |> ensemble_values_union
         |> Array.map entry_to_float
@@ -475,11 +504,11 @@ let generate_score ~structure_duration ~instrument_ensemble
           calculate_layer n_events instrument_principle instr_arr
             entry_delay_principle entr_arr)
 
-let build_score ~structure_duration ~instr_list ~instr_table ~number_of_layers
+let build_score ~structure_duration ~instr_list ~instr_table ~number_of_instrument_groups
     ~ed_list ~ed_table ~combination ~instrument_principle ~entry_delay_principle
     ~union =
   let instr_ensemble =
-    construct_ensemble instr_list instr_table EnsembleGroupSeries number_of_layers
+    construct_ensemble instr_list instr_table EnsembleGroupSeries number_of_instrument_groups
   in
   let ed_ensemble =
     match combination with
