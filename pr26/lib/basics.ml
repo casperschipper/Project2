@@ -373,9 +373,9 @@ let ensemble_to_array_union ensemble =
           ignore index;
           value)
 
-let expected_value selection_principle ensembles =
+let expected_value selection_principle array =
   let ensemble =
-    ensembles |> ensemble_to_array_union |> Array.map entry_to_float
+    array |> Array.map entry_to_float
   in
   (* calculates the expected (average) value produced by the selection principle over the ensemble *)
   let array_average arr =
