@@ -473,7 +473,7 @@ let calculate_number_of_events structure_duration entry_delay_principle
 let calculate_layer n_events instrument_principle inst_arr entry_delay_principle
     ed_arr =
   let instr_seq = sel_seq_of_array n_events instrument_principle inst_arr in
-  let ed_seq = sel_seq_of_array n_events entry_delay_principle ed_arr in
+  let ed_seq = sel_seq_of_array n_events entry_delay_principle ed_arr |> Seq.map entry_to_float in
   let pairs = Seq.zip instr_seq ed_seq |> Seq.take n_events |> List.of_seq in
   let _, events =
     List.fold_left
@@ -498,12 +498,12 @@ let generate_score ~structure_duration ~instrument_ensemble
       (* flatten all the indexed groups into one *)
       let entr_arr =
         entry_delay_ensemble |> ensemble_values_union
-        |> Array.map entry_to_float
+        
       in
       let instr_arr = ensemble_values_union instrument_ensemble in
       let n_events =
         calculate_number_of_events structure_duration entry_delay_principle
-          entry_delay_ensemble
+          entr_arr
       in
       let _ = Printf.printf "estimated events: %d" n_events in
       [
@@ -515,16 +515,16 @@ let generate_score ~structure_duration ~instrument_ensemble
       let instr_arrays = ensemble_values_no_union instrument_ensemble in
       let entr_arr =
         ensemble_values_no_union entry_delay_ensemble
-        |> List.map (Array.map entry_to_float)
+      
       in
-      let layer_from_group_arrays instr_array antr_array =
+      let layer_from_group_arrays instr_array entr_array =
         let n_events =
           calculate_number_of_events structure_duration entry_delay_principle
-            entry_delay_ensemble
+            entr_array 
         in
         let _ = Printf.printf "\nestimated events: %d " n_events in
         calculate_layer n_events instrument_principle instr_array
-          entry_delay_principle antr_array
+          entry_delay_principle (entr_array)
       in
       List.map2 layer_from_group_arrays instr_arrays entr_arr
 

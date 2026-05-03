@@ -68,7 +68,7 @@ let test_estimating_entry_delay () =
   in 
   let test_expected_value principle =
     print_string (principle_to_string principle);
-    expected_value principle entry_delay_ensemble |> Printf.printf "\n%f";
+    expected_value principle (ensemble_values_union entry_delay_ensemble)  |> Printf.printf "\n%f";
     print_endline " \n"
   in
   let _ =
@@ -109,10 +109,10 @@ let instrument_entry_test () =
     of_nested_list [ [ 0; 1; 2; 3 ]; [ 0; 1; 3 ]; [ 1; 3 ]; [ 0 ] ]
   in
   (* this variant *)
-  let number_of_instrument_groups = 2 in
+  let number_of_instrument_groups = 3 in
   (* Entry delays in seconds *)
   let ed_list =
-    [0.1;0.2;0.3;1.0;2.0;3.0;10.0;20.0;30.0]
+    [0.1;0.2;0.3;1.0;2.0;3.0;2.0;5.0]
     |> mk_par_list mk_entrydelay
   in
   let ed_table =
@@ -143,7 +143,7 @@ let instrument_entry_test () =
 
 let () =
   (* some seed *)
-  let _ = Random.init 1 in
+  let _ = Random.init 42 in
   let print_int_list = Pr26.Tools.print_int_list in
   print_string
     "Running some tests on selection principles\nFirst: Tendency masks\n\n";
