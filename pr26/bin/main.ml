@@ -14,7 +14,7 @@ let mk portion smin smax emin emax =
     }
 
 let test_mask =
-  TendencyMask
+  TendencyMask 
     [ 
       mk 1.0 0.2 0.3 0.8 0.9;
       (* parallel  : window stays fixed           *)
@@ -153,7 +153,7 @@ let () =
   |> print_int_list "\n\n Selection Principle: ratio (1,1) (42,3) (3,10)";
   alea_sq [| 0; 1; 2; 3; 4; 5 |]
   |> Seq.take 30 |> List.of_seq
-  |> print_int_list "\n\nalea 5";
+  |> print_int_list "\n\nalea 5"; 
   let ensemble = [ 0; 1; 2; 3; 4 ] in
   let take30 label sq =
     sq |> Seq.take 30 |> List.of_seq |> print_int_list label

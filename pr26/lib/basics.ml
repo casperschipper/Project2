@@ -10,17 +10,28 @@ type _ value =
   | Inst : instr -> instr value
   | Entry : entrydelay -> entrydelay value *)
 
+type problem =
+  | NegativeEntry of float
+  | InvalidInstrumentName
+  | InvalidChordSize
+
+let display_problem p =
+  match p with
+  | NegativeEntry x ->
+      "entry delay is" ^ string_of_float x ^ ", but may not be negative"
+  | InvalidInstrumentName -> "instrument name may not be empty"
+  | InvalidChordSize -> "illegal chord size limit, cannot be zero"
+
 let entry_to_float (Entrydelay x) = x
 (* let value_to_float v = match v with Entry (Entrydelay x) -> x *)
 
 let mk_instr str =
   match str with
-  | "" -> raise (Failure "instrument cannot be empty string")
-  | nonEmpty -> Instrument nonEmpty
+  | "" -> Error InvalidInstrumentName
+  | nonEmpty -> Ok (Instrument nonEmpty)
 
 let mk_entrydelay ed =
-  if ed < 0.0 then raise (Failure "entrydelay cannot be smaller than zero ??")
-  else Entrydelay ed
+  if ed < 0.0 then Error (NegativeEntry ed) else Ok (Entrydelay ed)
 
 (* This is the full list of parameters, currently a should only be instr or entrydelay *)
 type 'a parameter_list = ParameterList of 'a Array.t
@@ -35,7 +46,8 @@ let value_from_element { value; index } =
 type 'a group = EnsembleGroup of 'a element Array.t
 
 let mk_par_list constructor lst =
-  ParameterList (lst |> List.map constructor |> Array.of_list)
+  lst |> List.map constructor |> Tools.sequence_result
+  |> Result.map (fun lst -> ParameterList (Array.of_list lst))
 
 let lookup_index (ParameterList arr) i = arr.(i)
 
@@ -67,7 +79,9 @@ type chordsize = Chordsize of { minsize : int; maxsize : int }
 
 (* chordsize is min and max *)
 let chordsize mini maxi =
-  Chordsize { minsize = min mini maxi; maxsize = max mini maxi }
+  if mini == 0 then Error InvalidChordSize
+  else if maxi == 0 then Error InvalidChordSize
+  else Ok (Chordsize { minsize = min mini maxi; maxsize = max mini maxi })
 
 (* a table is an array of arrays *)
 
@@ -334,14 +348,14 @@ let group_indexes_from_ensemble instrument_ensemble =
 let combination_compatibility (Table instrument_table) (Table other_table) =
   Array.length instrument_table == Array.length other_table
 
-let construct_ensemble_combination ?(verbose = true) parlist table instrument_ensemble  =
+let construct_ensemble_combination ?(verbose = true) parlist table
+    instrument_ensemble =
   let indexes = group_indexes_from_ensemble instrument_ensemble in
   let n_groups = List.length indexes in
   let itable = index_table_groups table |> Array.to_list in
   let result = sequence itable |> select_groups n_groups parlist in
   if verbose then begin
-  let principle_str =
-      "combination"  in
+    let principle_str = "combination" in
     Printf.printf "construct_ensemble: principle=%s, number_of_groups=%d\n"
       principle_str n_groups;
     let groups =
@@ -374,9 +388,7 @@ let ensemble_to_array_union ensemble =
           value)
 
 let expected_value selection_principle array =
-  let ensemble =
-    array |> Array.map entry_to_float
-  in
+  let ensemble = array |> Array.map entry_to_float in
   (* calculates the expected (average) value produced by the selection principle over the ensemble *)
   let array_average arr =
     let sum = Array.fold_left ( +. ) 0.0 arr in
@@ -473,7 +485,10 @@ let calculate_number_of_events structure_duration entry_delay_principle
 let calculate_layer n_events instrument_principle inst_arr entry_delay_principle
     ed_arr =
   let instr_seq = sel_seq_of_array n_events instrument_principle inst_arr in
-  let ed_seq = sel_seq_of_array n_events entry_delay_principle ed_arr |> Seq.map entry_to_float in
+  let ed_seq =
+    sel_seq_of_array n_events entry_delay_principle ed_arr
+    |> Seq.map entry_to_float
+  in
   let pairs = Seq.zip instr_seq ed_seq |> Seq.take n_events |> List.of_seq in
   let _, events =
     List.fold_left
@@ -496,10 +511,7 @@ let generate_score ~structure_duration ~instrument_ensemble
   match union with
   | Union ->
       (* flatten all the indexed groups into one *)
-      let entr_arr =
-        entry_delay_ensemble |> ensemble_values_union
-        
-      in
+      let entr_arr = entry_delay_ensemble |> ensemble_values_union in
       let instr_arr = ensemble_values_union instrument_ensemble in
       let n_events =
         calculate_number_of_events structure_duration entry_delay_principle
@@ -513,18 +525,15 @@ let generate_score ~structure_duration ~instrument_ensemble
   | NoUnion ->
       (* no union, multiple groups possible for instrument *)
       let instr_arrays = ensemble_values_no_union instrument_ensemble in
-      let entr_arr =
-        ensemble_values_no_union entry_delay_ensemble
-      
-      in
+      let entr_arr = ensemble_values_no_union entry_delay_ensemble in
       let layer_from_group_arrays instr_array entr_array =
         let n_events =
           calculate_number_of_events structure_duration entry_delay_principle
-            entr_array 
+            entr_array
         in
         let _ = Printf.printf "\nestimated events: %d " n_events in
         calculate_layer n_events instrument_principle instr_array
-          entry_delay_principle (entr_array)
+          entry_delay_principle entr_array
       in
       List.map2 layer_from_group_arrays instr_arrays entr_arr
 
