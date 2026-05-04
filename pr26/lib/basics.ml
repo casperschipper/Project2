@@ -14,6 +14,7 @@ type problem =
   | NegativeEntry of float
   | InvalidInstrumentName
   | InvalidChordSize
+  | TableSizeMismatch
 
 let display_problem p =
   match p with
@@ -21,6 +22,9 @@ let display_problem p =
       "entry delay is" ^ string_of_float x ^ ", but may not be negative"
   | InvalidInstrumentName -> "instrument name may not be empty"
   | InvalidChordSize -> "illegal chord size limit, cannot be zero"
+  | TableSizeMismatch ->
+      "instr_table and ed_table must have the same number of groups when \
+       Combination is used"
 
 let entry_to_float (Entrydelay x) = x
 (* let value_to_float v = match v with Entry (Entrydelay x) -> x *)
@@ -87,7 +91,11 @@ let chordsize mini maxi =
 
 type instrument = Instrument of { name : string; chordsize : chordsize }
 
-let inst name chordsize = Instrument { name; chordsize }
+let inst name cs =
+  let ( let* ) = Result.bind in
+  let* c = cs in
+  if name = "" then Error InvalidInstrumentName
+  else Ok (Instrument { name; chordsize = c })
 
 (* test materials *)
 
@@ -431,6 +439,43 @@ type union =
   | NoUnion
 (* the number of layers is equal to the number of groups in the ensemble, the combined parameters also have same number of groups *)
 
+(* we combine all the parameters currently supported into one record, so we can validate dependencies 
+current dependencies include, the number of groups in 
+*)
+type score_config = {
+  variant_duration : float;
+  instr_list : instrument parameter_list;
+  instr_table : ptable;
+  ed_list : entrydelay parameter_list;
+  ed_table : ptable;
+  number_of_instrument_groups : int;
+  combination : combination;
+  instrument_principle : selection_principle;
+  entry_delay_principle : selection_principle;
+  union : union;
+}
+
+let mk_score_config ~variant_duration ~instr_list ~instr_table ~ed_list
+    ~ed_table ~number_of_instrument_groups ~combination ~instrument_principle
+    ~entry_delay_principle ~union =
+  match combination with
+  | Combination when not (combination_compatibility instr_table ed_table) ->
+      Error TableSizeMismatch
+  | _ ->
+      Ok
+        {
+          variant_duration;
+          instr_list;
+          instr_table;
+          ed_list;
+          ed_table;
+          number_of_instrument_groups;
+          combination;
+          instrument_principle;
+          entry_delay_principle;
+          union;
+        }
+
 (* ---- Score generation ---- *)
 
 type score_event = { time : float; instrument : instrument; chordsize : int }
@@ -477,10 +522,10 @@ let sel_seq_of_ensemble_no_union n principle ensemble =
   ensemble |> ensemble_values_no_union
   |> List.map (fun arr -> sel_seq_of_array n principle arr)
 
-let calculate_number_of_events structure_duration entry_delay_principle
+let calculate_number_of_events variant_duration entry_delay_principle
     entry_delay_ensemble =
   let avg_ed = expected_value entry_delay_principle entry_delay_ensemble in
-  int_of_float (floor (structure_duration /. avg_ed))
+  int_of_float (floor (variant_duration /. avg_ed))
 
 let calculate_layer n_events instrument_principle inst_arr entry_delay_principle
     ed_arr =
@@ -506,18 +551,18 @@ let calculate_layer n_events instrument_principle inst_arr entry_delay_principle
   List.rev events
 
 (** Generate a list of score events, using instrument based vertical density *)
-let generate_score ~structure_duration ~instrument_ensemble
+let generate_score ~variant_duration ~instrument_ensemble
     ~instrument_principle ~entry_delay_ensemble ~entry_delay_principle ~union =
   match union with
   | Union ->
-      (* flatten all the indexed groups into one *)
+      (* flatten all the indexed groups of the ensemble into one *)
       let entr_arr = entry_delay_ensemble |> ensemble_values_union in
       let instr_arr = ensemble_values_union instrument_ensemble in
       let n_events =
-        calculate_number_of_events structure_duration entry_delay_principle
+        calculate_number_of_events variant_duration entry_delay_principle
           entr_arr
       in
-      let _ = Printf.printf "estimated events: %d" n_events in
+      let _ = Printf.printf "estimated events: %d \n" n_events in
       [
         calculate_layer n_events instrument_principle instr_arr
           entry_delay_principle entr_arr;
@@ -528,28 +573,32 @@ let generate_score ~structure_duration ~instrument_ensemble
       let entr_arr = ensemble_values_no_union entry_delay_ensemble in
       let layer_from_group_arrays instr_array entr_array =
         let n_events =
-          calculate_number_of_events structure_duration entry_delay_principle
+          calculate_number_of_events variant_duration entry_delay_principle
             entr_array
         in
         let _ = Printf.printf "\nestimated events: %d " n_events in
         calculate_layer n_events instrument_principle instr_array
           entry_delay_principle entr_array
       in
+      (* treat the ensemble as a list of arrays and compute a layer for each group *)
       List.map2 layer_from_group_arrays instr_arrays entr_arr
 
-let build_score ~structure_duration ~instr_list ~instr_table
-    ~number_of_instrument_groups ~ed_list ~ed_table ~combination
-    ~instrument_principle ~entry_delay_principle ~union =
+let build_score cfg =
   let instr_ensemble =
-    construct_ensemble instr_list instr_table EnsembleGroupSeries
-      number_of_instrument_groups
+    construct_ensemble cfg.instr_list cfg.instr_table EnsembleGroupSeries
+      cfg.number_of_instrument_groups
   in
   let ed_ensemble =
-    match combination with
+    match cfg.combination with
     | Combination ->
-        construct_ensemble_combination ed_list ed_table instr_ensemble
-    | NoCombination -> construct_ensemble ed_list ed_table EnsembleGroupSeries 1
+        (* the index of the instrument ensemble groups is reused for entry delay *)
+        construct_ensemble_combination cfg.ed_list cfg.ed_table instr_ensemble
+    | NoCombination ->
+        (* there is only one group for the entry delay ensemble, and it is autonomous *)
+        construct_ensemble cfg.ed_list cfg.ed_table EnsembleGroupSeries 1
   in
-  generate_score ~structure_duration ~instrument_ensemble:instr_ensemble
-    ~instrument_principle ~entry_delay_ensemble:ed_ensemble
-    ~entry_delay_principle ~union
+  generate_score ~variant_duration:cfg.variant_duration
+    ~instrument_ensemble:instr_ensemble
+    ~instrument_principle:cfg.instrument_principle
+    ~entry_delay_ensemble:ed_ensemble
+    ~entry_delay_principle:cfg.entry_delay_principle ~union:cfg.union

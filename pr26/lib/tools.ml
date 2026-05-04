@@ -86,3 +86,8 @@ let sequence_result arr =
       | Ok x, Ok xs -> Ok (x :: xs)
       | Error e, _ | _, Error e -> Error e)
     arr (Ok [])
+
+let print_header str = 
+  print_endline str;
+  print_endline (List.init (String.length str) (fun _ -> "=") |> String.concat "");
+  print_newline ()
