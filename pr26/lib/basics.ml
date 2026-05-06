@@ -149,6 +149,38 @@ let tendency_mask count ensemble sections =
   |> Seq.map (fun x ->
       x *. float_of_int l |> floor |> int_of_float |> index ensemble)
 
+let section_sq_gen n (TendencySection s) : (unit -> float) Seq.t =
+  Seq.init n (fun i ->
+    let t = if n <= 1 then 0.0 else Float.of_int i /. Float.of_int (n - 1) in
+    let lo = lerp (s.start_min :> float) (s.end_min :> float) t in
+    let hi = lerp (s.start_max :> float) (s.end_max :> float) t in
+    let lo, hi = if lo <= hi then (lo, hi) else (hi, lo) in
+    fun () -> lo +. Random.float (hi -. lo))
+
+let tendency_mask_gen count (ensemble : 'a array) (TendencyMask sections)
+    : (unit -> 'a) Seq.t =
+  let l = Array.length ensemble in
+  let portions = List.map (fun (TendencySection s) -> s.portion) sections in
+  let total = List.fold_left ( +. ) 0.0 portions in
+  let exact = List.map (fun w -> w /. total *. Float.of_int count) portions in
+  let floors = List.map (fun x -> int_of_float (floor x)) exact in
+  let fracs = List.map2 (fun x f -> x -. Float.of_int f) exact floors in
+  let allocated = List.fold_left ( + ) 0 floors in
+  let remainder = count - allocated in
+  let indexed = List.mapi (fun i f -> (i, f)) fracs in
+  let sorted = List.sort (fun (_, a) (_, b) -> Float.compare b a) indexed in
+  let bonus_arr = Array.make (List.length sections) 0 in
+  List.iteri
+    (fun rank (orig_i, _) -> if rank < remainder then bonus_arr.(orig_i) <- 1)
+    sorted;
+  let counts = List.mapi (fun i f -> f + bonus_arr.(i)) floors in
+  List.map2 section_sq_gen counts sections
+  |> List.to_seq |> Seq.concat
+  |> Seq.map (fun sample_float ->
+      fun () ->
+        sample_float () *. float_of_int l
+        |> floor |> int_of_float |> Array.get ensemble)
+
 let group_selection_to_string gs =
   match gs with GroupAlea -> "alea" | GroupSeries -> "series"
 
@@ -458,7 +490,7 @@ let sel_seq_of_array n principle arr =
       sequence indices |> Seq.map (fun i -> arr.(i)) |> Seq.take n
   | Tendency sections ->
       tendency_mask n arr
-        sections (* note: this has a certain number of events *)
+        sections (* NOTE: unlike the others, this has a certain number of events *)
 
 (* do the combination case *)
 let sel_seq_of_ensemble_no_union n principle ensemble =
@@ -487,6 +519,37 @@ let calculate_layer n_events instrument_principle inst_arr entry_delay_principle
         in
         (time +. ed, { time; instrument = instr; chordsize } :: acc))
       (0.0, []) pairs
+  in
+  List.rev events
+
+let calculate_layer_autonomous_density n_events inst_arr mask
+    entry_delay_principle ed_arr (density_seq : int Seq.t) =
+  let gen_seq = tendency_mask_gen n_events inst_arr mask in
+  let ed_seq =
+    sel_seq_of_array n_events entry_delay_principle ed_arr
+    |> Seq.map entry_to_float
+  in
+  let triples =
+    Seq.zip gen_seq (Seq.zip ed_seq density_seq)
+    |> Seq.take n_events |> List.of_seq
+  in
+  let _, events =
+    List.fold_left
+      (fun (time, acc) (gen, (ed, density)) ->
+        let new_events =
+          List.init density (fun _ ->
+            let instr = gen () in
+            let (Instrument { chordsize = Chordsize { minsize; maxsize }; _ }) =
+              instr
+            in
+            let chordsize =
+              if minsize = maxsize then minsize
+              else Random.int (maxsize - minsize + 1) + minsize
+            in
+            { time; instrument = instr; chordsize })
+        in
+        (time +. ed, new_events @ acc))
+      (0.0, []) triples
   in
   List.rev events
 

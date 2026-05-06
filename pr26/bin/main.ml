@@ -126,8 +126,8 @@ let instrument_entry_test () =
     build_score ~structure_duration:60.0 ~instr_list ~instr_table
       ~number_of_instrument_groups ~ed_list ~ed_table ~combination
       ~instrument_principle:(Group groupspec) ~entry_delay_principle:Series
-      ~union:NoUnion
-  in
+      ~union:NoUnion 
+  in 
   print_endline "\n=== instrument_entry_test ===";
   List.iteri
     (fun i events ->
