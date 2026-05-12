@@ -132,12 +132,14 @@ type selection_principle =
   | Tendency of tendency_mask_spec
   | Sequence of int list (* user defined order, looped *)
 
+type autonomous_density = {
+  a : int;
+  z : int;
+  selection_principle : selection_principle;
+}
+
 type vertical_density =
-  | Autonomous of {
-      a : int;
-      z : int;
-      selection_principle : selection_principle;
-    }
+  | Autonomous of autonomous_density
   | InstrumentDensity
   | ChordDensity
 
@@ -566,6 +568,78 @@ let sel_seq_of_array n principle arr =
   | Tendency sections -> tendency_mask n arr sections
 (* NOTE: unlike the others, this has a certain number of events *)
 
+(** Like [sel_seq_of_array] but returns [n] per-time-point generators.
+    Calling a generator multiple times stays at the same "position" within the
+    overall sequence, so Tendency boundaries are frozen for a whole time point
+    and only advance when the outer sequence moves to the next element.
+    For all non-Tendency principles, a single shared mutable sequence is
+    threaded continuously across time points (the series does not restart per
+    time point). For Series and Ratio, a last-seen guard ensures the first
+    value yielded for a new time point is never a repeat of the final value
+    from the previous one, even across permutation-row boundaries. *)
+let sel_seq_gen_of_array n principle (arr : 'a array) : (unit -> 'a) Seq.t =
+  let l = Array.length arr in
+  match principle with
+  | Alea ->
+      let gen () = arr.(Random.int l) in
+      Seq.init n (fun _ -> gen)
+  | Series ->
+      let state = ref (series_select arr) in
+      let last = ref None in
+      let gen () =
+        let rec next () =
+          match Seq.uncons !state with
+          | None -> arr.(0)
+          | Some (v, rest) ->
+              state := rest;
+              if !last = Some v then next ()
+              else (last := Some v; v)
+        in
+        next ()
+      in
+      Seq.init n (fun _ -> gen)
+  | Ratio ratios ->
+      let ratio_arr =
+        ratios
+        |> List.concat_map (fun (i, cnt) -> repeat arr.(i) cnt)
+        |> Array.of_list
+      in
+      let state = ref (series_select ratio_arr) in
+      let last = ref None in
+      let gen () =
+        let rec next () =
+          match Seq.uncons !state with
+          | None -> arr.(0)
+          | Some (v, rest) ->
+              state := rest;
+              if !last = Some v then next ()
+              else (last := Some v; v)
+        in
+        next ()
+      in
+      Seq.init n (fun _ -> gen)
+  | Group groupspec ->
+      let state = ref (group_sq (Array.to_list arr) groupspec) in
+      let gen () =
+        match Seq.uncons !state with
+        | None -> arr.(0)
+        | Some (v, rest) ->
+            state := rest;
+            v
+      in
+      Seq.init n (fun _ -> gen)
+  | Sequence indices ->
+      let state = ref (sequence indices |> Seq.map (fun i -> arr.(i))) in
+      let gen () =
+        match Seq.uncons !state with
+        | None -> arr.(0)
+        | Some (v, rest) ->
+            state := rest;
+            v
+      in
+      Seq.init n (fun _ -> gen)
+  | Tendency sections -> tendency_mask_gen n arr sections
+
 (* do the combination case *)
 let sel_seq_of_ensemble_no_union n principle ensemble =
   ensemble |> ensemble_values_no_union
@@ -599,41 +673,54 @@ let calculate_layer n_events instrument_principle inst_arr entry_delay_principle
   in
   List.rev events
 
-let calculate_layer_autonomous_density n_events inst_arr mask
-    entry_delay_principle ed_arr (density_seq : int Seq.t) =
-  let gen_seq = tendency_mask_gen n_events inst_arr mask in
+let calculate_layer_autonomous_density n_events instrument_principle inst_arr
+    auto_density entry_delay_principle ed_arr =
+  let density_list =
+    List.init
+      (auto_density.z - auto_density.a + 1)
+      (fun i -> i + auto_density.a)
+  in
+  let _ = print_int_list "Possible densities as follows" density_list in
+  let density_array = Array.of_list density_list in
+  let density_seq =
+    sel_seq_of_array n_events auto_density.selection_principle density_array
+  in
   let ed_seq =
     sel_seq_of_array n_events entry_delay_principle ed_arr
     |> Seq.map entry_to_float
   in
-  let triples =
-    Seq.zip gen_seq (Seq.zip ed_seq density_seq)
-    |> Seq.take n_events |> List.of_seq
+  let pairs = Seq.zip ed_seq density_seq |> Seq.take n_events |> List.of_seq in
+  let gen_seq = sel_seq_gen_of_array n_events instrument_principle inst_arr in
+  let rec fill_to_density time gen remaining acc =
+    if remaining <= 0 then acc
+    else
+      let instr = gen () in
+      let (Instrument { chordsize = Chordsize { minsize; maxsize }; _ }) =
+        instr
+      in
+      let chordsize =
+        if minsize = maxsize then minsize
+        else Random.int (maxsize - minsize + 1) + minsize
+      in
+      let actual_chordsize = min chordsize remaining in
+      fill_to_density time gen (remaining - actual_chordsize)
+        ({ time; instrument = instr; chordsize = actual_chordsize } :: acc)
   in
-  let _, events =
+  let _, _, events =
     List.fold_left
-      (fun (time, acc) (gen, (ed, density)) ->
-        let new_events =
-          List.init density (fun _ ->
-              let instr = gen () in
-              let (Instrument { chordsize = Chordsize { minsize; maxsize }; _ })
-                  =
-                instr
-              in
-              let chordsize =
-                if minsize = maxsize then minsize
-                else Random.int (maxsize - minsize + 1) + minsize
-              in
-              { time; instrument = instr; chordsize })
-        in
-        (time +. ed, new_events @ acc))
-      (0.0, []) triples
+      (fun (time, gen_seq, acc) (ed, density) ->
+        match Seq.uncons gen_seq with
+        | None -> (time +. ed, gen_seq, acc)
+        | Some (gen, rest) ->
+            let new_events = fill_to_density time gen density [] in
+            (time +. ed, rest, new_events @ acc))
+      (0.0, gen_seq, []) pairs
   in
   List.rev events
 
 (** Generate a list of score events, using instrument based vertical density *)
 let generate_score ~variant_duration ~instrument_ensemble ~instrument_principle
-    ~entry_delay_ensemble ~entry_delay_principle ~union ~density =
+    ~entry_delay_ensemble ~entry_delay_principle ~union ~density:_density =
   match union with
   | Union ->
       (* flatten all the indexed groups of the ensemble into one *)
