@@ -22,10 +22,9 @@ You should be able to run it with:
 
 # TODOS
 
-1. Union and combination
-2. Vertical density
+[x] Union and combination
+[x] Any problem that may occur return it as result.
 
-[ ] Any problem that may occur return it as result.
 [ ] Implement autonomous density
 [ ] Define input as a runtime prompt?
 [ ] Store input as a reusable file?

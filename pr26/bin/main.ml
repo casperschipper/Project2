@@ -15,7 +15,7 @@ let mk portion smin smax emin emax =
 
 let test_mask =
   TendencyMask
-    [ 
+    [
       mk 1.0 0.2 0.3 0.8 0.9;
       (* parallel  : window stays fixed           *)
       mk 1.0 0.0 0.1 0.1 1.0;
@@ -51,7 +51,7 @@ let test_estimating_entry_delay () =
   let entry_delay_array =
     [ 1; 2; 3; 4; 5; 6; 7; 8; 9; 10; 11; 12; 13; 14; 15; 16 ]
     |> List.map (fun x -> float_of_int x *. 0.1)
-    |> mk_par_list mk_entrydelay
+    |> mk_par_list mk_entrydelay |> Result.get_ok
   in
   let entry_delay_table =
     [
@@ -65,10 +65,11 @@ let test_estimating_entry_delay () =
   in
   let entry_delay_ensemble =
     construct_ensemble entry_delay_array entry_delay_table EnsembleGroupAlea 2
-  in 
+  in
   let test_expected_value principle =
     print_string (principle_to_string principle);
-    expected_value principle (ensemble_values_union entry_delay_ensemble)  |> Printf.printf "\n%f";
+    expected_value principle (ensemble_values_union entry_delay_ensemble)
+    |> Printf.printf "\n%f";
     print_endline " \n"
   in
   let _ =
@@ -78,7 +79,7 @@ let test_estimating_entry_delay () =
       Alea;
       Series;
       Ratio [ (0, 1); (1, 3); (2, 4) ];
-      Group groupspec; 
+      Group groupspec;
       Tendency test_mask;
       Sequence [ 0; 3; 5 ];
     ]
@@ -98,36 +99,7 @@ let write_score filename layers =
     layers;
   close_out oc
 
-let instrument_entry_test () =
-  (* Instruments with chord sizes *)
-  let guitar = inst "guitar" (chordsize 1 2) in
-  let piano = inst "piano" (chordsize 1 10) in
-  let basedrum = inst "basedrum" (chordsize 1 1) in
-  let marimba = inst "marimba" (chordsize 1 4) in
-  let instr_list = mk_par_list id [ guitar; piano; basedrum; marimba ] in
-  let instr_table =
-    of_nested_list [ [ 0; 1; 2; 3 ]; [ 0; 1; 3 ]; [ 1; 3 ]; [ 0 ] ]
-  in
-  (* this variant *)
-  let number_of_instrument_groups = 3 in
-  (* Entry delays in seconds *)
-  let ed_list =
-    [0.1;0.2;0.3;1.0;2.0;3.0;2.0;5.0]
-    |> mk_par_list mk_entrydelay
-  in
-  let ed_table =
-    of_nested_list
-      [ [ 0;1;2 ]; [3;4;5];[0;1;2;3;4;5;6;7;8];[6;7;8]]
-  in
-  let combination = 
-    Combination 
-  in
-  let layers =
-    build_score ~structure_duration:60.0 ~instr_list ~instr_table
-      ~number_of_instrument_groups ~ed_list ~ed_table ~combination
-      ~instrument_principle:(Group groupspec) ~entry_delay_principle:Series
-      ~union:NoUnion 
-  in 
+let print_layers layers =
   print_endline "\n=== instrument_entry_test ===";
   List.iteri
     (fun i events ->
@@ -137,16 +109,53 @@ let instrument_entry_test () =
         (fun { time; instrument = Instrument { name; _ }; chordsize } ->
           Printf.printf "%-8.3f %-12s %d\n" time name chordsize)
         events)
-    layers;
-  write_score "score.projekt2" layers;
-  print_endline "Score written to score.projekt2"
+    layers
+
+let instrument_entry_test () =
+  (* we use the result monad in the form of let*, so we can combine a bunch of parameters that may be picky about their input,
+   without having to wire through all the Error cases *)
+  let ( let* ) = Result.bind in
+  let _ = print_header "starting instrument entry test" in
+  let result =
+    let* instr_list =
+      mk_par_list id
+        [
+          inst "guitar" (chordsize 1 2);
+          inst "piano" (chordsize 1 10);
+          inst "basedrum" (chordsize 1 1);
+          inst "marimba" (chordsize 1 4);
+        ]
+    in
+    let* ed_list =
+      mk_par_list mk_entrydelay [ 0.1; 0.2; 0.3; 1.0; 2.0; 3.0; 2.0; 5.0 ]
+    in
+    let instr_table =
+      of_nested_list [ [ 0; 1; 2; 3 ]; [ 0; 1; 3 ]; [ 1; 3 ]; [ 0 ] ]
+    in
+    let ed_table =
+      of_nested_list
+        [ [ 0; 1; 2 ]; [ 3; 4; 5 ]; [ 0; 1; 2; 3; 4; 5; 6; 7 ]; [ 6; 7 ] ]
+    in
+    let* d = mk_autonomous ~tr:12 ~a:1 ~z:10 ~selection_principle:Series in
+    mk_score_config ~variant_duration:60.0 ~instr_list ~instr_table
+      ~number_of_instrument_groups:3 ~ed_list ~ed_table ~combination:Combination
+      ~instrument_principle:(Tendency test_mask) ~entry_delay_principle:Series
+      ~union:NoUnion ~density:d
+    |> Result.map build_score
+  in
+  match result with
+  | Error e ->
+      Printf.printf "instrument_entry_test failed: %s\n" (display_problem e)
+  | Ok layers ->
+      print_layers layers;
+      write_score "score.projekt2" layers;
+      print_endline "Score written to score.projekt2"
 
 let () =
   (* some seed *)
-  let _ = Random.init 42 in
+  let _ = Random.init 93 in
   let print_int_list = Pr26.Tools.print_int_list in
-  print_string
-    "Running some tests on selection principles\nFirst: Tendency masks\n\n";
+  print_header "isolated test of tendency masks";
   test_tendency_mask ();
   ratio_sq [ (0, 1); (1, 2); (3, 4) ]
   |> Seq.take 100 |> List.of_seq
@@ -166,7 +175,7 @@ let () =
   |> take30 "group_sq SeriesElem / SeriesRep";
   group_sq ensemble (mkGroup GroupAlea GroupSeries 1 5)
   |> take30 "group_sq AleaElem  / SeriesRep";
-  series_sq 5 |> take30 "series" ;
+  series_sq 5 |> take30 "series";
   test_tendency_mask ();
   test_estimating_entry_delay ();
   instrument_entry_test ();

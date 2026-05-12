@@ -5,22 +5,34 @@ type ptable = Table of int Array.t Array.t
 type instr = Instrument of string
 type entrydelay = Entrydelay of float
 
-(* a value
-type _ value =
-  | Inst : instr -> instr value
-  | Entry : entrydelay -> entrydelay value *)
+type problem =
+  | NegativeEntry of float
+  | InvalidInstrumentName
+  | InvalidChordSize
+  | TableSizeMismatch
+  | InvalidDensity of string
+
+let display_problem p =
+  match p with
+  | NegativeEntry x ->
+      "entry delay is" ^ string_of_float x ^ ", but may not be negative"
+  | InvalidInstrumentName -> "instrument name may not be empty"
+  | InvalidChordSize -> "illegal chord size limit, cannot be zero"
+  | TableSizeMismatch ->
+      "instr_table and ed_table must have the same number of groups when \
+       Combination is used"
+  | InvalidDensity str -> "invalid density definition: " ^ str
 
 let entry_to_float (Entrydelay x) = x
 (* let value_to_float v = match v with Entry (Entrydelay x) -> x *)
 
 let mk_instr str =
   match str with
-  | "" -> raise (Failure "instrument cannot be empty string")
-  | nonEmpty -> Instrument nonEmpty
+  | "" -> Error InvalidInstrumentName
+  | nonEmpty -> Ok (Instrument nonEmpty)
 
 let mk_entrydelay ed =
-  if ed < 0.0 then raise (Failure "entrydelay cannot be smaller than zero ??")
-  else Entrydelay ed
+  if ed < 0.0 then Error (NegativeEntry ed) else Ok (Entrydelay ed)
 
 (* This is the full list of parameters, currently a should only be instr or entrydelay *)
 type 'a parameter_list = ParameterList of 'a Array.t
@@ -35,7 +47,8 @@ let value_from_element { value; index } =
 type 'a group = EnsembleGroup of 'a element Array.t
 
 let mk_par_list constructor lst =
-  ParameterList (lst |> List.map constructor |> Array.of_list)
+  lst |> List.map constructor |> sequence_result
+  |> Result.map (fun lst -> ParameterList (Array.of_list lst))
 
 let lookup_index (ParameterList arr) i = arr.(i)
 
@@ -67,13 +80,19 @@ type chordsize = Chordsize of { minsize : int; maxsize : int }
 
 (* chordsize is min and max *)
 let chordsize mini maxi =
-  Chordsize { minsize = min mini maxi; maxsize = max mini maxi }
+  if mini == 0 then Error InvalidChordSize
+  else if maxi == 0 then Error InvalidChordSize
+  else Ok (Chordsize { minsize = min mini maxi; maxsize = max mini maxi })
 
 (* a table is an array of arrays *)
 
 type instrument = Instrument of { name : string; chordsize : chordsize }
 
-let inst name chordsize = Instrument { name; chordsize }
+let inst name cs =
+  let ( let* ) = Result.bind in
+  let* c = cs in
+  if name = "" then Error InvalidInstrumentName
+  else Ok (Instrument { name; chordsize = c })
 
 (* test materials *)
 
@@ -113,6 +132,22 @@ type selection_principle =
   | Tendency of tendency_mask_spec
   | Sequence of int list (* user defined order, looped *)
 
+type vertical_density =
+  | Autonomous of {
+      a : int;
+      z : int;
+      selection_principle : selection_principle;
+    }
+  | InstrumentDensity
+  | ChordDensity
+
+let mk_autonomous ~tr ~a ~z ~selection_principle =
+  if a < 1 then Error (InvalidDensity "too small")
+  else if z > tr then
+    Error (InvalidDensity "may not be larger than octave division")
+  else if z < a then Error (InvalidDensity "z should be bigger than a")
+  else Ok (Autonomous { a; z; selection_principle })
+
 let section_sq n (TendencySection s) =
   Seq.init n (fun i ->
       let t = if n <= 1 then 0.0 else Float.of_int i /. Float.of_int (n - 1) in
@@ -151,14 +186,17 @@ let tendency_mask count ensemble sections =
 
 let section_sq_gen n (TendencySection s) : (unit -> float) Seq.t =
   Seq.init n (fun i ->
-    let t = if n <= 1 then 0.0 else Float.of_int i /. Float.of_int (n - 1) in
-    let lo = lerp (s.start_min :> float) (s.end_min :> float) t in
-    let hi = lerp (s.start_max :> float) (s.end_max :> float) t in
-    let lo, hi = if lo <= hi then (lo, hi) else (hi, lo) in
-    fun () -> lo +. Random.float (hi -. lo))
+      let t = if n <= 1 then 0.0 else Float.of_int i /. Float.of_int (n - 1) in
+      let lo = lerp (s.start_min :> float) (s.end_min :> float) t in
+      let hi = lerp (s.start_max :> float) (s.end_max :> float) t in
+      let lo, hi = if lo <= hi then (lo, hi) else (hi, lo) in
+      fun () -> lo +. Random.float (hi -. lo))
 
-let tendency_mask_gen count (ensemble : 'a array) (TendencyMask sections)
-    : (unit -> 'a) Seq.t =
+(* an alternative version of tendency mask that can be "paused", 
+more values of a timeslot can be consumed before moving the boundaries 
+*)
+let tendency_mask_gen count (ensemble : 'a array) (TendencyMask sections) :
+    (unit -> 'a) Seq.t =
   let l = Array.length ensemble in
   let portions = List.map (fun (TendencySection s) -> s.portion) sections in
   let total = List.fold_left ( +. ) 0.0 portions in
@@ -178,8 +216,8 @@ let tendency_mask_gen count (ensemble : 'a array) (TendencyMask sections)
   |> List.to_seq |> Seq.concat
   |> Seq.map (fun sample_float ->
       fun () ->
-        sample_float () *. float_of_int l
-        |> floor |> int_of_float |> Array.get ensemble)
+       sample_float () *. float_of_int l
+       |> floor |> int_of_float |> Array.get ensemble)
 
 let group_selection_to_string gs =
   match gs with GroupAlea -> "alea" | GroupSeries -> "series"
@@ -366,14 +404,14 @@ let group_indexes_from_ensemble instrument_ensemble =
 let combination_compatibility (Table instrument_table) (Table other_table) =
   Array.length instrument_table == Array.length other_table
 
-let construct_ensemble_combination ?(verbose = true) parlist table instrument_ensemble  =
+let construct_ensemble_combination ?(verbose = true) parlist table
+    instrument_ensemble =
   let indexes = group_indexes_from_ensemble instrument_ensemble in
   let n_groups = List.length indexes in
   let itable = index_table_groups table |> Array.to_list in
   let result = sequence itable |> select_groups n_groups parlist in
   if verbose then begin
-  let principle_str =
-      "combination"  in
+    let principle_str = "combination" in
     Printf.printf "construct_ensemble: principle=%s, number_of_groups=%d\n"
       principle_str n_groups;
     let groups =
@@ -406,9 +444,7 @@ let ensemble_to_array_union ensemble =
           value)
 
 let expected_value selection_principle array =
-  let ensemble =
-    array |> Array.map entry_to_float
-  in
+  let ensemble = array |> Array.map entry_to_float in
   (* calculates the expected (average) value produced by the selection principle over the ensemble *)
   let array_average arr =
     let sum = Array.fold_left ( +. ) 0.0 arr in
@@ -451,6 +487,45 @@ type union =
   | NoUnion
 (* the number of layers is equal to the number of groups in the ensemble, the combined parameters also have same number of groups *)
 
+(* we combine all the parameters currently supported into one record, so we can validate dependencies 
+current dependencies include, the number of groups in 
+*)
+type score_config = {
+  variant_duration : float;
+  instr_list : instrument parameter_list;
+  instr_table : ptable;
+  ed_list : entrydelay parameter_list;
+  ed_table : ptable;
+  number_of_instrument_groups : int;
+  combination : combination;
+  instrument_principle : selection_principle;
+  entry_delay_principle : selection_principle;
+  union : union;
+  density : vertical_density;
+}
+
+let mk_score_config ~variant_duration ~instr_list ~instr_table ~ed_list
+    ~ed_table ~number_of_instrument_groups ~combination ~instrument_principle
+    ~entry_delay_principle ~union ~density =
+  match combination with
+  | Combination when not (combination_compatibility instr_table ed_table) ->
+      Error TableSizeMismatch
+  | _ ->
+      Ok
+        {
+          variant_duration;
+          instr_list;
+          instr_table;
+          ed_list;
+          ed_table;
+          number_of_instrument_groups;
+          combination;
+          instrument_principle;
+          entry_delay_principle;
+          union;
+          density;
+        }
+
 (* ---- Score generation ---- *)
 
 type score_event = { time : float; instrument : instrument; chordsize : int }
@@ -488,24 +563,26 @@ let sel_seq_of_array n principle arr =
   | Group groupspec -> group_sq (Array.to_list arr) groupspec |> Seq.take n
   | Sequence indices ->
       sequence indices |> Seq.map (fun i -> arr.(i)) |> Seq.take n
-  | Tendency sections ->
-      tendency_mask n arr
-        sections (* NOTE: unlike the others, this has a certain number of events *)
+  | Tendency sections -> tendency_mask n arr sections
+(* NOTE: unlike the others, this has a certain number of events *)
 
 (* do the combination case *)
 let sel_seq_of_ensemble_no_union n principle ensemble =
   ensemble |> ensemble_values_no_union
   |> List.map (fun arr -> sel_seq_of_array n principle arr)
 
-let calculate_number_of_events structure_duration entry_delay_principle
+let calculate_number_of_events variant_duration entry_delay_principle
     entry_delay_ensemble =
   let avg_ed = expected_value entry_delay_principle entry_delay_ensemble in
-  int_of_float (floor (structure_duration /. avg_ed))
+  int_of_float (floor (variant_duration /. avg_ed))
 
 let calculate_layer n_events instrument_principle inst_arr entry_delay_principle
     ed_arr =
   let instr_seq = sel_seq_of_array n_events instrument_principle inst_arr in
-  let ed_seq = sel_seq_of_array n_events entry_delay_principle ed_arr |> Seq.map entry_to_float in
+  let ed_seq =
+    sel_seq_of_array n_events entry_delay_principle ed_arr
+    |> Seq.map entry_to_float
+  in
   let pairs = Seq.zip instr_seq ed_seq |> Seq.take n_events |> List.of_seq in
   let _, events =
     List.fold_left
@@ -538,15 +615,16 @@ let calculate_layer_autonomous_density n_events inst_arr mask
       (fun (time, acc) (gen, (ed, density)) ->
         let new_events =
           List.init density (fun _ ->
-            let instr = gen () in
-            let (Instrument { chordsize = Chordsize { minsize; maxsize }; _ }) =
-              instr
-            in
-            let chordsize =
-              if minsize = maxsize then minsize
-              else Random.int (maxsize - minsize + 1) + minsize
-            in
-            { time; instrument = instr; chordsize })
+              let instr = gen () in
+              let (Instrument { chordsize = Chordsize { minsize; maxsize }; _ })
+                  =
+                instr
+              in
+              let chordsize =
+                if minsize = maxsize then minsize
+                else Random.int (maxsize - minsize + 1) + minsize
+              in
+              { time; instrument = instr; chordsize })
         in
         (time +. ed, new_events @ acc))
       (0.0, []) triples
@@ -554,21 +632,18 @@ let calculate_layer_autonomous_density n_events inst_arr mask
   List.rev events
 
 (** Generate a list of score events, using instrument based vertical density *)
-let generate_score ~structure_duration ~instrument_ensemble
-    ~instrument_principle ~entry_delay_ensemble ~entry_delay_principle ~union =
+let generate_score ~variant_duration ~instrument_ensemble ~instrument_principle
+    ~entry_delay_ensemble ~entry_delay_principle ~union ~density =
   match union with
   | Union ->
-      (* flatten all the indexed groups into one *)
-      let entr_arr =
-        entry_delay_ensemble |> ensemble_values_union
-        
-      in
+      (* flatten all the indexed groups of the ensemble into one *)
+      let entr_arr = entry_delay_ensemble |> ensemble_values_union in
       let instr_arr = ensemble_values_union instrument_ensemble in
       let n_events =
-        calculate_number_of_events structure_duration entry_delay_principle
+        calculate_number_of_events variant_duration entry_delay_principle
           entr_arr
       in
-      let _ = Printf.printf "estimated events: %d" n_events in
+      let _ = Printf.printf "estimated events: %d \n" n_events in
       [
         calculate_layer n_events instrument_principle instr_arr
           entry_delay_principle entr_arr;
@@ -576,34 +651,36 @@ let generate_score ~structure_duration ~instrument_ensemble
   | NoUnion ->
       (* no union, multiple groups possible for instrument *)
       let instr_arrays = ensemble_values_no_union instrument_ensemble in
-      let entr_arr =
-        ensemble_values_no_union entry_delay_ensemble
-      
-      in
+      let entr_arr = ensemble_values_no_union entry_delay_ensemble in
       let layer_from_group_arrays instr_array entr_array =
         let n_events =
-          calculate_number_of_events structure_duration entry_delay_principle
-            entr_array 
+          calculate_number_of_events variant_duration entry_delay_principle
+            entr_array
         in
         let _ = Printf.printf "\nestimated events: %d " n_events in
         calculate_layer n_events instrument_principle instr_array
-          entry_delay_principle (entr_array)
+          entry_delay_principle entr_array
       in
+      (* treat the ensemble as a list of arrays and compute a layer for each group *)
       List.map2 layer_from_group_arrays instr_arrays entr_arr
 
-let build_score ~structure_duration ~instr_list ~instr_table
-    ~number_of_instrument_groups ~ed_list ~ed_table ~combination
-    ~instrument_principle ~entry_delay_principle ~union =
+let build_score cfg =
   let instr_ensemble =
-    construct_ensemble instr_list instr_table EnsembleGroupSeries
-      number_of_instrument_groups
+    construct_ensemble cfg.instr_list cfg.instr_table EnsembleGroupSeries
+      cfg.number_of_instrument_groups
   in
   let ed_ensemble =
-    match combination with
+    match cfg.combination with
     | Combination ->
-        construct_ensemble_combination ed_list ed_table instr_ensemble
-    | NoCombination -> construct_ensemble ed_list ed_table EnsembleGroupSeries 1
+        (* the index of the instrument ensemble groups is reused for entry delay *)
+        construct_ensemble_combination cfg.ed_list cfg.ed_table instr_ensemble
+    | NoCombination ->
+        (* there is only one group for the entry delay ensemble, and it is autonomous *)
+        construct_ensemble cfg.ed_list cfg.ed_table EnsembleGroupSeries 1
   in
-  generate_score ~structure_duration ~instrument_ensemble:instr_ensemble
-    ~instrument_principle ~entry_delay_ensemble:ed_ensemble
-    ~entry_delay_principle ~union
+  generate_score ~variant_duration:cfg.variant_duration
+    ~instrument_ensemble:instr_ensemble
+    ~instrument_principle:cfg.instrument_principle
+    ~entry_delay_ensemble:ed_ensemble
+    ~entry_delay_principle:cfg.entry_delay_principle ~union:cfg.union
+    ~density:cfg.density

@@ -16,9 +16,7 @@ end = struct
            (Printf.sprintf "UnitFloat.of_float_exn: %f is not in [0,1]" x))
 end
 
-let singleton_array x =
-  [|x|]
-
+let singleton_array x = [| x |]
 let tuple_map f (x, y) = (f x, f y)
 let tuple_reduce f (x, y) = f x y
 
@@ -80,3 +78,16 @@ let rec chunk chunkSize sq () =
       let current_chunk = take n sq in
       let sqTail = drop n sq in
       Cons (current_chunk, chunk ntl sqTail)
+
+let sequence_result arr =
+  List.fold_right
+    (fun r acc ->
+      match (r, acc) with
+      | Ok x, Ok xs -> Ok (x :: xs)
+      | Error e, _ | _, Error e -> Error e)
+    arr (Ok [])
+
+let print_header str = 
+  print_endline str;
+  print_endline (List.init (String.length str) (fun _ -> "=") |> String.concat "");
+  print_newline ()
