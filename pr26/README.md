@@ -25,6 +25,11 @@ You should be able to run it with:
 [x] Union and combination
 [x] Any problem that may occur return it as result.
 
+[ ] rewrite selection principles as exposing state in struct + next function
+(giving n values needed) and a function for getting possible next values (and
+being able to prohibit/filter), instead of unit seq, we give it a context, they
+output results, there may be no possible value
+
 [ ] Implement autonomous density
 
 As things got complicated with the auto-density, I had a bit of help by claude (it got quite a bit confused as well together with me). But it produced compiling code, but it needs to be verified for sure:
@@ -38,7 +43,7 @@ sel_seq_gen_of_array n principle arr : (unit -> 'a) Seq.t — a sequence of n ge
   calculate_layer_autonomous_density — now uses sel_seq_gen_of_array. The fold threads gen_seq : (unit -> instrument) Seq.t through the accumulator; each iteration pops one generator with Seq.uncons and passes it to fill_to_density. fill_to_density is simpler — it just calls gen () repeatedly until the density target is met, no sequence threading required.
 
 
-
+[ ] validation should collect as many errors as possible, not stop at first
 [ ] Define input as a runtime prompt?
 [ ] Store input as a reusable file?
 [ ] Implement another parameter x 
