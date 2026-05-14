@@ -24,8 +24,11 @@ You should be able to run it with:
 
 [x] Union and combination
 [x] Any problem that may occur return it as result.
+[x] Implement autonomous density
+[ ] Selection principles as sequences with more explicit context and state.
 
-[ ] Implement autonomous density
+[ ] Hierarchy as a thing that can be computed from the current structure formula
+[ ] Hierarchy as defined by the user. 
 
 As things got complicated with the auto-density, I had a bit of help by claude (it got quite a bit confused as well together with me). But it produced compiling code, but it needs to be verified for sure:
 
@@ -36,6 +39,7 @@ sel_seq_gen_of_array n principle arr : (unit -> 'a) Seq.t — a sequence of n ge
   Group / Sequence — shared state ref, no repeat guard needed (Group's repeat semantics are intentional; Sequence is a user-defined cycling order)
   Tendency — delegates directly to the already-existing tendency_mask_gen, which already returns (unit -> 'a) Seq.t with frozen lo/hi bounds per time point
   calculate_layer_autonomous_density — now uses sel_seq_gen_of_array. The fold threads gen_seq : (unit -> instrument) Seq.t through the accumulator; each iteration pops one generator with Seq.uncons and passes it to fill_to_density. fill_to_density is simpler — it just calls gen () repeatedly until the density target is met, no sequence threading required.
+
 
 
 

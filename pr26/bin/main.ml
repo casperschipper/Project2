@@ -1,5 +1,6 @@
 open Pr26.Basics
 open Pr26.Tools
+open Pr26.Selection
 
 let uf = UnitFloat.of_float_exn
 
@@ -136,7 +137,9 @@ let instrument_entry_test () =
       of_nested_list
         [ [ 0; 1; 2 ]; [ 3; 4; 5 ]; [ 0; 1; 2; 3; 4; 5; 6; 7 ]; [ 6; 7 ] ]
     in
-    let* d = mk_autonomous ~tr:12 ~a:1 ~z:10 ~selection_principle:Series in
+    let* d =
+      mk_autonomous ~tr:12 ~a:1 ~z:10 ~selection_principle:(Tendency test_mask)
+    in
     mk_score_config ~variant_duration:60.0 ~instr_list ~instr_table
       ~number_of_instrument_groups:3 ~ed_list ~ed_table ~combination:Combination
       ~instrument_principle:(Tendency test_mask) ~entry_delay_principle:Series

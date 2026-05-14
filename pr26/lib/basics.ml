@@ -1,4 +1,5 @@
 open Tools
+open Selection
 
 (* as we are indexing the table groups, we use arrays of ints *)
 type ptable = Table of int Array.t Array.t
@@ -96,41 +97,11 @@ let inst name cs =
 
 (* test materials *)
 
-(* For the group selection principle both group size and amount of reps is controlled by Alea or Series *)
-type tendency_section =
-  | TendencySection of {
-      portion : float;
-      start_min : UnitFloat.t;
-      start_max : UnitFloat.t;
-      end_min : UnitFloat.t;
-      end_max : UnitFloat.t;
-    }
-
-type tendency_mask_spec = TendencyMask of tendency_section list
-type group_selection = GroupAlea | GroupSeries
-
 (* for formation of the ensemble Alea, Series or Sequence will pick the groups from the table *)
 type ensemble_group_selection =
   | EnsembleGroupAlea
   | EnsembleGroupSeries
   | EnsembleGroupSequence of int list
-
-type group_spec =
-  | GroupSpec of {
-      element : group_selection;
-      repetition : group_selection;
-      min_rep : int;
-      max_rep : int;
-    }
-
-type selection_principle =
-  | Alea (* random choice with possible repetition *)
-  | Series (* random choice but exhaust all other options before repetition *)
-  | Ratio of (int * int) list (* weighted choice, repetition allowed *)
-  | Group of group_spec
-    (* controlled repetition, various selection options for element and its repetitions *)
-  | Tendency of tendency_mask_spec
-  | Sequence of int list (* user defined order, looped *)
 
 type autonomous_density = {
   a : int;
@@ -138,10 +109,9 @@ type autonomous_density = {
   selection_principle : selection_principle;
 }
 
-type vertical_density =
-  | Autonomous of autonomous_density
-  | InstrumentDensity
-  | ChordDensity
+type vertical_density = Autonomous of autonomous_density | InstrumentDensity
+(* | ChordDensity *)
+(* not yet implemented*)
 
 let mk_autonomous ~tr ~a ~z ~selection_principle =
   if a < 1 then Error (InvalidDensity "too small")
@@ -568,15 +538,15 @@ let sel_seq_of_array n principle arr =
   | Tendency sections -> tendency_mask n arr sections
 (* NOTE: unlike the others, this has a certain number of events *)
 
-(** Like [sel_seq_of_array] but returns [n] per-time-point generators.
-    Calling a generator multiple times stays at the same "position" within the
-    overall sequence, so Tendency boundaries are frozen for a whole time point
-    and only advance when the outer sequence moves to the next element.
-    For all non-Tendency principles, a single shared mutable sequence is
-    threaded continuously across time points (the series does not restart per
-    time point). For Series and Ratio, a last-seen guard ensures the first
-    value yielded for a new time point is never a repeat of the final value
-    from the previous one, even across permutation-row boundaries. *)
+(** Like [sel_seq_of_array] but returns [n] per-time-point generators. Calling a
+    generator multiple times stays at the same "position" within the overall
+    sequence, so Tendency boundaries are frozen for a whole time point and only
+    advance when the outer sequence moves to the next element. For all
+    non-Tendency principles, a single shared mutable sequence is threaded
+    continuously across time points (the series does not restart per time
+    point). For Series and Ratio, a last-seen guard ensures the first value
+    yielded for a new time point is never a repeat of the final value from the
+    previous one, even across permutation-row boundaries. *)
 let sel_seq_gen_of_array n principle (arr : 'a array) : (unit -> 'a) Seq.t =
   let l = Array.length arr in
   match principle with
@@ -593,7 +563,9 @@ let sel_seq_gen_of_array n principle (arr : 'a array) : (unit -> 'a) Seq.t =
           | Some (v, rest) ->
               state := rest;
               if !last = Some v then next ()
-              else (last := Some v; v)
+              else (
+                last := Some v;
+                v)
         in
         next ()
       in
@@ -613,7 +585,9 @@ let sel_seq_gen_of_array n principle (arr : 'a array) : (unit -> 'a) Seq.t =
           | Some (v, rest) ->
               state := rest;
               if !last = Some v then next ()
-              else (last := Some v; v)
+              else (
+                last := Some v;
+                v)
         in
         next ()
       in
@@ -673,8 +647,8 @@ let calculate_layer n_events instrument_principle inst_arr entry_delay_principle
   in
   List.rev events
 
-let calculate_layer_autonomous_density n_events instrument_principle inst_arr
-    auto_density entry_delay_principle ed_arr =
+let calculate_layer_autonomous_density auto_density n_events
+    instrument_principle inst_arr entry_delay_principle ed_arr =
   let density_list =
     List.init
       (auto_density.z - auto_density.a + 1)
@@ -703,7 +677,8 @@ let calculate_layer_autonomous_density n_events instrument_principle inst_arr
         else Random.int (maxsize - minsize + 1) + minsize
       in
       let actual_chordsize = min chordsize remaining in
-      fill_to_density time gen (remaining - actual_chordsize)
+      fill_to_density time gen
+        (remaining - actual_chordsize)
         ({ time; instrument = instr; chordsize = actual_chordsize } :: acc)
   in
   let _, _, events =
@@ -732,8 +707,13 @@ let generate_score ~variant_duration ~instrument_ensemble ~instrument_principle
       in
       let _ = Printf.printf "estimated events: %d \n" n_events in
       [
-        calculate_layer n_events instrument_principle instr_arr
-          entry_delay_principle entr_arr;
+        (match _density with
+        | InstrumentDensity ->
+            calculate_layer n_events instrument_principle instr_arr
+              entry_delay_principle entr_arr
+        | Autonomous autodensity ->
+            calculate_layer_autonomous_density autodensity n_events
+              instrument_principle instr_arr entry_delay_principle entr_arr);
       ]
   | NoUnion ->
       (* no union, multiple groups possible for instrument *)
@@ -745,8 +725,13 @@ let generate_score ~variant_duration ~instrument_ensemble ~instrument_principle
             entr_array
         in
         let _ = Printf.printf "\nestimated events: %d " n_events in
-        calculate_layer n_events instrument_principle instr_array
-          entry_delay_principle entr_array
+        match _density with
+        | InstrumentDensity ->
+            calculate_layer n_events instrument_principle instr_array
+              entry_delay_principle entr_array
+        | Autonomous autodensity ->
+            calculate_layer_autonomous_density autodensity n_events
+              instrument_principle instr_array entry_delay_principle entr_array
       in
       (* treat the ensemble as a list of arrays and compute a layer for each group *)
       List.map2 layer_from_group_arrays instr_arrays entr_arr
