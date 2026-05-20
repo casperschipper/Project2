@@ -112,47 +112,57 @@ let print_layers layers =
         events)
     layers
 
+let print_errors label errors =
+  Printf.printf "%s failed:\n" label;
+  List.iter (fun e -> Printf.printf "  - %s\n" (display_problem e)) errors
+
 let instrument_entry_test () =
-  (* we use the result monad in the form of let*, so we can combine a bunch of parameters that may be picky about their input,
-   without having to wire through all the Error cases *)
-  let ( let* ) = Result.bind in
   let _ = print_header "starting instrument entry test" in
-  let result =
-    let* instr_list =
-      mk_par_list id
-        [
-          inst "guitar" (chordsize 1 2);
-          inst "piano" (chordsize 1 10);
-          inst "basedrum" (chordsize 1 1);
-          inst "marimba" (chordsize 1 4);
-        ]
-    in
-    let* ed_list =
-      mk_par_list mk_entrydelay [ 0.1; 0.2; 0.3; 1.0; 2.0; 3.0; 2.0; 5.0 ]
-    in
-    let instr_table =
-      of_nested_list [ [ 0; 1; 2; 3 ]; [ 0; 1; 3 ]; [ 1; 3 ]; [ 0 ] ]
-    in
-    let ed_table =
-      of_nested_list
-        [ [ 0; 1; 2 ]; [ 3; 4; 5 ]; [ 0; 1; 2; 3; 4; 5; 6; 7 ]; [ 6; 7 ] ]
-    in
-    let* d =
-      mk_autonomous ~tr:12 ~a:1 ~z:10 ~selection_principle:(Tendency test_mask)
-    in
-    mk_score_config ~variant_duration:60.0 ~instr_list ~instr_table
-      ~number_of_instrument_groups:3 ~ed_list ~ed_table ~combination:Combination
-      ~instrument_principle:(Tendency test_mask) ~entry_delay_principle:Series
-      ~union:NoUnion ~density:d
-    |> Result.map build_score
+  let pitch_compass =
+    mk_pitch_compass (absolute 1 1) (absolute 5 12) Pitch_set.empty
   in
-  match result with
-  | Error e ->
-      Printf.printf "instrument_entry_test failed: %s\n" (display_problem e)
-  | Ok layers ->
-      print_layers layers;
-      write_score "score.projekt2" layers;
-      print_endline "Score written to score.projekt2"
+  let instr_validated =
+    match pitch_compass with
+    | Error e -> Error [ e ]
+    | Ok pc ->
+        Validated.sequence
+          [
+            inst "guitar" (chordsize 1 2) Performance_modes.empty pc;
+            inst "piano" (chordsize 1 10) Performance_modes.empty pc;
+            inst "basedrum" (chordsize 1 1) Performance_modes.empty pc;
+            inst "marimba" (chordsize 1 4) Performance_modes.empty pc;
+          ]
+  in
+  match instr_validated with
+  | Error errors -> print_errors "instrument_entry_test (instruments)" errors
+  | Ok instrs -> (
+      let ( let* ) = Result.bind in
+      let result =
+        let instr_list = ParameterList (Array.of_list instrs) in
+        let* ed_list =
+          mk_par_list mk_entrydelay [ 0.1; 0.2; 0.3; 1.0; 2.0; 3.0; 2.0; 5.0 ]
+        in
+        let instr_table = of_nested_list [ [ 0; 1; 2; 3 ]; [ 1; 3 ]; [ 0 ] ] in
+        let ed_table =
+          of_nested_list
+            [ [ 0; 1; 2 ]; [ 3; 4; 5 ]; [ 0; 1; 2; 3; 4; 5; 6; 7 ]; [ 6; 7 ] ]
+        in
+        let* d =
+          mk_autonomous ~tr:12 ~low:1 ~high:10
+            ~selection_principle:(Tendency test_mask)
+        in
+        mk_score_config ~variant_duration:60.0 ~instr_list ~instr_table
+          ~number_of_instrument_groups:3 ~ed_list ~ed_table
+          ~combination:Combination ~instrument_principle:(Tendency test_mask)
+          ~entry_delay_principle:Series ~union:NoUnion ~density:d
+        |> Result.map build_score
+      in
+      match result with
+      | Error e -> print_errors "instrument_entry_test" [ e ]
+      | Ok layers ->
+          print_layers layers;
+          write_score "score.projekt2" layers;
+          print_endline "Score written to score.projekt2")
 
 let () =
   (* some seed *)

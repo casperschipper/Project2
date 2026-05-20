@@ -1,5 +1,8 @@
 open Tools
 
+type ('s, 'a) selector_stream = 's -> 'a * 's
+
+
 type group_selection = GroupAlea | GroupSeries
 
 type group_spec =
@@ -40,7 +43,6 @@ type 'e series_state = SeriesState of { initial : 'e list; options : 'e list }
 type 'e sequence_state =
   | SequenceState of { initial : 'e list; options : 'e list }
 
-type ('s, 'a) selector_stream = 's -> 'a * 's
 
 let series_init (arr : 'a array) : 'a series_state =
   let initial = Array.to_list arr in

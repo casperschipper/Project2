@@ -17,7 +17,7 @@ let () =
 let () =
   let init = Pr26.Selection.alea_init [| 1; 2; 3; 4; 5 |] in
   Pr26.Selection.to_seq Pr26.Selection.alea_draw init
-  |> Seq.take 10
+  |> Seq.take 20
   |> Seq.map Pr26.Selection.get_value
   |> Seq.iter (Printf.printf "%d ");
   print_endline "alea to_seq: done"
@@ -25,7 +25,7 @@ let () =
 let () =
   let init = Pr26.Selection.ratio_init [ (1, 2); (2, 10); (3, 1) ] in
   Pr26.Selection.to_seq Pr26.Selection.ratio_draw init
-  |> Seq.take 10
+  |> Seq.take 20
   |> Seq.map Pr26.Selection.get_value
   |> Seq.iter (Printf.printf "%d ");
   print_endline "ratio to_seq: done"
@@ -35,23 +35,23 @@ let () =
   let init = Pr26.Selection.sequence_init [ 11;12;13 ] in
   let results =
     Pr26.Selection.to_seq Pr26.Selection.sequence_draw init
-    |> Seq.take 9
+    |> Seq.take 18
     |> Seq.map Pr26.Selection.get_value
     |> List.of_seq
   in
-  assert (results = [ 11;12;13;11;12;13;11;12;13 ]);
+  assert (results = [ 11;12;13;11;12;13;11;12;13;11;12;13;11;12;13;11;12;13 ]);
   List.iter (Printf.printf "%d ") results;
   print_endline "sequence to_seq: done"
 
 let () =
   let spec =
     Pr26.Selection.GroupSpec
-      { element = Pr26.Selection.GroupSeries; repetition = Pr26.Selection.GroupAlea;
-        min_rep = 2; max_rep = 4 }
+      { element = Pr26.Selection.GroupSeries; repetition = Pr26.Selection.GroupSeries;
+        min_rep = 1; max_rep = 3 }
   in
-  let init = Pr26.Selection.group_init [| "x"; "y"; "z" |] spec in
+  let init = Pr26.Selection.group_init [| 1;2;3 |] spec in
   Pr26.Selection.to_seq Pr26.Selection.group_draw init
   |> Seq.take 20
   |> Seq.map Pr26.Selection.get_value
-  |> Seq.iter print_endline;
+  |> Seq.iter (fun i -> Printf.printf "%d " i);
   print_endline "group to_seq: done"

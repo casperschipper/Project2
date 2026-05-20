@@ -12,6 +12,8 @@ type problem =
   | InvalidChordSize
   | TableSizeMismatch
   | InvalidDensity of string
+  | UnknownPerformance of string
+  | InvalidPitchCompass
 
 let display_problem p =
   match p with
@@ -23,6 +25,8 @@ let display_problem p =
       "instr_table and ed_table must have the same number of groups when \
        Combination is used"
   | InvalidDensity str -> "invalid density definition: " ^ str
+  | UnknownPerformance s -> "unknown performance mode: " ^ s
+  | InvalidPitchCompass -> "pitch compass minimum must not exceed maximum"
 
 let entry_to_float (Entrydelay x) = x
 (* let value_to_float v = match v with Entry (Entrydelay x) -> x *)
@@ -87,13 +91,93 @@ let chordsize mini maxi =
 
 (* a table is an array of arrays *)
 
-type instrument = Instrument of { name : string; chordsize : chordsize }
+module Performance = struct
+  type t = Performance of string
 
-let inst name cs =
+  let to_string (Performance s) = s
+  let of_string s = Performance s
+  let compare p1 p2 = String.compare (to_string p1) (to_string p2)
+end
+
+module Performance_modes = Set.Make (Performance)
+
+let allowed_performances lst =
+  let init = Performance_modes.empty in
+  lst
+  |> List.fold_left
+       (fun acc mode -> Performance_modes.add (Performance.of_string mode) acc)
+       init
+
+type performance_list = PerformanceList of Performance_modes.t
+
+let mk_performance_list strings = PerformanceList (allowed_performances strings)
+
+let select_performances (PerformanceList known) strings =
+  match
+    List.find_opt
+      (fun s -> not (Performance_modes.mem (Performance.of_string s) known))
+      strings
+  with
+  | Some s -> Error (UnknownPerformance s)
+  | None ->
+      Ok
+        (List.fold_left
+           (fun acc s -> Performance_modes.add (Performance.of_string s) acc)
+           Performance_modes.empty strings)
+
+let remove_performances (PerformanceList known) strings =
+  match
+    List.find_opt
+      (fun s -> not (Performance_modes.mem (Performance.of_string s) known))
+      strings
+  with
+  | Some s -> Error (UnknownPerformance s)
+  | None ->
+      Ok
+        (List.fold_left
+           (fun acc s -> Performance_modes.remove (Performance.of_string s) acc)
+           known strings)
+
+module Pitch_set = Set.Make (Int)
+
+type absolute_pitch = Absolute of int * int
+type relative_pitch = Relative of int
+
+let absolute_koenig absolute = (absolute / 100, absolute mod 100)
+let absolute register relative = Absolute (register, relative)
+
+let absolute_of_koenig n =
+  let oct, rel = absolute_koenig n in
+  Absolute (oct, rel)
+
+let absolute_compare (Absolute (o1, r1)) (Absolute (o2, r2)) =
+  let c = Int.compare o1 o2 in
+  if c <> 0 then c else Int.compare r1 r2
+
+type pitch_compass =
+  | PitchCompass of {
+      min : absolute_pitch;
+      max : absolute_pitch;
+      forbidden : Pitch_set.t;
+    }
+
+let mk_pitch_compass min max forbidden =
+  if absolute_compare min max > 0 then Error InvalidPitchCompass
+  else Ok (PitchCompass { min; max; forbidden })
+
+type instrument =
+  | Instrument of {
+      name : string;
+      chordsize : chordsize;
+      performance : Performance_modes.t;
+      pitchcompass : pitch_compass;
+    }
+
+let inst name cs performance pitchcompass =
   let ( let* ) = Result.bind in
   let* c = cs in
   if name = "" then Error InvalidInstrumentName
-  else Ok (Instrument { name; chordsize = c })
+  else Ok (Instrument { name; chordsize = c; performance; pitchcompass })
 
 (* test materials *)
 
@@ -104,8 +188,8 @@ type ensemble_group_selection =
   | EnsembleGroupSequence of int list
 
 type autonomous_density = {
-  a : int;
-  z : int;
+  low : int;
+  high : int;
   selection_principle : selection_principle;
 }
 
@@ -113,12 +197,13 @@ type vertical_density = Autonomous of autonomous_density | InstrumentDensity
 (* | ChordDensity *)
 (* not yet implemented*)
 
-let mk_autonomous ~tr ~a ~z ~selection_principle =
-  if a < 1 then Error (InvalidDensity "too small")
-  else if z > tr then
+let mk_autonomous ~tr ~low ~high ~selection_principle =
+  if low < 1 then Error (InvalidDensity "too small")
+  else if high > tr then
     Error (InvalidDensity "may not be larger than octave division")
-  else if z < a then Error (InvalidDensity "z should be bigger than a")
-  else Ok (Autonomous { a; z; selection_principle })
+  else if high < low then
+    Error (InvalidDensity "max should not be higher than min")
+  else Ok (Autonomous { low; high; selection_principle })
 
 let section_sq n (TendencySection s) =
   Seq.init n (fun i ->
@@ -651,8 +736,8 @@ let calculate_layer_autonomous_density auto_density n_events
     instrument_principle inst_arr entry_delay_principle ed_arr =
   let density_list =
     List.init
-      (auto_density.z - auto_density.a + 1)
-      (fun i -> i + auto_density.a)
+      (auto_density.high - auto_density.low + 1)
+      (fun i -> i + auto_density.low)
   in
   let _ = print_int_list "Possible densities as follows" density_list in
   let density_array = Array.of_list density_list in

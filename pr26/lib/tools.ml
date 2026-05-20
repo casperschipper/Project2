@@ -79,6 +79,26 @@ let rec chunk chunkSize sq () =
       let sqTail = drop n sq in
       Cons (current_chunk, chunk ntl sqTail)
 
+module Validated = struct
+  type ('a, 'e) t = ('a, 'e list) result
+
+  let pure x = Ok x
+
+  let ( <*> ) f x =
+    match (f, x) with
+    | Ok f, Ok x -> Ok (f x)
+    | Error e, Ok _ -> Error e
+    | Ok _, Error e -> Error e
+    | Error e1, Error e2 -> Error (e1 @ e2)
+
+  let of_result r = Result.map_error List.singleton r
+
+  let sequence lst =
+    List.fold_right
+      (fun r acc -> (pure List.cons <*> of_result r) <*> acc)
+      lst (pure [])
+end
+
 let sequence_result arr =
   List.fold_right
     (fun r acc ->
@@ -87,7 +107,8 @@ let sequence_result arr =
       | Error e, _ | _, Error e -> Error e)
     arr (Ok [])
 
-let print_header str = 
+let print_header str =
   print_endline str;
-  print_endline (List.init (String.length str) (fun _ -> "=") |> String.concat "");
+  print_endline
+    (List.init (String.length str) (fun _ -> "=") |> String.concat "");
   print_newline ()
