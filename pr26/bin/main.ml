@@ -27,66 +27,6 @@ let test_mask =
       (* crosswise : boundaries cross at midpoint  *)
     ]
 
-let groupspec =
-  GroupSpec
-    {
-      element = GroupSeries;
-      repetition = GroupSeries;
-      min_rep = 1;
-      max_rep = 5;
-    }
-
-let test_tendency_mask () =
-  let labels =
-    [ "parallel"; "widening"; "narrowing"; "crosswise" ] |> List.to_seq
-  in
-  print_endline "Testing a mask of 100 values, showing the sections by 25";
-  test_mask |> tendency_mask_raw 100
-  |> chunk (Seq.repeat 25)
-  |> Seq.zip labels
-  |> Seq.iter (fun (label, vals) ->
-      print_float_list label (vals |> List.of_seq))
-
-let test_estimating_entry_delay () =
-  (* 0 1 2 3 4 5 6 7 8 9  10 11 12 13 14 15*)
-  let entry_delay_array =
-    [ 1; 2; 3; 4; 5; 6; 7; 8; 9; 10; 11; 12; 13; 14; 15; 16 ]
-    |> List.map (fun x -> float_of_int x *. 0.1)
-    |> mk_par_list mk_entrydelay |> Result.get_ok
-  in
-  let entry_delay_table =
-    [
-      [ 0; 1; 2; 3; 4; 5 ];
-      [ 0; 1; 3 ];
-      [ 0; 7; 15 ];
-      [ 0; 1; 2; 6; 10; 12 ];
-      [ 0; 1; 2; 3; 4; 5; 6; 7; 8; 9; 10; 11; 12; 13; 14; 15 ];
-    ]
-    |> of_nested_list
-  in
-  let entry_delay_ensemble =
-    construct_ensemble entry_delay_array entry_delay_table EnsembleGroupAlea 2
-  in
-  let test_expected_value principle =
-    print_string (principle_to_string principle);
-    expected_value principle (ensemble_values_union entry_delay_ensemble)
-    |> Printf.printf "\n%f";
-    print_endline " \n"
-  in
-  let _ =
-    print_endline "\n";
-    print_string "\ntest expected value\n";
-    [
-      Alea;
-      Series;
-      Ratio [ (0, 1); (1, 3); (2, 4) ];
-      Group groupspec;
-      Tendency test_mask;
-      Sequence [ 0; 3; 5 ];
-    ]
-    |> List.map test_expected_value
-  in
-  ()
 
 let write_score filename layers =
   let oc = open_out filename in
@@ -168,8 +108,6 @@ let () =
   (* some seed *)
   let _ = Random.init 93 in
   let print_int_list = Pr26.Tools.print_int_list in
-  print_header "isolated test of tendency masks";
-  test_tendency_mask ();
   ratio_sq [ (0, 1); (1, 2); (3, 4) ]
   |> Seq.take 100 |> List.of_seq
   |> print_int_list "\n\n Selection Principle: ratio (1,1) (42,3) (3,10)";
@@ -189,7 +127,5 @@ let () =
   group_sq ensemble (mkGroup GroupAlea GroupSeries 1 5)
   |> take30 "group_sq AleaElem  / SeriesRep";
   series_sq 5 |> take30 "series";
-  test_tendency_mask ();
-  test_estimating_entry_delay ();
   instrument_entry_test ();
   ()
