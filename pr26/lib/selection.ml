@@ -1,8 +1,6 @@
 open Tools
 
 type ('s, 'a) selector_stream = 's -> 'a * 's
-
-
 type group_selection = GroupAlea | GroupSeries
 
 type group_spec =
@@ -43,7 +41,6 @@ type 'e series_state = SeriesState of { initial : 'e list; options : 'e list }
 type 'e sequence_state =
   | SequenceState of { initial : 'e list; options : 'e list }
 
-
 let series_init (arr : 'a array) : 'a series_state =
   let initial = Array.to_list arr in
   let options = shuffle arr |> Array.to_list in
@@ -59,11 +56,13 @@ let series_draw : 'a series_state -> 'a selection_result * 'a series_state =
       | x :: xs -> pick x xs
       | [] -> failwith "series_draw: empty")
 
-let to_seq stream =
-  Seq.unfold (fun s -> Some (stream s))
+let to_seq stream = Seq.unfold (fun s -> Some (stream s))
 
 (* ── Alea ── *)
 type 'a alea_state = AleaState of 'a array
+
+let filter_alea f (AleaState array) =
+  AleaState (array |> Array.to_list |> List.filter f |> Array.of_list)
 
 let alea_init arr = AleaState arr
 
@@ -86,6 +85,8 @@ let ratio_draw (RatioState weighted) =
   (Value (pick r weighted), RatioState weighted)
 
 (* ── Sequence ── *)
+
+(* TODO: protect empty list *)
 let sequence_init (values : 'a list) =
   SequenceState { initial = values; options = values }
 
@@ -99,7 +100,6 @@ let sequence_draw (SequenceState { initial; options }) =
 
 (* ── Group ── *)
 type 'a group_element_state = GEAlea of 'a array | GESeries of 'a series_state
-
 type group_rep_state = GRAlea of int * int | GRSeries of int series_state
 
 type 'a group_state =
@@ -138,14 +138,23 @@ let group_init arr (GroupSpec { element; repetition; min_rep; max_rep }) =
   in
   let first_elem, elem_state = group_pick_elem elem_state0 in
   let first_rep, rep_state = group_pick_rep rep_state0 in
-  GroupState { current = first_elem; remaining = first_rep; elem_state; rep_state }
+  GroupState
+    { current = first_elem; remaining = first_rep; elem_state; rep_state }
 
 let group_draw (GroupState { current; remaining; elem_state; rep_state }) =
   let value = Value current in
   if remaining > 1 then
-    (value, GroupState { current; remaining = remaining - 1; elem_state; rep_state })
+    ( value,
+      GroupState { current; remaining = remaining - 1; elem_state; rep_state }
+    )
   else
     let elem, elem_state' = group_pick_elem elem_state in
     let rep, rep_state' = group_pick_rep rep_state in
-    (value, GroupState { current = elem; remaining = rep; elem_state = elem_state'; rep_state = rep_state' })
-
+    ( value,
+      GroupState
+        {
+          current = elem;
+          remaining = rep;
+          elem_state = elem_state';
+          rep_state = rep_state';
+        } )

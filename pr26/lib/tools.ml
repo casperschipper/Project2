@@ -10,10 +10,7 @@ end = struct
 
   let of_float_exn x =
     if x >= 0.0 && x <= 1.0 then x
-    else
-      raise
-        (Invalid_argument
-           (Printf.sprintf "UnitFloat.of_float_exn: %f is not in [0,1]" x))
+    else raise (Invalid_argument (Printf.sprintf "UnitFloat.of_float_exn: %f is not in [0,1]" x))
 end
 
 let singleton_array x = [| x |]
@@ -32,11 +29,7 @@ let shuffle arr =
   arr
 
 let id x = x
-
-let print_int_list label lst =
-  Printf.printf "%s:\n [%s]\n" label
-    (lst |> List.map string_of_int |> String.concat "; ")
-
+let print_int_list label lst = Printf.printf "%s:\n [%s]\n" label (lst |> List.map string_of_int |> String.concat "; ")
 let lerp a b t = a +. (t *. (b -. a))
 let repeat x n = List.init n (fun _ -> x)
 let range a b = if a > b then [] else List.init (b - a) (fun x -> x + a)
@@ -64,8 +57,7 @@ let debug_float label x =
   flush stdout
 
 let print_float_list label lst =
-  Printf.printf "%s:\n [%s]\n" label
-    (lst |> List.map (Printf.sprintf "%.3f") |> String.concat "; ")
+  Printf.printf "%s:\n [%s]\n" label (lst |> List.map (Printf.sprintf "%.3f") |> String.concat "; ")
 
 let bangs count = Seq.repeat () |> Seq.take count
 let lookup_arr arr i = arr.(i)
@@ -92,23 +84,15 @@ module Validated = struct
     | Error e1, Error e2 -> Error (e1 @ e2)
 
   let of_result r = Result.map_error List.singleton r
-
-  let sequence lst =
-    List.fold_right
-      (fun r acc -> (pure List.cons <*> of_result r) <*> acc)
-      lst (pure [])
+  let sequence lst = List.fold_right (fun r acc -> pure List.cons <*> r <*> acc) lst (pure [])
 end
 
 let sequence_result arr =
   List.fold_right
-    (fun r acc ->
-      match (r, acc) with
-      | Ok x, Ok xs -> Ok (x :: xs)
-      | Error e, _ | _, Error e -> Error e)
+    (fun r acc -> match (r, acc) with Ok x, Ok xs -> Ok (x :: xs) | Error e, _ | _, Error e -> Error e)
     arr (Ok [])
 
 let print_header str =
   print_endline str;
-  print_endline
-    (List.init (String.length str) (fun _ -> "=") |> String.concat "");
+  print_endline (List.init (String.length str) (fun _ -> "=") |> String.concat "");
   print_newline ()
