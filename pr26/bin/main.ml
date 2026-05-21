@@ -5,7 +5,14 @@ open Pr26.Selection
 let uf = UnitFloat.of_float_exn
 
 let mk portion smin smax emin emax =
-  TendencySection { portion; start_min = uf smin; start_max = uf smax; end_min = uf emin; end_max = uf emax }
+  TendencySection
+    {
+      portion;
+      start_min = uf smin;
+      start_max = uf smax;
+      end_min = uf emin;
+      end_max = uf emax;
+    }
 
 let test_mask =
   TendencyMask
@@ -55,8 +62,12 @@ let instrument_entry_test () =
   (* applicative of result, but collect multiple errors in list *)
   let ( <$> ) = Validated.( <$> ) in
   (* just map over error *)
-  let pitch_compass = mk_pitch_compass (absolute 1 1) (absolute 5 12) Pitch_set.empty in
-  let performance_modes = Performance_modes.of_list [ Performance.of_string "normal" ] in
+  let pitch_compass =
+    mk_pitch_compass (absolute 1 1) (absolute 5 12) Pitch_set.empty
+  in
+  let performance_modes =
+    Performance_modes.of_list [ Performance.of_string "normal" ]
+  in
   let guitar = mk_instr "guitar" in
   let piano = mk_instr "piano" in
   let basedrum = mk_instr "basedrum" in
@@ -64,10 +75,14 @@ let instrument_entry_test () =
   let instr_validated =
     Validated.sequence
       [
-        inst <$> guitar <+> chordsize 1 2 <+> pure performance_modes <+> pitch_compass;
-        inst <$> piano <+> chordsize 1 10 <+> pure performance_modes <+> pitch_compass;
-        inst <$> basedrum <+> chordsize 1 1 <+> pure performance_modes <+> pitch_compass;
-        inst <$> marimba <+> chordsize 1 4 <+> pure performance_modes <+> pitch_compass;
+        inst <$> guitar <+> chordsize 1 2 <+> pure performance_modes
+        <+> pitch_compass;
+        inst <$> piano <+> chordsize 1 10 <+> pure performance_modes
+        <+> pitch_compass;
+        inst <$> basedrum <+> chordsize 1 1 <+> pure performance_modes
+        <+> pitch_compass;
+        inst <$> marimba <+> chordsize 1 4 <+> pure performance_modes
+        <+> pitch_compass;
       ]
   in
   match instr_validated with
@@ -77,16 +92,24 @@ let instrument_entry_test () =
       let ( <+> ) = Validated.( <+> ) in
       let instr_list = ParameterList (Array.of_list instrs) in
       let instr_table = of_nested_list [ [ 0; 1; 2; 3 ]; [ 1; 3 ]; [ 0 ] ] in
-      let ed_table = of_nested_list [ [ 0; 1; 2 ]; [ 3; 4; 5 ]; [ 0; 1; 2; 3; 4; 5; 6; 7 ]; [ 6; 7 ] ] in
+      let ed_table =
+        of_nested_list
+          [ [ 0; 1; 2 ]; [ 3; 4; 5 ]; [ 0; 1; 2; 3; 4; 5; 6; 7 ]; [ 6; 7 ] ]
+      in
       let result =
         Validated.join
           ((fun ed_list d hier ->
-             mk_structure_formula ~variant_duration:60.0 ~instr_list ~instr_table ~number_of_instrument_groups:3
-               ~ed_list ~ed_table ~combination:Combination ~instrument_principle:(Tendency test_mask)
-               ~entry_delay_principle:Series ~union:NoUnion ~density:d ~hierarchy:hier
+             mk_structure_formula ~variant_duration:60.0 ~instr_list
+               ~instr_table ~number_of_instrument_groups:3 ~ed_list ~ed_table
+               ~entrydelay_combination:Combination
+               ~instrument_principle:(Tendency test_mask)
+               ~entrydelay_principle:Series ~union:NoUnion ~density:d
+               ~hierarchy:hier
              |> Result.map build_score)
-          <$> mk_par_list mk_entrydelay [ 0.1; 0.2; 0.3; 1.0; 2.0; 3.0; 2.0; 5.0 ]
-          <+> mk_autonomous ~tr:12 ~low:1 ~high:10 ~selection_principle:(Tendency test_mask)
+          <$> mk_par_list mk_entrydelay
+                [ 0.1; 0.2; 0.3; 1.0; 2.0; 3.0; 2.0; 5.0 ]
+          <+> mk_autonomous ~tr:12 ~low:1 ~high:10
+                ~selection_principle:(Tendency test_mask)
           <+> mk_hierarchy [ Ins; Ent ])
       in
       match result with
@@ -96,20 +119,29 @@ let instrument_entry_test () =
           write_score "score.projekt2" layers;
           print_endline "Score written to score.projekt2")
 
-let () =
-  (* some seed *)
-  let _ = Random.init 93 in
+(* let old_test () = 
   let print_int_list = Pr26.Tools.print_int_list in
   ratio_sq [ (0, 1); (1, 2); (3, 4) ]
   |> Seq.take 100 |> List.of_seq
   |> print_int_list "\n\n Selection Principle: ratio (1,1) (42,3) (3,10)";
-  alea_sq [| 0; 1; 2; 3; 4; 5 |] |> Seq.take 30 |> List.of_seq |> print_int_list "\n\nalea 5";
+  alea_sq [| 0; 1; 2; 3; 4; 5 |]
+  |> Seq.take 30 |> List.of_seq
+  |> print_int_list "\n\nalea 5";
   let ensemble = [ 0; 1; 2; 3; 4 ] in
-  let take30 label sq = sq |> Seq.take 30 |> List.of_seq |> print_int_list label in
-  group_sq ensemble (mkGroup GroupAlea GroupAlea 1 5) |> take30 "group_sq AleaElem  / AleaRep";
-  group_sq ensemble (mkGroup GroupSeries GroupAlea 1 5) |> take30 "group_sq SeriesElem / AleaRep";
-  group_sq ensemble (mkGroup GroupSeries GroupSeries 1 5) |> take30 "group_sq SeriesElem / SeriesRep";
-  group_sq ensemble (mkGroup GroupAlea GroupSeries 1 5) |> take30 "group_sq AleaElem  / SeriesRep";
-  series_sq 5 |> take30 "series";
-  instrument_entry_test ();
-  ()
+  let take30 label sq =
+    sq |> Seq.take 30 |> List.of_seq |> print_int_list label
+  in
+  group_sq ensemble (mkGroup GroupAlea GroupAlea 1 5)
+  |> take30 "group_sq AleaElem  / AleaRep";
+  group_sq ensemble (mkGroup GroupSeries GroupAlea 1 5)
+  |> take30 "group_sq SeriesElem / AleaRep";
+  group_sq ensemble (mkGroup GroupSeries GroupSeries 1 5)
+  |> take30 "group_sq SeriesElem / SeriesRep";
+  group_sq ensemble (mkGroup GroupAlea GroupSeries 1 5)
+  |> take30 "group_sq AleaElem  / SeriesRep";
+  series_sq 5 |> take30 "series" *)
+
+let () =
+  (* some seed *)
+  ignore (Random.init 93);
+  instrument_entry_test ()
