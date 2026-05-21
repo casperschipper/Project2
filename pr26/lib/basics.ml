@@ -15,6 +15,19 @@ type problem =
   | InvalidDensity of string
   | UnknownPerformance of string
   | InvalidPitchCompass
+  | DuplicateHierarchy
+
+type hierarchy_elem = Ins | Ent
+(* | Dur
+  | Har
+  | Int
+  | Per *)
+
+type hierarchy = hierarchy_elem list
+
+let mk_hierarchy (lst : hierarchy_elem list) =
+  let deduped = List.sort_uniq compare lst in
+  if List.length deduped = List.length lst then Ok lst else Error DuplicateHierarchy
 
 let display_problem p =
   match p with
@@ -25,6 +38,7 @@ let display_problem p =
   | InvalidDensity str -> "invalid density definition: " ^ str
   | UnknownPerformance s -> "unknown performance mode: " ^ s
   | InvalidPitchCompass -> "pitch compass minimum must not exceed maximum"
+  | DuplicateHierarchy -> "each hierarchy level may only appear once"
 
 let entry_to_float (Entrydelay x) = x
 (* let value_to_float v = match v with Entry (Entrydelay x) -> x *)
@@ -440,7 +454,7 @@ type union =
 (* we combine all the parameters currently supported into one record, so we can validate dependencies 
 current dependencies include, the number of groups in 
 *)
-type score_config = {
+type structure_formula = {
   variant_duration : float;
   instr_list : instrument parameter_list;
   instr_table : ptable;
@@ -452,10 +466,11 @@ type score_config = {
   entry_delay_principle : selection_principle;
   union : union;
   density : vertical_density;
+  hierarchy : hierarchy;
 }
 
-let mk_score_config ~variant_duration ~instr_list ~instr_table ~ed_list ~ed_table ~number_of_instrument_groups
-    ~combination ~instrument_principle ~entry_delay_principle ~union ~density =
+let mk_structure_formula ~variant_duration ~instr_list ~instr_table ~ed_list ~ed_table ~number_of_instrument_groups
+    ~combination ~instrument_principle ~entry_delay_principle ~union ~density ~hierarchy =
   match combination with
   | Combination when not (combination_compatibility instr_table ed_table) -> Error TableSizeMismatch
   | _ ->
@@ -472,6 +487,7 @@ let mk_score_config ~variant_duration ~instr_list ~instr_table ~ed_list ~ed_tabl
           entry_delay_principle;
           union;
           density;
+          hierarchy;
         }
 
 (* ---- Score generation ---- *)

@@ -84,6 +84,12 @@ module Validated = struct
     | Error e1, Error e2 -> Error (e1 @ e2)
 
   let of_result r = Result.map_error List.singleton r
+
+  (* f <$> x : start a chain — plain function applied to first result arg *)
+  let ( <$> ) f x = of_result (Result.map f x)
+
+  (* f <+> x : continue a chain — auto-lifts a plain result on the right *)
+  let ( <+> ) f x = f <*> of_result x
   let sequence lst = List.fold_right (fun r acc -> pure List.cons <*> r <*> acc) lst (pure [])
 end
 
