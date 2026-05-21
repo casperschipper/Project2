@@ -90,6 +90,12 @@ module Validated = struct
 
   (* f <+> x : continue a chain — auto-lifts a plain result on the right *)
   let ( <+> ) f x = f <*> of_result x
+  (* flatten a nested (('a, 'e) result, 'e list) result into ('a, 'e list) result *)
+  let join = function
+    | Error e -> Error e
+    | Ok (Ok x) -> Ok x
+    | Ok (Error e) -> Error [ e ]
+
   let sequence lst = List.fold_right (fun r acc -> pure List.cons <*> r <*> acc) lst (pure [])
 end
 

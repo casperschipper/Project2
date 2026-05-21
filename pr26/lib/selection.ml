@@ -158,3 +158,67 @@ let group_draw (GroupState { current; remaining; elem_state; rep_state }) =
           elem_state = elem_state';
           rep_state = rep_state';
         } )
+
+(* ── Tendency ── *)
+
+let tendency_counts count (TendencyMask sections) =
+  let portions = List.map (fun (TendencySection s) -> s.portion) sections in
+  let total = List.fold_left ( +. ) 0.0 portions in
+  let exact = List.map (fun w -> w /. total *. Float.of_int count) portions in
+  let floors = List.map (fun x -> int_of_float (floor x)) exact in
+  let fracs = List.map2 (fun x f -> x -. Float.of_int f) exact floors in
+  let allocated = List.fold_left ( + ) 0 floors in
+  let remainder = count - allocated in
+  let indexed = List.mapi (fun i f -> (i, f)) fracs in
+  let sorted = List.sort (fun (_, a) (_, b) -> Float.compare b a) indexed in
+  let bonus_arr = Array.make (List.length sections) 0 in
+  List.iteri (fun rank (orig_i, _) -> if rank < remainder then bonus_arr.(orig_i) <- 1) sorted;
+  List.mapi (fun i f -> f + bonus_arr.(i)) floors
+
+let section_windows n (TendencySection s) : (float * float) Seq.t =
+  Seq.init n (fun i ->
+    let t = if n <= 1 then 0.0 else Float.of_int i /. Float.of_int (n - 1) in
+    let lo = lerp (s.start_min :> float) (s.end_min :> float) t in
+    let hi = lerp (s.start_max :> float) (s.end_max :> float) t in
+    if lo <= hi then (lo, hi) else (hi, lo))
+
+let tendency_windows count (spec : tendency_mask_spec) : (float * float) Seq.t =
+  let (TendencyMask sections) = spec in
+  let counts = tendency_counts count spec in
+  List.map2 section_windows counts sections |> List.to_seq |> Seq.concat
+
+type 'a tendency_state =
+  | TendencyState of {
+      arr : 'a array;
+      spec : tendency_mask_spec;
+      count : int;
+      lo : float;
+      hi : float;
+      rest : (float * float) Seq.t;
+    }
+
+let tendency_sample arr lo hi =
+  let l = Array.length arr in
+  arr.(lo +. Random.float (hi -. lo) |> ( *. ) (float_of_int l) |> floor |> int_of_float)
+
+let tendency_mk_state arr spec count =
+  match Seq.uncons (tendency_windows count spec) with
+  | None -> failwith "tendency_init: empty"
+  | Some ((lo, hi), rest) -> TendencyState { arr; spec; count; lo; hi; rest }
+
+let tendency_init ~count arr spec = tendency_mk_state arr spec count
+
+let tendency_draw (TendencyState { arr; spec; count; lo; hi; rest }) =
+  let value = Value (tendency_sample arr lo hi) in
+  let state' =
+    match Seq.uncons rest with
+    | Some ((lo', hi'), rest') -> TendencyState { arr; spec; count; lo = lo'; hi = hi'; rest = rest' }
+    | None -> tendency_mk_state arr spec count
+  in
+  (value, state')
+
+(* Sample from the current window without advancing the mask position *)
+let tendency_peek (TendencyState { arr; lo; hi; _ }) = tendency_sample arr lo hi
+
+let filter_tendency f (TendencyState { arr; spec; count; _ }) =
+  tendency_mk_state (arr |> Array.to_list |> List.filter f |> Array.of_list) spec count

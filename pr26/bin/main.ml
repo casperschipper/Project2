@@ -73,21 +73,24 @@ let instrument_entry_test () =
   match instr_validated with
   | Error errors -> print_errors "instrument_entry_test (instruments)" errors
   | Ok instrs -> (
-      let ( let* ) = Result.bind in
+      let ( <$> ) = Validated.( <$> ) in
+      let ( <+> ) = Validated.( <+> ) in
+      let instr_list = ParameterList (Array.of_list instrs) in
+      let instr_table = of_nested_list [ [ 0; 1; 2; 3 ]; [ 1; 3 ]; [ 0 ] ] in
+      let ed_table = of_nested_list [ [ 0; 1; 2 ]; [ 3; 4; 5 ]; [ 0; 1; 2; 3; 4; 5; 6; 7 ]; [ 6; 7 ] ] in
       let result =
-        let instr_list = ParameterList (Array.of_list instrs) in
-        let* ed_list = mk_par_list mk_entrydelay [ 0.1; 0.2; 0.3; 1.0; 2.0; 3.0; 2.0; 5.0 ] in
-        let instr_table = of_nested_list [ [ 0; 1; 2; 3 ]; [ 1; 3 ]; [ 0 ] ] in
-        let ed_table = of_nested_list [ [ 0; 1; 2 ]; [ 3; 4; 5 ]; [ 0; 1; 2; 3; 4; 5; 6; 7 ]; [ 6; 7 ] ] in
-        let* d = mk_autonomous ~tr:12 ~low:1 ~high:10 ~selection_principle:(Tendency test_mask) in
-        let* hier = mk_hierarchy [ Ins; Ent ] in
-        mk_structure_formula ~variant_duration:60.0 ~instr_list ~instr_table ~number_of_instrument_groups:3 ~ed_list
-          ~ed_table ~combination:Combination ~instrument_principle:(Tendency test_mask) ~entry_delay_principle:Series
-          ~union:NoUnion ~density:d ~hierarchy:hier
-        |> Result.map build_score
+        Validated.join
+          ((fun ed_list d hier ->
+             mk_structure_formula ~variant_duration:60.0 ~instr_list ~instr_table ~number_of_instrument_groups:3
+               ~ed_list ~ed_table ~combination:Combination ~instrument_principle:(Tendency test_mask)
+               ~entry_delay_principle:Series ~union:NoUnion ~density:d ~hierarchy:hier
+             |> Result.map build_score)
+          <$> mk_par_list mk_entrydelay [ 0.1; 0.2; 0.3; 1.0; 2.0; 3.0; 2.0; 5.0 ]
+          <+> mk_autonomous ~tr:12 ~low:1 ~high:10 ~selection_principle:(Tendency test_mask)
+          <+> mk_hierarchy [ Ins; Ent ])
       in
       match result with
-      | Error e -> print_errors "instrument_entry_test" [ e ]
+      | Error errors -> print_errors "instrument_entry_test" errors
       | Ok layers ->
           print_layers layers;
           write_score "score.projekt2" layers;

@@ -72,7 +72,7 @@ let elements_from_indexed_ensemble (IndexedEnsembleGroup { group; _ }) = match g
   if an ensemble is formed with no_union in another parameter, we only select a single group
 *)
 type 'a ensemble = Ensemble of 'a indexed_ensemble_group list | SingleGroup of 'a indexed_ensemble_group
-type proto_event = Proto of { instr : instr option; entrydelay : entrydelay option; duration : duration option }
+type proto_event = Proto of { instr : instr option; entrydelay : entrydelay option; nr_of_tones : int }
 
 let mk_ensemble group_list = Ensemble group_list
 let mk_ensemble_single group = SingleGroup group
