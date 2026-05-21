@@ -22,6 +22,7 @@ type problem =
   | UnknownPerformance of string
   | InvalidPitchCompass
   | DuplicateHierarchy
+  | InstrumentDensityRequiresInsFirst
 
 type hierarchy_elem = Ins | Ent
 (* | Dur
@@ -49,6 +50,8 @@ let display_problem p =
   | UnknownPerformance s -> "unknown performance mode: " ^ s
   | InvalidPitchCompass -> "pitch compass minimum must not exceed maximum"
   | DuplicateHierarchy -> "each hierarchy level may only appear once"
+  | InstrumentDensityRequiresInsFirst ->
+      "InstrumentDensity requires Ins to be first in the hierarchy"
 
 let entry_to_float (Entrydelay x) = x
 (* let value_to_float v = match v with Entry (Entrydelay x) -> x *)
@@ -616,6 +619,9 @@ type structure_formula = {
 let mk_structure_formula ~variant_duration ~instr_list ~instr_table ~ed_list
     ~ed_table ~number_of_instrument_groups ~entrydelay_combination
     ~instrument_principle ~entrydelay_principle ~union ~density ~hierarchy =
+  match density, hierarchy with
+  | InstrumentDensity, ([] | Ent :: _) -> Error InstrumentDensityRequiresInsFirst
+  | _ ->
   match entrydelay_combination with
   | Combination when not (combination_compatibility instr_table ed_table) ->
       Error TableSizeMismatch
