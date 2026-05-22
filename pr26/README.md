@@ -28,6 +28,15 @@ You should be able to run it with:
 [ ] Selection principles as sequences with more explicit context and state.
 [ ] Another question: how to deal with percussion? In manual both register and pitch can result in percussion.
 
+[ ] modes of performance. in the instrument definition, the possible modes of
+performance of each instrument is given as a string, so each instrument contains
+one set of strings
+from these definitions the list of performance modes in the performance
+parameter is constructed (which cannot be edited by the user), but they can be
+arranged in the table (via indices). these prevents incoherence between
+instrument definition and performance parameter and simplifies entry
+
+
 [ ] Hierarchy as a thing that can be computed from the current structure formula
 [ ] Hierarchy as defined by the user. 
 
@@ -49,12 +58,9 @@ sel_seq_gen_of_array n principle arr : (unit -> 'a) Seq.t — a sequence of n ge
   calculate_layer_autonomous_density — now uses sel_seq_gen_of_array. The fold threads gen_seq : (unit -> instrument) Seq.t through the accumulator; each iteration pops one generator with Seq.uncons and passes it to fill_to_density. fill_to_density is simpler — it just calls gen () repeatedly until the density target is met, no sequence threading required.
 
 
-<<<<<<< HEAD
 
 
-=======
 [ ] validation should collect as many errors as possible, not stop at first
->>>>>>> 6c8f2d33056c80b0725eea8f397affa8a2ea3209
 [ ] Define input as a runtime prompt?
 [ ] Store input as a reusable file?
 [ ] Implement another parameter x 
