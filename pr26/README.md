@@ -26,6 +26,7 @@ You should be able to run it with:
 [x] Any problem that may occur return it as result.
 [x] Implement autonomous density
 [ ] Selection principles as sequences with more explicit context and state.
+[ ] Another question: how to deal with percussion? In manual both register and pitch can result in percussion.
 
 [ ] Hierarchy as a thing that can be computed from the current structure formula
 [ ] Hierarchy as defined by the user. 
