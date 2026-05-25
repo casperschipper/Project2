@@ -154,24 +154,38 @@ let sequence_draw (SequenceState { initial; options }) =
       | [] -> failwith "sequence_draw: empty")
 
 (* ── Group ── *)
-type 'a group_element_state = GEAlea of 'a array | GESeries of 'a series_state
+type 'a group_elem_state = GEAlea of 'a array | GESeries of 'a series_state
 type group_rep_state = GRAlea of int * int | GRSeries of int series_state
 
 type 'a group_state =
   | GroupState of {
       current : 'a;
       remaining : int;
-      elem_state : 'a group_element_state;
+      elem_state : 'a group_elem_state;
       rep_state : group_rep_state;
     }
 
 let group_pick_elem = function
   | GEAlea arr ->
       let v = arr.(Random.int (Array.length arr)) in
-      (v, GEAlea arr)
+      (Value v, GEAlea arr)
   | GESeries s ->
       let r, s' = series_draw s in
-      (get_value r, GESeries s')
+      (r, GESeries s')
+
+let group_pick_elem_pred p = function
+  | GEAlea arr -> (
+      let valid = arr |> Array.to_list |> List.filter p in
+      match valid with
+      | [] ->
+          let v = arr.(Random.int (Array.length arr)) in
+          (Impossible v, GEAlea arr)
+      | _ ->
+          let v = List.nth valid (Random.int (List.length valid)) in
+          (Value v, GEAlea arr))
+  | GESeries s ->
+      let r, s' = series_draw_predicate p s in
+      (r, GESeries s')
 
 let group_pick_rep = function
   | GRAlea (lo, hi) -> (lo + Random.int (hi - lo + 1), GRAlea (lo, hi))
@@ -194,7 +208,12 @@ let group_init arr (GroupSpec { element; repetition; min_rep; max_rep }) =
   let first_elem, elem_state = group_pick_elem elem_state0 in
   let first_rep, rep_state = group_pick_rep rep_state0 in
   GroupState
-    { current = first_elem; remaining = first_rep; elem_state; rep_state }
+    {
+      current = get_value first_elem;
+      remaining = first_rep;
+      elem_state;
+      rep_state;
+    }
 
 let group_draw (GroupState { current; remaining; elem_state; rep_state }) =
   let value = Value current in
@@ -203,12 +222,33 @@ let group_draw (GroupState { current; remaining; elem_state; rep_state }) =
       GroupState { current; remaining = remaining - 1; elem_state; rep_state }
     )
   else
-    let elem, elem_state' = group_pick_elem elem_state in
+    let next, elem_state' = group_pick_elem elem_state in
     let rep, rep_state' = group_pick_rep rep_state in
     ( value,
       GroupState
         {
-          current = elem;
+          current = get_value next;
+          remaining = rep;
+          elem_state = elem_state';
+          rep_state = rep_state';
+        } )
+
+(* Mid-repetition: predicate failure returns Impossible — no alternative can be chosen.
+   At cycle boundary (remaining = 1): pick the next element with the predicate applied. *)
+let group_draw_predicate p
+    (GroupState { current; remaining; elem_state; rep_state }) =
+  let result = if p current then Value current else Impossible current in
+  if remaining > 1 then
+    ( result,
+      GroupState { current; remaining = remaining - 1; elem_state; rep_state }
+    )
+  else
+    let next, elem_state' = group_pick_elem_pred p elem_state in
+    let rep, rep_state' = group_pick_rep rep_state in
+    ( result,
+      GroupState
+        {
+          current = get_value next;
           remaining = rep;
           elem_state = elem_state';
           rep_state = rep_state';
@@ -280,7 +320,7 @@ let tendency_draw (TendencyState { arr; spec; count; lo; hi; rest }) =
 (* Sample from the current window without advancing the mask position *)
 let tendency_peek (TendencyState { arr; lo; hi; _ }) = tendency_sample arr lo hi
 
-let filter_tendency f (TendencyState { arr; spec; count; _ }) =
+let tendency_draw_predicate p (TendencyState { arr; spec; count; _ }) =
   tendency_mk_state
-    (arr |> Array.to_list |> List.filter f |> Array.of_list)
+    (arr |> Array.to_list |> List.filter p |> Array.of_list)
     spec count
