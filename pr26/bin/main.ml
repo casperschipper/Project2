@@ -112,34 +112,12 @@ let instrument_entry_test () =
                 ~selection_principle:(Tendency test_mask)
           <+> mk_hierarchy [ Ins; Ent ])
       in
-      match result with
+      match Validated.join_v result with
       | Error errors -> print_errors "instrument_entry_test" errors
       | Ok layers ->
           print_layers layers;
           write_score "score.projekt2" layers;
           print_endline "Score written to score.projekt2")
-
-(* let old_test () = 
-  let print_int_list = Pr26.Tools.print_int_list in
-  ratio_sq [ (0, 1); (1, 2); (3, 4) ]
-  |> Seq.take 100 |> List.of_seq
-  |> print_int_list "\n\n Selection Principle: ratio (1,1) (42,3) (3,10)";
-  alea_sq [| 0; 1; 2; 3; 4; 5 |]
-  |> Seq.take 30 |> List.of_seq
-  |> print_int_list "\n\nalea 5";
-  let ensemble = [ 0; 1; 2; 3; 4 ] in
-  let take30 label sq =
-    sq |> Seq.take 30 |> List.of_seq |> print_int_list label
-  in
-  group_sq ensemble (mkGroup GroupAlea GroupAlea 1 5)
-  |> take30 "group_sq AleaElem  / AleaRep";
-  group_sq ensemble (mkGroup GroupSeries GroupAlea 1 5)
-  |> take30 "group_sq SeriesElem / AleaRep";
-  group_sq ensemble (mkGroup GroupSeries GroupSeries 1 5)
-  |> take30 "group_sq SeriesElem / SeriesRep";
-  group_sq ensemble (mkGroup GroupAlea GroupSeries 1 5)
-  |> take30 "group_sq AleaElem  / SeriesRep";
-  series_sq 5 |> take30 "series" *)
 
 let () =
   (* some seed *)

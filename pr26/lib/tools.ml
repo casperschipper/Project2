@@ -114,6 +114,12 @@ module Validated = struct
     | Ok (Ok x) -> Ok x
     | Ok (Error e) -> Error [ e ]
 
+  (* like join, but the inner result already carries an error list *)
+  let join_v = function
+    | Error e -> Error e
+    | Ok (Ok x) -> Ok x
+    | Ok (Error errs) -> Error errs
+
   let sequence lst =
     List.fold_right (fun r acc -> pure List.cons <*> r <*> acc) lst (pure [])
 end

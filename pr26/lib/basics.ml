@@ -4,6 +4,8 @@ open Selection
 (* as we are indexing the table groups, we use arrays of ints *)
 type ptable = Table of int Array.t Array.t
 
+let count_rows (Table arrarr) = Array.length arrarr
+
 type instr =
   | InstrumentName of string (* the name of an instrument, must be unique *)
 
@@ -17,14 +19,14 @@ type problem =
   | NegativeEntry of float
   | InvalidInstrumentName
   | InvalidChordSize
-  | TableSizeMismatch
+  | TableSizeMismatch of string
   | InvalidDensity of string
   | UnknownPerformance of string
   | InvalidPitchCompass
   | DuplicateHierarchy
   | InstrumentDensityRequiresInsFirst
 
-type hierarchy_elem = Ins | Ent
+type hierarchy_elem = Ins | Ent | Performance
 (* | Dur
   | Har
   | Int
@@ -43,9 +45,7 @@ let display_problem p =
       "entry delay is" ^ string_of_float x ^ ", but may not be negative"
   | InvalidInstrumentName -> "instrument name may not be empty"
   | InvalidChordSize -> "illegal chord size limit, cannot be zero"
-  | TableSizeMismatch ->
-      "instr_table and ed_table must have the same number of groups when \
-       Combination is used"
+  | TableSizeMismatch table_error -> table_error
   | InvalidDensity str -> "invalid density definition: " ^ str
   | UnknownPerformance s -> "unknown performance mode: " ^ s
   | InvalidPitchCompass -> "pitch compass minimum must not exceed maximum"
@@ -96,11 +96,22 @@ type 'a ensemble =
   | Ensemble of 'a indexed_ensemble_group list
   | SingleGroup of 'a indexed_ensemble_group
 
+module Performance = struct
+  type t = Performance of string
+
+  let to_string (Performance s) = s
+  let of_string s = Performance s
+  let compare p1 p2 = String.compare (to_string p1) (to_string p2)
+end
+
+module Performance_modes = Set.Make (Performance)
+
 type proto_event =
   | Proto of {
       instr : instr option;
       entrydelay : entrydelay option;
-      nr_of_tones : int;
+      nr_of_tones : int option;
+      performance : Performance.t;
     }
 
 let mk_ensemble group_list = Ensemble group_list
@@ -118,16 +129,6 @@ let chordsize mini maxi =
   else Ok (Chordsize { minsize = min mini maxi; maxsize = max mini maxi })
 
 (* a table is an array of arrays *)
-
-module Performance = struct
-  type t = Performance of string
-
-  let to_string (Performance s) = s
-  let of_string s = Performance s
-  let compare p1 p2 = String.compare (to_string p1) (to_string p2)
-end
-
-module Performance_modes = Set.Make (Performance)
 
 let allowed_performances lst =
   let init = Performance_modes.empty in
@@ -608,24 +609,39 @@ type structure_formula = {
   ed_list : entrydelay parameter_list;
   ed_table : ptable;
   number_of_instrument_groups : int;
+  performance_table : ptable;
   instrument_principle : selection_principle;
   entrydelay_principle : selection_principle;
   entrydelay_combination : combination;
+  performance_principle : selection_principle;
+  performance_combination : combination;
   union : union;
   density : vertical_density;
   hierarchy : hierarchy;
 }
 
+let check_combination label instr_table other_table = function
+  | Combination when not (combination_compatibility instr_table other_table) ->
+      [ TableSizeMismatch
+          (Printf.sprintf
+             "instrument (size %d) and %s table (size %d) are not of compatible size"
+             (count_rows instr_table) label (count_rows other_table)) ]
+  | _ -> []
+
 let mk_structure_formula ~variant_duration ~instr_list ~instr_table ~ed_list
-    ~ed_table ~number_of_instrument_groups ~entrydelay_combination
-    ~instrument_principle ~entrydelay_principle ~union ~density ~hierarchy =
-  match density, hierarchy with
-  | InstrumentDensity, ([] | Ent :: _) -> Error InstrumentDensityRequiresInsFirst
-  | _ ->
-  match entrydelay_combination with
-  | Combination when not (combination_compatibility instr_table ed_table) ->
-      Error TableSizeMismatch
-  | _ ->
+    ~ed_table ~number_of_instrument_groups ~performance_table
+    ~entrydelay_combination ~instrument_principle ~entrydelay_principle
+    ~performance_principle performance_combination ~union ~density ~hierarchy =
+  let hierarchy_errors =
+    match (density, hierarchy) with
+    | InstrumentDensity, ([] | Ent :: _) -> [ InstrumentDensityRequiresInsFirst ]
+    | _ -> []
+  in
+  let combination_errors =
+    check_combination "entrydelay" instr_table ed_table entrydelay_combination
+  in
+  match hierarchy_errors @ combination_errors with
+  | [] ->
       Ok
         {
           variant_duration;
@@ -634,17 +650,26 @@ let mk_structure_formula ~variant_duration ~instr_list ~instr_table ~ed_list
           ed_list;
           ed_table;
           number_of_instrument_groups;
+          performance_table;
           entrydelay_combination;
           instrument_principle;
           entrydelay_principle;
+          performance_principle;
+          performance_combination;
           union;
           density;
           hierarchy;
         }
+  | errs -> Error errs
 
 (* ---- Score generation ---- *)
 
-type score_event = { time : float; instrument : instr; chordsize : int }
+type score_event = {
+  time : float;
+  instrument : instr;
+  chordsize : int;
+  perfomance_mode : Performance.t;
+}
 
 (* Extract all values from any ensemble as a flat array *)
 let ensemble_values_union ensemble =
