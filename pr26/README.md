@@ -45,7 +45,10 @@ instrument definition and performance parameter and simplifies entry
 being able to prohibit/filter), instead of unit seq, we give it a context, they
 output results, there may be no possible value
 
-[ ] Implement autonomous density
+
+[ ] Define input as a runtime prompt?
+[ ] Store input as a reusable file?
+[ ] Implement another parameter x 
 
 As things got complicated with the auto-density, I had a bit of help by claude (it got quite a bit confused as well together with me). But it produced compiling code, but it needs to be verified for sure:
 
@@ -59,8 +62,7 @@ sel_seq_gen_of_array n principle arr : (unit -> 'a) Seq.t — a sequence of n ge
 
 
 
+Done
 
-[ ] validation should collect as many errors as possible, not stop at first
-[ ] Define input as a runtime prompt?
-[ ] Store input as a reusable file?
-[ ] Implement another parameter x 
+[x] validation should collect as many errors as possible, not stop at first
+[x] Implement autonomous density

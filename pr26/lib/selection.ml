@@ -41,6 +41,22 @@ type 'e series_state = SeriesState of { initial : 'e list; options : 'e list }
 type 'e sequence_state =
   | SequenceState of { initial : 'e list; options : 'e list }
 
+(* we need a way of fetching a value, but returning the other values *)
+let moses f lst =
+  (* we expect small lists, so not worth doing fold_left *)
+  List.fold_right
+    (fun x (yes, no) -> if f x then (x :: yes, no) else (yes, x :: no))
+    lst ([], [])
+
+(* pick first item that qualifies, and returns the remaining options *)
+let pick_first pred lst =
+  let rec aux acc = function
+    | [] -> (None, List.rev acc)
+    | x :: rest ->
+        if pred x then (Some x, List.rev acc @ rest) else aux (x :: acc) rest
+  in
+  aux [] lst
+
 let series_init (arr : 'a array) : 'a series_state =
   let initial = Array.to_list arr in
   let options = shuffle arr |> Array.to_list in
@@ -56,35 +72,74 @@ let series_draw : 'a series_state -> 'a selection_result * 'a series_state =
       | x :: xs -> pick x xs
       | [] -> failwith "series_draw: empty")
 
+let series_draw_predicate p (SeriesState { initial; options }) =
+  let pick x xs =
+    (* we pick the first possible option *)
+    match pick_first p (x :: xs) with
+    | Some v, left -> (Value v, SeriesState { initial; options = left })
+    (* no possible options, pick the first value, mark impossible *)
+    | None, left -> (Impossible x, SeriesState { initial; options = left })
+  in
+  match options with
+  | x :: xs -> pick x xs
+  | [] -> (
+      match shuffle (Array.of_list initial) |> Array.to_list with
+      | x :: xs -> pick x xs
+      | [] -> failwith "series_draw: empty")
+
 let to_seq stream = Seq.unfold (fun s -> Some (stream s))
 
 (* ── Alea ── *)
+(* ---------- *)
 type 'a alea_state = AleaState of 'a array
-
-let filter_alea f (AleaState array) =
-  AleaState (array |> Array.to_list |> List.filter f |> Array.of_list)
 
 let alea_init arr = AleaState arr
 
 let alea_draw (AleaState arr) =
   (Value arr.(Random.int (Array.length arr)), AleaState arr)
 
+let alea_draw_predicate p (AleaState arr) =
+  let yes = arr |> Array.to_list |> List.filter p in
+  (Value (List.nth yes (Random.int (List.length yes))), AleaState arr)
+
 (* ── Ratio ── *)
-type 'a ratio_state = RatioState of ('a * int) list
+(* ---------- *)
+type 'a ratio_state = RatioState of { initial : 'a list; options : 'a list }
 
-let ratio_init weighted = RatioState weighted
+let ratio_expand weighted =
+  List.concat_map (fun (x, n) -> List.init n (fun _ -> x)) weighted
 
-let ratio_draw (RatioState weighted) =
-  let total = List.fold_left (fun acc (_, w) -> acc + w) 0 weighted in
-  let r = Random.int total in
-  let rec pick n = function
-    | [] -> failwith "ratio_draw: empty"
-    | [ (x, _) ] -> x
-    | (x, w) :: rest -> if n < w then x else pick (n - w) rest
+let ratio_init weighted =
+  let initial = ratio_expand weighted in
+  let options = shuffle (Array.of_list initial) |> Array.to_list in
+  RatioState { initial; options }
+
+let ratio_draw (RatioState { initial; options }) =
+  let pick x xs = (Value x, RatioState { initial; options = xs }) in
+  match options with
+  | x :: xs -> pick x xs
+  | [] -> (
+      match shuffle (Array.of_list initial) |> Array.to_list with
+      | x :: xs -> pick x xs
+      | [] -> failwith "ratio_draw: empty")
+
+let ratio_draw_predicate p (RatioState { initial; options }) =
+  let pick x xs =
+    (* we pick the first possible option *)
+    match pick_first p (x :: xs) with
+    | Some v, left -> (Value v, RatioState { initial; options = left })
+    (* no possible options, pick the first value, mark impossible *)
+    | None, left -> (Impossible x, RatioState { initial; options = left })
   in
-  (Value (pick r weighted), RatioState weighted)
+  match options with
+  | x :: xs -> pick x xs
+  | [] -> (
+      match shuffle (Array.of_list initial) |> Array.to_list with
+      | x :: xs -> pick x xs
+      | [] -> failwith "ratio_draw: empty")
 
 (* ── Sequence ── *)
+(* -------------- *)
 
 (* TODO: protect empty list *)
 let sequence_init (values : 'a list) =
@@ -172,15 +227,17 @@ let tendency_counts count (TendencyMask sections) =
   let indexed = List.mapi (fun i f -> (i, f)) fracs in
   let sorted = List.sort (fun (_, a) (_, b) -> Float.compare b a) indexed in
   let bonus_arr = Array.make (List.length sections) 0 in
-  List.iteri (fun rank (orig_i, _) -> if rank < remainder then bonus_arr.(orig_i) <- 1) sorted;
+  List.iteri
+    (fun rank (orig_i, _) -> if rank < remainder then bonus_arr.(orig_i) <- 1)
+    sorted;
   List.mapi (fun i f -> f + bonus_arr.(i)) floors
 
 let section_windows n (TendencySection s) : (float * float) Seq.t =
   Seq.init n (fun i ->
-    let t = if n <= 1 then 0.0 else Float.of_int i /. Float.of_int (n - 1) in
-    let lo = lerp (s.start_min :> float) (s.end_min :> float) t in
-    let hi = lerp (s.start_max :> float) (s.end_max :> float) t in
-    if lo <= hi then (lo, hi) else (hi, lo))
+      let t = if n <= 1 then 0.0 else Float.of_int i /. Float.of_int (n - 1) in
+      let lo = lerp (s.start_min :> float) (s.end_min :> float) t in
+      let hi = lerp (s.start_max :> float) (s.end_max :> float) t in
+      if lo <= hi then (lo, hi) else (hi, lo))
 
 let tendency_windows count (spec : tendency_mask_spec) : (float * float) Seq.t =
   let (TendencyMask sections) = spec in
@@ -199,7 +256,9 @@ type 'a tendency_state =
 
 let tendency_sample arr lo hi =
   let l = Array.length arr in
-  arr.(lo +. Random.float (hi -. lo) |> ( *. ) (float_of_int l) |> floor |> int_of_float)
+  arr.(lo +. Random.float (hi -. lo)
+       |> ( *. ) (float_of_int l)
+       |> floor |> int_of_float)
 
 let tendency_mk_state arr spec count =
   match Seq.uncons (tendency_windows count spec) with
@@ -212,7 +271,8 @@ let tendency_draw (TendencyState { arr; spec; count; lo; hi; rest }) =
   let value = Value (tendency_sample arr lo hi) in
   let state' =
     match Seq.uncons rest with
-    | Some ((lo', hi'), rest') -> TendencyState { arr; spec; count; lo = lo'; hi = hi'; rest = rest' }
+    | Some ((lo', hi'), rest') ->
+        TendencyState { arr; spec; count; lo = lo'; hi = hi'; rest = rest' }
     | None -> tendency_mk_state arr spec count
   in
   (value, state')
@@ -221,4 +281,6 @@ let tendency_draw (TendencyState { arr; spec; count; lo; hi; rest }) =
 let tendency_peek (TendencyState { arr; lo; hi; _ }) = tendency_sample arr lo hi
 
 let filter_tendency f (TendencyState { arr; spec; count; _ }) =
-  tendency_mk_state (arr |> Array.to_list |> List.filter f |> Array.of_list) spec count
+  tendency_mk_state
+    (arr |> Array.to_list |> List.filter f |> Array.of_list)
+    spec count

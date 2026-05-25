@@ -10,7 +10,10 @@ end = struct
 
   let of_float_exn x =
     if x >= 0.0 && x <= 1.0 then x
-    else raise (Invalid_argument (Printf.sprintf "UnitFloat.of_float_exn: %f is not in [0,1]" x))
+    else
+      raise
+        (Invalid_argument
+           (Printf.sprintf "UnitFloat.of_float_exn: %f is not in [0,1]" x))
 end
 
 let singleton_array x = [| x |]
@@ -29,7 +32,11 @@ let shuffle arr =
   arr
 
 let id x = x
-let print_int_list label lst = Printf.printf "%s:\n [%s]\n" label (lst |> List.map string_of_int |> String.concat "; ")
+
+let print_int_list label lst =
+  Printf.printf "%s:\n [%s]\n" label
+    (lst |> List.map string_of_int |> String.concat "; ")
+
 let lerp a b t = a +. (t *. (b -. a))
 let repeat x n = List.init n (fun _ -> x)
 let range a b = if a > b then [] else List.init (b - a) (fun x -> x + a)
@@ -48,6 +55,15 @@ let choose_arr arr = arr.(Random.int (Array.length arr))
 (* return one value *)
 let choose_lst lst = choose_arr (Array.of_list lst)
 
+(* pick a random element, return (picked, remaining) *)
+let pick_random lst =
+  let arr = Array.of_list lst in
+  let n = Array.length arr in
+  let i = Random.int n in
+  let picked = arr.(i) in
+  let remaining = List.filteri (fun j _ -> j <> i) lst in
+  (picked, remaining)
+
 (* A seq.t of length n, just repeating the value *)
 let repeat_n elm n = Seq.repeat elm |> Seq.take n
 
@@ -57,7 +73,8 @@ let debug_float label x =
   flush stdout
 
 let print_float_list label lst =
-  Printf.printf "%s:\n [%s]\n" label (lst |> List.map (Printf.sprintf "%.3f") |> String.concat "; ")
+  Printf.printf "%s:\n [%s]\n" label
+    (lst |> List.map (Printf.sprintf "%.3f") |> String.concat "; ")
 
 let bangs count = Seq.repeat () |> Seq.take count
 let lookup_arr arr i = arr.(i)
@@ -90,21 +107,27 @@ module Validated = struct
 
   (* f <+> x : continue a chain — auto-lifts a plain result on the right *)
   let ( <+> ) f x = f <*> of_result x
+
   (* flatten a nested (('a, 'e) result, 'e list) result into ('a, 'e list) result *)
   let join = function
     | Error e -> Error e
     | Ok (Ok x) -> Ok x
     | Ok (Error e) -> Error [ e ]
 
-  let sequence lst = List.fold_right (fun r acc -> pure List.cons <*> r <*> acc) lst (pure [])
+  let sequence lst =
+    List.fold_right (fun r acc -> pure List.cons <*> r <*> acc) lst (pure [])
 end
 
 let sequence_result arr =
   List.fold_right
-    (fun r acc -> match (r, acc) with Ok x, Ok xs -> Ok (x :: xs) | Error e, _ | _, Error e -> Error e)
+    (fun r acc ->
+      match (r, acc) with
+      | Ok x, Ok xs -> Ok (x :: xs)
+      | Error e, _ | _, Error e -> Error e)
     arr (Ok [])
 
 let print_header str =
   print_endline str;
-  print_endline (List.init (String.length str) (fun _ -> "=") |> String.concat "");
+  print_endline
+    (List.init (String.length str) (fun _ -> "=") |> String.concat "");
   print_newline ()
