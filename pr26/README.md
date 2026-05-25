@@ -20,13 +20,19 @@ You should be able to run it with:
 `dune build`  
 `dune exec bin/main.exe`
 
+# Questions
+
+If we derive playable performance modes from instrument, and we link groups through combination, we could also check if the 
+table groups are sane: does it include incompatible modes, that cannot be played by any instrument in the group?
+
 # TODOS
 
 [x] Union and combination
 [x] Any problem that may occur return it as result.
 [x] Implement autonomous density
-[ ] Selection principles as sequences with more explicit context and state.
-[ ] Another question: how to deal with percussion? In manual both register and pitch can result in percussion.
+[x] Selection principles as sequences with more explicit context and state.
+[ ] Wire in the new selection principles
+
 
 [ ] modes of performance. in the instrument definition, the possible modes of
 performance of each instrument is given as a string, so each instrument contains
@@ -36,6 +42,8 @@ parameter is constructed (which cannot be edited by the user), but they can be
 arranged in the table (via indices). these prevents incoherence between
 instrument definition and performance parameter and simplifies entry
 
+
+[ ] Another question: how to deal with percussion? In manual both register and pitch can result in percussion.
 
 [ ] Hierarchy as a thing that can be computed from the current structure formula
 [ ] Hierarchy as defined by the user. 

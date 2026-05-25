@@ -33,7 +33,7 @@ let write_score filename layers =
     (fun i events ->
       Printf.fprintf oc "# layer %d\n" i;
       List.iter
-        (fun { time; instrument = InstrumentName name; chordsize } ->
+        (fun { time; instrument = InstrumentName name; chordsize; _ } ->
           Printf.fprintf oc "%.3f %s %d\n" time name chordsize)
         events)
     layers;
@@ -46,7 +46,7 @@ let print_layers layers =
       Printf.printf "\n--- layer %d ---\n" i;
       Printf.printf "%-8s %-12s %s\n" "time" "instrument" "chordsize";
       List.iter
-        (fun { time; instrument = InstrumentName name; chordsize } ->
+        (fun { time; instrument = InstrumentName name; chordsize; _ } ->
           Printf.printf "%-8.3f %-12s %d\n" time name chordsize)
         events)
     layers
@@ -66,7 +66,12 @@ let instrument_entry_test () =
     mk_pitch_compass (absolute 1 1) (absolute 5 12) Pitch_set.empty
   in
   let performance_modes =
-    Performance_modes.of_list [ Performance.of_string "normal" ]
+    Performance_modes.of_list
+      [
+        Performance.of_string "normal";
+        Performance.of_string "plucking";
+        Performance.of_string "bowing";
+      ]
   in
   let guitar = mk_instr "guitar" in
   let piano = mk_instr "piano" in
@@ -96,23 +101,25 @@ let instrument_entry_test () =
         of_nested_list
           [ [ 0; 1; 2 ]; [ 3; 4; 5 ]; [ 0; 1; 2; 3; 4; 5; 6; 7 ]; [ 6; 7 ] ]
       in
+      let performance_table = of_nested_list [ [ 0; 1; 2 ]; [ 1; 2 ]; [ 0 ] ] in
       let result =
-        Validated.join
+        Validated.join_v
           ((fun ed_list d hier ->
              mk_structure_formula ~variant_duration:60.0 ~instr_list
                ~instr_table ~number_of_instrument_groups:3 ~ed_list ~ed_table
-               ~entrydelay_combination:Combination
+               ~performance_table ~entrydelay_combination:Combination
                ~instrument_principle:(Tendency test_mask)
-               ~entrydelay_principle:Series ~union:NoUnion ~density:d
-               ~hierarchy:hier
+               ~entrydelay_principle:Series
+               ~performance_principle:(Tendency test_mask) Combination
+               ~union:NoUnion ~density:d ~hierarchy:hier
              |> Result.map build_score)
           <$> mk_par_list mk_entrydelay
                 [ 0.1; 0.2; 0.3; 1.0; 2.0; 3.0; 2.0; 5.0 ]
           <+> mk_autonomous ~tr:12 ~low:1 ~high:10
                 ~selection_principle:(Tendency test_mask)
-          <+> mk_hierarchy [ Ins; Ent ])
+          <+> mk_hierarchy [ Ins; Ent; Per ])
       in
-      match Validated.join_v result with
+      match result with
       | Error errors -> print_errors "instrument_entry_test" errors
       | Ok layers ->
           print_layers layers;

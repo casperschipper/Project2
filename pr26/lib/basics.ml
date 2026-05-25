@@ -26,7 +26,7 @@ type problem =
   | DuplicateHierarchy
   | InstrumentDensityRequiresInsFirst
 
-type hierarchy_elem = Ins | Ent | Performance
+type hierarchy_elem = Ins | Ent | Per
 (* | Dur
   | Har
   | Int
@@ -202,6 +202,13 @@ type instrument =
       performance : Performance_modes.t;
       pitchcompass : pitch_compass;
     }
+
+let extract_performances_from_instruments lst =
+  List.fold_right
+    (fun (Instrument ins) acc -> Performance_modes.union ins.performance acc)
+    lst Performance_modes.empty
+  |> Performance_modes.to_list |> Array.of_list
+  |> fun arr -> ParameterList arr
 
 let print_instrument
     (Instrument
@@ -622,10 +629,13 @@ type structure_formula = {
 
 let check_combination label instr_table other_table = function
   | Combination when not (combination_compatibility instr_table other_table) ->
-      [ TableSizeMismatch
+      [
+        TableSizeMismatch
           (Printf.sprintf
-             "instrument (size %d) and %s table (size %d) are not of compatible size"
-             (count_rows instr_table) label (count_rows other_table)) ]
+             "instrument (size %d) and %s table (size %d) are not of \
+              compatible size"
+             (count_rows instr_table) label (count_rows other_table));
+      ]
   | _ -> []
 
 let mk_structure_formula ~variant_duration ~instr_list ~instr_table ~ed_list
@@ -634,7 +644,8 @@ let mk_structure_formula ~variant_duration ~instr_list ~instr_table ~ed_list
     ~performance_principle performance_combination ~union ~density ~hierarchy =
   let hierarchy_errors =
     match (density, hierarchy) with
-    | InstrumentDensity, ([] | Ent :: _) -> [ InstrumentDensityRequiresInsFirst ]
+    | InstrumentDensity, ([] | Ent :: _) ->
+        [ InstrumentDensityRequiresInsFirst ]
     | _ -> []
   in
   let combination_errors =
@@ -668,7 +679,7 @@ type score_event = {
   time : float;
   instrument : instr;
   chordsize : int;
-  perfomance_mode : Performance.t;
+  performance : Performance.t;
 }
 
 (* Extract all values from any ensemble as a flat array *)
@@ -812,7 +823,8 @@ let calculate_layer n_events instrument_principle inst_arr entry_delay_principle
           if minsize = maxsize then minsize
           else Random.int (maxsize - minsize + 1) + minsize
         in
-        (time +. ed, { time; instrument; chordsize } :: acc))
+        let performance = Performance.of_string "dummy" in
+        (time +. ed, { time; instrument; chordsize; performance } :: acc))
       (0.0, []) pairs
   in
   List.rev events
@@ -848,9 +860,11 @@ let calculate_layer_autonomous_density auto_density n_events
         else Random.int (maxsize - minsize + 1) + minsize
       in
       let actual_chordsize = min chordsize remaining in
+      let perf = Performance.of_string "dummy" in
       fill_to_density time gen
         (remaining - actual_chordsize)
-        ({ time; instrument; chordsize = actual_chordsize } :: acc)
+        ({ time; instrument; chordsize = actual_chordsize; performance = perf }
+        :: acc)
   in
   let _, _, events =
     List.fold_left
