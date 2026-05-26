@@ -98,8 +98,7 @@ let instrument_entry_test () =
       let instr_list = ParameterList (Array.of_list instrs) in
       let instr_table = of_nested_list [ [ 0; 1; 2; 3 ]; [ 1; 3 ]; [ 0 ] ] in
       let ed_table =
-        of_nested_list
-          [ [ 0; 1; 2 ]; [ 3; 4; 5 ]; [ 0; 1; 2; 3; 4; 5; 6; 7 ]; [ 6; 7 ] ]
+        of_nested_list [ [ 0; 1; 2 ]; [ 3; 4; 5 ]; [ 0; 1; 2; 3; 4; 5; 6; 7 ] ]
       in
       let performance_table = of_nested_list [ [ 0; 1; 2 ]; [ 1; 2 ]; [ 0 ] ] in
       let result =
@@ -117,7 +116,7 @@ let instrument_entry_test () =
                 [ 0.1; 0.2; 0.3; 1.0; 2.0; 3.0; 2.0; 5.0 ]
           <+> mk_autonomous ~tr:12 ~low:1 ~high:10
                 ~selection_principle:(Tendency test_mask)
-          <+> mk_hierarchy [ Ins; Ent; Per ])
+          <+> mk_hierarchy [ Ins; Per ])
       in
       match result with
       | Error errors -> print_errors "instrument_entry_test" errors

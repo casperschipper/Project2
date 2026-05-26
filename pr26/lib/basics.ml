@@ -26,12 +26,12 @@ type problem =
   | DuplicateHierarchy
   | InstrumentDensityRequiresInsFirst
 
-type hierarchy_elem = Ins | Ent | Per
+type hierarchy_elem = Ins | Per
+
 (* | Dur
   | Har
   | Int
-  | Per *)
-
+*)
 type hierarchy = hierarchy_elem list
 
 let mk_hierarchy (lst : hierarchy_elem list) =
@@ -202,6 +202,15 @@ type instrument =
       performance : Performance_modes.t;
       pitchcompass : pitch_compass;
     }
+
+(* Partial event used during hierarchical score generation.
+   Entry delays are kept separate; hierarchy fills instrument and performance. *)
+type partial_event = {
+  p_instrument : instrument option;
+  p_performance : Performance.t option;
+}
+
+let empty_partial = { p_instrument = None; p_performance = None }
 
 let extract_performances_from_instruments lst =
   List.fold_right
@@ -644,8 +653,8 @@ let mk_structure_formula ~variant_duration ~instr_list ~instr_table ~ed_list
     ~performance_principle performance_combination ~union ~density ~hierarchy =
   let hierarchy_errors =
     match (density, hierarchy) with
-    | InstrumentDensity, ([] | Ent :: _) ->
-        [ InstrumentDensityRequiresInsFirst ]
+    | InstrumentDensity, first :: _ ->
+        if first == Ins then [] else [ InstrumentDensityRequiresInsFirst ]
     | _ -> []
   in
   let combination_errors =
@@ -795,6 +804,95 @@ let sel_seq_gen_of_array n principle (arr : 'a array) : (unit -> 'a) Seq.t =
   | Tendency sections -> tendency_mask_gen n arr sections
 
 (* do the combination case *)
+(* ---- Stateful selector ---- *)
+(* A selector encapsulates mutable state for a selection principle.
+   [draw ()] advances and returns the next value freely.
+   [draw_pred p] advances and returns the next value satisfying [p];
+   for principles that cannot guarantee [p], returns the best available value. *)
+type 'a selector = {
+  draw : unit -> 'a;
+  draw_pred : ('a -> bool) -> 'a;
+}
+
+let make_selector (principle : selection_principle) (n : int) (arr : 'a array)
+    : 'a selector =
+  match principle with
+  | Alea ->
+      let st = ref (alea_init arr) in
+      {
+        draw = (fun () -> let v, s = alea_draw !st in st := s; get_value v);
+        draw_pred =
+          (fun p ->
+            let v, s = alea_draw_predicate p !st in
+            st := s;
+            get_value v);
+      }
+  | Series ->
+      let st = ref (series_init arr) in
+      {
+        draw = (fun () -> let v, s = series_draw !st in st := s; get_value v);
+        draw_pred =
+          (fun p ->
+            let v, s = series_draw_predicate p !st in
+            st := s;
+            get_value v);
+      }
+  | Ratio ratios ->
+      let weighted = List.map (fun (i, cnt) -> (arr.(i), cnt)) ratios in
+      let st = ref (ratio_init weighted) in
+      {
+        draw = (fun () -> let v, s = ratio_draw !st in st := s; get_value v);
+        draw_pred =
+          (fun p ->
+            let v, s = ratio_draw_predicate p !st in
+            st := s;
+            get_value v);
+      }
+  | Group gs ->
+      let st = ref (group_init arr gs) in
+      {
+        draw = (fun () -> let v, s = group_draw !st in st := s; get_value v);
+        draw_pred =
+          (fun p ->
+            let v, s = group_draw_predicate p !st in
+            st := s;
+            get_value v);
+      }
+  | Tendency spec ->
+      let st = ref (tendency_init ~count:n arr spec) in
+      {
+        draw =
+          (fun () -> let v, s = tendency_draw !st in st := s; get_value v);
+        draw_pred =
+          (fun p ->
+            (* Sample from the filtered array within the current window,
+               then advance the state to the next window position. *)
+            let (TendencyState { lo; hi; _ }) = !st in
+            let filtered =
+              arr |> Array.to_list |> List.filter p |> Array.of_list
+            in
+            let v =
+              if Array.length filtered = 0 then tendency_sample arr lo hi
+              else tendency_sample filtered lo hi
+            in
+            let _, s = tendency_draw !st in
+            st := s;
+            v);
+      }
+  | Sequence indices ->
+      let values = List.map (fun i -> arr.(i)) indices |> Array.of_list in
+      let st = ref (sequence_init (Array.to_list values)) in
+      {
+        draw =
+          (fun () -> let v, s = sequence_draw !st in st := s; get_value v);
+        draw_pred =
+          (fun _p ->
+            (* Sequence has no predicate mechanism; advance and return freely. *)
+            let v, s = sequence_draw !st in
+            st := s;
+            get_value v);
+      }
+
 let sel_seq_of_ensemble_no_union n principle ensemble =
   ensemble |> ensemble_values_no_union
   |> List.map (fun arr -> sel_seq_of_array n principle arr)
@@ -878,6 +976,77 @@ let calculate_layer_autonomous_density auto_density n_events
   in
   List.rev events
 
+(* ---- Hierarchical layer calculation ---- *)
+
+(* Params for the hierarchy fold — one selector per parameter that hierarchy controls. *)
+type layer_params = {
+  instr_sel : instrument selector;
+  perf_sel : Performance.t selector;
+}
+
+(* Fill one field of every partial event according to the current hierarchy element. *)
+let apply_step (params : layer_params) (partials : partial_event array)
+    (elem : hierarchy_elem) : partial_event array =
+  Array.init (Array.length partials) (fun i ->
+      let pe = partials.(i) in
+      match elem with
+      | Ins ->
+          let instr = params.instr_sel.draw () in
+          { pe with p_instrument = Some instr }
+      | Per ->
+          let pred =
+            match pe.p_instrument with
+            | None -> Fun.const true
+            | Some (Instrument { performance = modes; _ }) ->
+                fun p -> Performance_modes.mem p modes
+          in
+          let perf = params.perf_sel.draw_pred pred in
+          { pe with p_performance = Some perf })
+
+(* Combine filled partials with pre-computed entry delays into score events.
+   Entry delays accumulate left-to-right to produce absolute times. *)
+let partials_to_events (partials : partial_event array)
+    (eds : float array) : score_event list =
+  let time = ref 0.0 in
+  Array.to_list
+    (Array.init (Array.length partials) (fun i ->
+         let pe = partials.(i) in
+         let t = !time in
+         time := t +. eds.(i);
+         match pe with
+         | { p_instrument =
+               Some
+                 (Instrument
+                   { instrument; chordsize = Chordsize { minsize; maxsize }; _ });
+             p_performance = Some performance } ->
+             let chordsize =
+               if minsize = maxsize then minsize
+               else Random.int (maxsize - minsize + 1) + minsize
+             in
+             Some { time = t; instrument; chordsize; performance }
+         | _ -> None))
+  |> List.filter_map Fun.id
+
+(** Calculate one layer using the hierarchy list.
+    Entry delays are always computed first (independent of hierarchy order).
+    The hierarchy then specifies the order in which [Ins] and [Per] are filled,
+    where later steps can condition on earlier ones. *)
+let calculate_layer_hierarchical ~n_events ~hierarchy ~instr_arr
+    ~instr_principle ~ed_arr ~ed_principle ~perf_arr ~perf_principle =
+  let eds =
+    sel_seq_of_array n_events ed_principle ed_arr
+    |> Seq.map entry_to_float |> Array.of_seq
+  in
+  let params =
+    {
+      instr_sel = make_selector instr_principle n_events instr_arr;
+      perf_sel = make_selector perf_principle n_events perf_arr;
+    }
+  in
+  let partials = Array.init n_events (fun _ -> empty_partial) in
+  let filled = List.fold_left (apply_step params) partials hierarchy in
+  partials_to_events filled eds
+
 (** Generate a list of score events, using instrument based vertical density *)
 let generate_score ~variant_duration ~instrument_ensemble ~instrument_principle
     ~entry_delay_ensemble ~entry_delay_principle ~union ~density:_density =
@@ -921,6 +1090,39 @@ let generate_score ~variant_duration ~instrument_ensemble ~instrument_principle
       (* treat the ensemble as a list of arrays and compute a layer for each group *)
       List.map2 layer_from_group_arrays instr_arrays entr_arr
 
+let generate_score_hierarchical ~variant_duration ~instrument_ensemble
+    ~instrument_principle ~entry_delay_ensemble ~entry_delay_principle ~perf_arr
+    ~perf_principle ~union ~hierarchy =
+  match union with
+  | Union ->
+      let entr_arr = ensemble_values_union entry_delay_ensemble in
+      let instr_arr = ensemble_values_union instrument_ensemble in
+      let n_events =
+        calculate_number_of_events variant_duration entry_delay_principle
+          entr_arr
+      in
+      let _ = Printf.printf "estimated events: %d\n" n_events in
+      [
+        calculate_layer_hierarchical ~n_events ~hierarchy ~instr_arr
+          ~instr_principle:instrument_principle ~ed_arr:entr_arr
+          ~ed_principle:entry_delay_principle ~perf_arr
+          ~perf_principle;
+      ]
+  | NoUnion ->
+      let instr_arrays = ensemble_values_no_union instrument_ensemble in
+      let entr_arrays = ensemble_values_no_union entry_delay_ensemble in
+      List.map2
+        (fun instr_arr entr_arr ->
+          let n_events =
+            calculate_number_of_events variant_duration entry_delay_principle
+              entr_arr
+          in
+          let _ = Printf.printf "\nestimated events: %d " n_events in
+          calculate_layer_hierarchical ~n_events ~hierarchy ~instr_arr
+            ~instr_principle:instrument_principle ~ed_arr:entr_arr
+            ~ed_principle:entry_delay_principle ~perf_arr ~perf_principle)
+        instr_arrays entr_arrays
+
 let build_score cfg =
   let instr_ensemble =
     construct_ensemble cfg.instr_list cfg.instr_table EnsembleGroupSeries
@@ -935,9 +1137,25 @@ let build_score cfg =
         (* there is only one group for the entry delay ensemble, and it is autonomous *)
         construct_ensemble cfg.ed_list cfg.ed_table EnsembleGroupSeries 1
   in
-  generate_score ~variant_duration:cfg.variant_duration
-    ~instrument_ensemble:instr_ensemble
-    ~instrument_principle:cfg.instrument_principle
-    ~entry_delay_ensemble:ed_ensemble
-    ~entry_delay_principle:cfg.entrydelay_principle ~union:cfg.union
-    ~density:cfg.density
+  let (ParameterList instr_list) = cfg.instr_list in
+  let perf_arr =
+    let (ParameterList arr) =
+      extract_performances_from_instruments (Array.to_list instr_list)
+    in
+    arr
+  in
+  match cfg.hierarchy with
+  | [] ->
+      generate_score ~variant_duration:cfg.variant_duration
+        ~instrument_ensemble:instr_ensemble
+        ~instrument_principle:cfg.instrument_principle
+        ~entry_delay_ensemble:ed_ensemble
+        ~entry_delay_principle:cfg.entrydelay_principle ~union:cfg.union
+        ~density:cfg.density
+  | hierarchy ->
+      generate_score_hierarchical ~variant_duration:cfg.variant_duration
+        ~instrument_ensemble:instr_ensemble
+        ~instrument_principle:cfg.instrument_principle
+        ~entry_delay_ensemble:ed_ensemble
+        ~entry_delay_principle:cfg.entrydelay_principle ~perf_arr
+        ~perf_principle:cfg.performance_principle ~union:cfg.union ~hierarchy
