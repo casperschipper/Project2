@@ -804,94 +804,60 @@ let sel_seq_gen_of_array n principle (arr : 'a array) : (unit -> 'a) Seq.t =
   | Tendency sections -> tendency_mask_gen n arr sections
 
 (* do the combination case *)
-(* ---- Stateful selector ---- *)
-(* A selector encapsulates mutable state for a selection principle.
-   [draw ()] advances and returns the next value freely.
-   [draw_pred p] advances and returns the next value satisfying [p];
-   for principles that cannot guarantee [p], returns the best available value. *)
-type 'a selector = {
-  draw : unit -> 'a;
-  draw_pred : ('a -> bool) -> 'a;
-}
+(* ---- Pure stateful selector ---- *)
+(* [sel_state] wraps the per-principle state. All draws are pure:
+   [sel_draw st] returns [(value, next_st)] without any mutation.
+   The caller threads [next_st] forward explicitly. *)
+type 'a sel_state =
+  | SAlea     of 'a alea_state
+  | SSeries   of 'a series_state
+  | SRatio    of 'a ratio_state
+  | SGroup    of 'a group_state
+  | STendency of 'a tendency_state
+  | SSequence of 'a sequence_state
 
-let make_selector (principle : selection_principle) (n : int) (arr : 'a array)
-    : 'a selector =
+let sel_init (principle : selection_principle) (n : int) (arr : 'a array)
+    : 'a sel_state =
   match principle with
-  | Alea ->
-      let st = ref (alea_init arr) in
-      {
-        draw = (fun () -> let v, s = alea_draw !st in st := s; get_value v);
-        draw_pred =
-          (fun p ->
-            let v, s = alea_draw_predicate p !st in
-            st := s;
-            get_value v);
-      }
-  | Series ->
-      let st = ref (series_init arr) in
-      {
-        draw = (fun () -> let v, s = series_draw !st in st := s; get_value v);
-        draw_pred =
-          (fun p ->
-            let v, s = series_draw_predicate p !st in
-            st := s;
-            get_value v);
-      }
-  | Ratio ratios ->
-      let weighted = List.map (fun (i, cnt) -> (arr.(i), cnt)) ratios in
-      let st = ref (ratio_init weighted) in
-      {
-        draw = (fun () -> let v, s = ratio_draw !st in st := s; get_value v);
-        draw_pred =
-          (fun p ->
-            let v, s = ratio_draw_predicate p !st in
-            st := s;
-            get_value v);
-      }
-  | Group gs ->
-      let st = ref (group_init arr gs) in
-      {
-        draw = (fun () -> let v, s = group_draw !st in st := s; get_value v);
-        draw_pred =
-          (fun p ->
-            let v, s = group_draw_predicate p !st in
-            st := s;
-            get_value v);
-      }
-  | Tendency spec ->
-      let st = ref (tendency_init ~count:n arr spec) in
-      {
-        draw =
-          (fun () -> let v, s = tendency_draw !st in st := s; get_value v);
-        draw_pred =
-          (fun p ->
-            (* Sample from the filtered array within the current window,
-               then advance the state to the next window position. *)
-            let (TendencyState { lo; hi; _ }) = !st in
-            let filtered =
-              arr |> Array.to_list |> List.filter p |> Array.of_list
-            in
-            let v =
-              if Array.length filtered = 0 then tendency_sample arr lo hi
-              else tendency_sample filtered lo hi
-            in
-            let _, s = tendency_draw !st in
-            st := s;
-            v);
-      }
+  | Alea     -> SAlea (alea_init arr)
+  | Series   -> SSeries (series_init arr)
+  | Ratio rs -> SRatio (ratio_init (List.map (fun (i, cnt) -> (arr.(i), cnt)) rs))
+  | Group gs -> SGroup (group_init arr gs)
+  | Tendency spec -> STendency (tendency_init ~count:n arr spec)
   | Sequence indices ->
-      let values = List.map (fun i -> arr.(i)) indices |> Array.of_list in
-      let st = ref (sequence_init (Array.to_list values)) in
-      {
-        draw =
-          (fun () -> let v, s = sequence_draw !st in st := s; get_value v);
-        draw_pred =
-          (fun _p ->
-            (* Sequence has no predicate mechanism; advance and return freely. *)
-            let v, s = sequence_draw !st in
-            st := s;
-            get_value v);
-      }
+      SSequence (sequence_init (List.map (fun i -> arr.(i)) indices))
+
+let sel_draw : 'a sel_state -> 'a * 'a sel_state = function
+  | SAlea     s -> let v, s' = alea_draw s     in (get_value v, SAlea s')
+  | SSeries   s -> let v, s' = series_draw s   in (get_value v, SSeries s')
+  | SRatio    s -> let v, s' = ratio_draw s    in (get_value v, SRatio s')
+  | SGroup    s -> let v, s' = group_draw s    in (get_value v, SGroup s')
+  | STendency s -> let v, s' = tendency_draw s in (get_value v, STendency s')
+  | SSequence s -> let v, s' = sequence_draw s in (get_value v, SSequence s')
+
+let sel_draw_pred (p : 'a -> bool) : 'a sel_state -> 'a * 'a sel_state = function
+  | SAlea s ->
+      let v, s' = alea_draw_predicate p s in (get_value v, SAlea s')
+  | SSeries s ->
+      let v, s' = series_draw_predicate p s in (get_value v, SSeries s')
+  | SRatio s ->
+      let v, s' = ratio_draw_predicate p s in (get_value v, SRatio s')
+  | SGroup s ->
+      let v, s' = group_draw_predicate p s in (get_value v, SGroup s')
+  | STendency s ->
+      (* Sample from the predicate-filtered array within the current window,
+         then advance the state to the next window position. *)
+      let (TendencyState { arr; lo; hi; _ }) = s in
+      let filtered = arr |> Array.to_list |> List.filter p |> Array.of_list in
+      let v =
+        if Array.length filtered = 0 then tendency_sample arr lo hi
+        else tendency_sample filtered lo hi
+      in
+      let _, s' = tendency_draw s in
+      (v, STendency s')
+  | SSequence s ->
+      (* Sequence has no predicate mechanism; advance freely. *)
+      let v, s' = sequence_draw s in (get_value v, SSequence s')
 
 let sel_seq_of_ensemble_no_union n principle ensemble =
   ensemble |> ensemble_values_no_union
@@ -978,54 +944,68 @@ let calculate_layer_autonomous_density auto_density n_events
 
 (* ---- Hierarchical layer calculation ---- *)
 
-(* Params for the hierarchy fold — one selector per parameter that hierarchy controls. *)
-type layer_params = {
-  instr_sel : instrument selector;
-  perf_sel : Performance.t selector;
+(* States threaded through the hierarchy fold — one per parameter hierarchy controls. *)
+type layer_states = {
+  instr_state : instrument sel_state;
+  perf_state  : Performance.t sel_state;
 }
 
-(* Fill one field of every partial event according to the current hierarchy element. *)
-let apply_step (params : layer_params) (partials : partial_event array)
-    (elem : hierarchy_elem) : partial_event array =
-  Array.init (Array.length partials) (fun i ->
-      let pe = partials.(i) in
-      match elem with
-      | Ins ->
-          let instr = params.instr_sel.draw () in
-          { pe with p_instrument = Some instr }
-      | Per ->
-          let pred =
-            match pe.p_instrument with
-            | None -> Fun.const true
-            | Some (Instrument { performance = modes; _ }) ->
-                fun p -> Performance_modes.mem p modes
-          in
-          let perf = params.perf_sel.draw_pred pred in
-          { pe with p_performance = Some perf })
+(* One step of the hierarchy fold.
+   [partials] is the list being built up; [states] carries the selector states.
+   Returns updated [(partials, states)] with one more field filled per event. *)
+let apply_step (partials, states) (elem : hierarchy_elem) =
+  match elem with
+  | Ins ->
+      let instr_state', filled =
+        List.fold_left_map
+          (fun st pe ->
+            let v, st' = sel_draw st in
+            (st', { pe with p_instrument = Some v }))
+          states.instr_state partials
+      in
+      (filled, { states with instr_state = instr_state' })
+  | Per ->
+      let perf_state', filled =
+        List.fold_left_map
+          (fun st pe ->
+            let pred =
+              match pe.p_instrument with
+              | None -> Fun.const true
+              | Some (Instrument { performance = modes; _ }) ->
+                  fun p -> Performance_modes.mem p modes
+            in
+            let v, st' = sel_draw_pred pred st in
+            (st', { pe with p_performance = Some v }))
+          states.perf_state partials
+      in
+      (filled, { states with perf_state = perf_state' })
 
 (* Combine filled partials with pre-computed entry delays into score events.
-   Entry delays accumulate left-to-right to produce absolute times. *)
-let partials_to_events (partials : partial_event array)
-    (eds : float array) : score_event list =
-  let time = ref 0.0 in
-  Array.to_list
-    (Array.init (Array.length partials) (fun i ->
-         let pe = partials.(i) in
-         let t = !time in
-         time := t +. eds.(i);
-         match pe with
-         | { p_instrument =
-               Some
-                 (Instrument
-                   { instrument; chordsize = Chordsize { minsize; maxsize }; _ });
-             p_performance = Some performance } ->
-             let chordsize =
-               if minsize = maxsize then minsize
-               else Random.int (maxsize - minsize + 1) + minsize
-             in
-             Some { time = t; instrument; chordsize; performance }
-         | _ -> None))
-  |> List.filter_map Fun.id
+   Entry delays accumulate left-to-right to produce absolute times.
+   Pure: time is threaded as a fold accumulator, no refs. *)
+let partials_to_events (partials : partial_event list)
+    (eds : float list) : score_event list =
+  let _, events =
+    List.fold_left2
+      (fun (t, acc) pe ed ->
+        let event =
+          match pe with
+          | { p_instrument =
+                Some
+                  (Instrument
+                    { instrument; chordsize = Chordsize { minsize; maxsize }; _ });
+              p_performance = Some performance } ->
+              let chordsize =
+                if minsize = maxsize then minsize
+                else Random.int (maxsize - minsize + 1) + minsize
+              in
+              Some { time = t; instrument; chordsize; performance }
+          | _ -> None
+        in
+        (t +. ed, match event with Some e -> e :: acc | None -> acc))
+      (0.0, []) partials eds
+  in
+  List.rev events
 
 (** Calculate one layer using the hierarchy list.
     Entry delays are always computed first (independent of hierarchy order).
@@ -1035,16 +1015,17 @@ let calculate_layer_hierarchical ~n_events ~hierarchy ~instr_arr
     ~instr_principle ~ed_arr ~ed_principle ~perf_arr ~perf_principle =
   let eds =
     sel_seq_of_array n_events ed_principle ed_arr
-    |> Seq.map entry_to_float |> Array.of_seq
+    |> Seq.map entry_to_float
+    |> List.of_seq
   in
-  let params =
+  let init_states =
     {
-      instr_sel = make_selector instr_principle n_events instr_arr;
-      perf_sel = make_selector perf_principle n_events perf_arr;
+      instr_state = sel_init instr_principle n_events instr_arr;
+      perf_state  = sel_init perf_principle n_events perf_arr;
     }
   in
-  let partials = Array.init n_events (fun _ -> empty_partial) in
-  let filled = List.fold_left (apply_step params) partials hierarchy in
+  let partials = List.init n_events (fun _ -> empty_partial) in
+  let filled, _ = List.fold_left apply_step (partials, init_states) hierarchy in
   partials_to_events filled eds
 
 (** Generate a list of score events, using instrument based vertical density *)

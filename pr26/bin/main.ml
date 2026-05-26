@@ -44,12 +44,52 @@ let print_layers layers =
   List.iteri
     (fun i events ->
       Printf.printf "\n--- layer %d ---\n" i;
-      Printf.printf "%-8s %-12s %s\n" "time" "instrument" "chordsize";
+      Printf.printf "%-8s %-14s %-5s %s\n" "time" "instrument" "cs"
+        "performance";
       List.iter
-        (fun { time; instrument = InstrumentName name; chordsize; _ } ->
-          Printf.printf "%-8.3f %-12s %d\n" time name chordsize)
+        (fun { time; instrument = InstrumentName name; chordsize; performance }
+           ->
+          Printf.printf "%-8.3f %-14s %-5d %s\n" time name chordsize
+            (Performance.to_string performance))
         events)
     layers
+
+let verify_hierarchy instrs layers =
+  let perf_map =
+    List.map
+      (fun (Instrument { instrument; performance; _ }) ->
+        (instrument, performance))
+      instrs
+  in
+  let violations =
+    List.concat_map
+      (fun layer ->
+        List.filter_map
+          (fun event ->
+            match List.assoc_opt event.instrument perf_map with
+            | None -> Some "unknown instrument"
+            | Some valid ->
+                if Performance_modes.mem event.performance valid then None
+                else
+                  let valid_str =
+                    Performance_modes.elements valid
+                    |> List.map Performance.to_string
+                    |> String.concat ", "
+                  in
+                  Some
+                    (Printf.sprintf "%s got '%s' (valid: %s)"
+                       (match event.instrument with InstrumentName n -> n)
+                       (Performance.to_string event.performance)
+                       valid_str))
+          layer)
+      layers
+  in
+  print_endline "\n=== Hierarchy verification ===";
+  match violations with
+  | [] -> print_endline "OK: every performance is valid for its instrument"
+  | vs ->
+      Printf.printf "VIOLATIONS (%d):\n" (List.length vs);
+      List.iter (fun msg -> Printf.printf "  - %s\n" msg) vs
 
 let print_errors label errors =
   Printf.printf "%s failed:\n" label;
@@ -65,28 +105,28 @@ let instrument_entry_test () =
   let pitch_compass =
     mk_pitch_compass (absolute 1 1) (absolute 5 12) Pitch_set.empty
   in
-  let performance_modes =
-    Performance_modes.of_list
-      [
-        Performance.of_string "normal";
-        Performance.of_string "plucking";
-        Performance.of_string "bowing";
-      ]
-  in
+  let normal = Performance.of_string "normal" in
+  let pluck = Performance.of_string "plucking" in
+  let bow = Performance.of_string "bowing" in
   let guitar = mk_instr "guitar" in
   let piano = mk_instr "piano" in
   let basedrum = mk_instr "basedrum" in
   let marimba = mk_instr "marimba" in
   let instr_validated =
+    let of_list = Performance_modes.of_list in
     Validated.sequence
       [
-        inst <$> guitar <+> chordsize 1 2 <+> pure performance_modes
+        inst <$> guitar <+> chordsize 1 2
+        <+> pure (of_list [ normal; pluck; bow ])
         <+> pitch_compass;
-        inst <$> piano <+> chordsize 1 10 <+> pure performance_modes
+        inst <$> piano <+> chordsize 1 10
+        <+> pure (of_list [ normal ])
         <+> pitch_compass;
-        inst <$> basedrum <+> chordsize 1 1 <+> pure performance_modes
+        inst <$> basedrum <+> chordsize 1 1
+        <+> pure (of_list [ pluck; bow ])
         <+> pitch_compass;
-        inst <$> marimba <+> chordsize 1 4 <+> pure performance_modes
+        inst <$> marimba <+> chordsize 1 4
+        <+> pure (of_list [ normal ])
         <+> pitch_compass;
       ]
   in
@@ -122,6 +162,7 @@ let instrument_entry_test () =
       | Error errors -> print_errors "instrument_entry_test" errors
       | Ok layers ->
           print_layers layers;
+          verify_hierarchy instrs layers;
           write_score "score.projekt2" layers;
           print_endline "Score written to score.projekt2")
 
