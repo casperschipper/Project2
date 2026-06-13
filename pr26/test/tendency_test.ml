@@ -37,11 +37,30 @@ let test_tendency_mask () =
     [ "parallel"; "widening"; "narrowing"; "crosswise" ] |> List.to_seq
   in
   print_endline "Testing a mask of 100 values, showing the sections by 25";
-  test_mask |> tendency_mask_raw 100
-  |> chunk (Seq.repeat 25)
+  let positions = Array.init 1000 (fun i -> float_of_int i /. 1000.0) in
+  sel_draw_n 100 (Tendency test_mask) positions
+  |> List.to_seq |> chunk (Seq.repeat 25)
   |> Seq.zip labels
   |> Seq.iter (fun (label, vals) ->
       print_float_list label (vals |> List.of_seq))
+
+let test_tendency_repeated_sampling () =
+  print_endline "\ntest tendency mask: sampling the same window repeatedly";
+  let positions = Array.init 1000 (fun i -> float_of_int i /. 1000.0) in
+  let window = function
+    | STendency (TendencyState { lo; hi; _ }) -> (lo, hi)
+    | _ -> assert false
+  in
+  let state0 = sel_init (Tendency test_mask) 4 positions in
+  let v1, state1 = sel_sample state0 in
+  let v2, state2 = sel_sample state1 in
+  let v3, _ = sel_sample state2 in
+  Printf.printf "samples from the same window: %f %f %f\n" v1 v2 v3;
+  Printf.printf "window stayed the same across samples: %b\n"
+    (window state0 = window state1 && window state1 = window state2);
+  let state' = sel_advance_window state2 in
+  Printf.printf "advancing the window moves to a new slice: %b\n"
+    (window state2 <> window state')
 
 let test_estimating_entry_delay () =
   let entry_delay_array =
@@ -82,4 +101,5 @@ let test_estimating_entry_delay () =
 let () =
   Random.init 93;
   test_tendency_mask ();
+  test_tendency_repeated_sampling ();
   test_estimating_entry_delay ()

@@ -201,8 +201,8 @@ type instrument =
    nr_of_tones is filled when the score is built. *)
 type proto_event =
   | Proto of {
-      instrument : instrument option;
       entrydelay : entrydelay option;
+      instrument : instrument option;
       nr_of_tones : int option;
       performance : Performance.t option;
     }
@@ -210,12 +210,16 @@ type proto_event =
 let empty_proto =
   Proto
     {
-      instrument = None;
       entrydelay = None;
+      instrument = None;
       nr_of_tones = None;
       performance = None;
     }
 
+(* this function allows you to extract all possible performance modes from the instrument list
+in this way, performances do not have to be defined separately (it makes no sense to have a performance mode 
+for which there is no instrument)
+*)
 let extract_performances_from_instruments lst =
   List.fold_right
     (fun (Instrument ins) acc -> Performance_modes.union ins.performance acc)
@@ -253,8 +257,6 @@ let print_instrument
 let inst instrument cs performance pitchcompass =
   Instrument { instrument; chordsize = cs; performance; pitchcompass }
 
-(* test materials *)
-
 (* for formation of the ensemble Alea, Series or Sequence will pick the groups from the table *)
 type ensemble_group_selection =
   | EnsembleGroupAlea
@@ -278,77 +280,6 @@ let mk_autonomous ~tr ~low ~high ~selection_principle =
   else if high < low then
     Error (InvalidDensity "max should not be higher than min")
   else Ok (Autonomous { low; high; selection_principle })
-
-let section_sq n (TendencySection s) =
-  Seq.init n (fun i ->
-      let t = if n <= 1 then 0.0 else Float.of_int i /. Float.of_int (n - 1) in
-      let lo = lerp (s.start_min :> float) (s.end_min :> float) t in
-      let hi = lerp (s.start_max :> float) (s.end_max :> float) t in
-      let lo, hi = if lo <= hi then (lo, hi) else (hi, lo) in
-      lo +. Random.float (hi -. lo))
-
-let tendency_mask_raw count (TendencyMask sections) =
-  (* Claude wrote this, still needs to be tested if it acts like we want *)
-  (* output between zero and one *)
-  let portions = List.map (fun (TendencySection s) -> s.portion) sections in
-  let total = List.fold_left ( +. ) 0.0 portions in
-  let exact = List.map (fun w -> w /. total *. Float.of_int count) portions in
-  (* largest remainder method for integer allocation *)
-  let floors = List.map (fun x -> int_of_float (floor x)) exact in
-  let fracs = List.map2 (fun x f -> x -. Float.of_int f) exact floors in
-  let allocated = List.fold_left ( + ) 0 floors in
-  let remainder = count - allocated in
-  (* distribute remainder to sections with largest fractional parts *)
-  let indexed = List.mapi (fun i f -> (i, f)) fracs in
-  let sorted = List.sort (fun (_, a) (_, b) -> Float.compare b a) indexed in
-  let bonus_arr = Array.make (List.length sections) 0 in
-  List.iteri
-    (fun rank (orig_i, _) -> if rank < remainder then bonus_arr.(orig_i) <- 1)
-    sorted;
-  let counts = List.mapi (fun i f -> f + bonus_arr.(i)) floors in
-  List.map2 section_sq counts sections |> List.to_seq |> Seq.concat
-
-let tendency_mask count ensemble sections =
-  let l = Array.length ensemble in
-  let index arr i = arr.(i) in
-  tendency_mask_raw count sections
-  |> Seq.map (fun x ->
-      x *. float_of_int l |> floor |> int_of_float |> index ensemble)
-
-let section_sq_gen n (TendencySection s) : (unit -> float) Seq.t =
-  Seq.init n (fun i ->
-      let t = if n <= 1 then 0.0 else Float.of_int i /. Float.of_int (n - 1) in
-      let lo = lerp (s.start_min :> float) (s.end_min :> float) t in
-      let hi = lerp (s.start_max :> float) (s.end_max :> float) t in
-      let lo, hi = if lo <= hi then (lo, hi) else (hi, lo) in
-      fun () -> lo +. Random.float (hi -. lo))
-
-(* an alternative version of tendency mask that can be "paused", 
-more values of a timeslot can be consumed before moving the boundaries 
-*)
-let tendency_mask_gen count (ensemble : 'a array) (TendencyMask sections) :
-    (unit -> 'a) Seq.t =
-  let l = Array.length ensemble in
-  let portions = List.map (fun (TendencySection s) -> s.portion) sections in
-  let total = List.fold_left ( +. ) 0.0 portions in
-  let exact = List.map (fun w -> w /. total *. Float.of_int count) portions in
-  let floors = List.map (fun x -> int_of_float (floor x)) exact in
-  let fracs = List.map2 (fun x f -> x -. Float.of_int f) exact floors in
-  let allocated = List.fold_left ( + ) 0 floors in
-  let remainder = count - allocated in
-  let indexed = List.mapi (fun i f -> (i, f)) fracs in
-  let sorted = List.sort (fun (_, a) (_, b) -> Float.compare b a) indexed in
-  let bonus_arr = Array.make (List.length sections) 0 in
-  List.iteri
-    (fun rank (orig_i, _) -> if rank < remainder then bonus_arr.(orig_i) <- 1)
-    sorted;
-  let counts = List.mapi (fun i f -> f + bonus_arr.(i)) floors in
-  List.map2 section_sq_gen counts sections
-  |> List.to_seq |> Seq.concat
-  |> Seq.map (fun sample_float ->
-      fun () ->
-       sample_float () *. float_of_int l
-       |> floor |> int_of_float |> Array.get ensemble)
 
 let group_selection_to_string gs =
   match gs with GroupAlea -> "alea" | GroupSeries -> "series"
@@ -404,15 +335,6 @@ let series_select start =
   in
   Seq.unfold f (shuffled ())
 
-let series_sq n =
-  let start = List.init n id |> Array.of_list in
-  series_select start
-
-let choose_series lst =
-  let arr = lst |> Array.of_list in
-  let n = Array.length arr in
-  series_sq n |> Seq.map (fun i -> arr.(i))
-
 let ratio_sq lst =
   let start =
     lst |> List.concat_map (fun (x, n) -> repeat x n) |> Array.of_list
@@ -423,31 +345,6 @@ let sequence lst = Seq.cycle (List.to_seq lst)
 
 let sequence_select arr lst =
   sequence lst |> Seq.map (fun i -> lookup_arr arr i)
-
-let random_value a b =
-  let range = abs (b - a) in
-  let mini = min a b in
-  mini + Random.int range
-
-let group element repetition min_rep max_rep =
-  Group (GroupSpec { element; repetition; min_rep; max_rep })
-
-let group_sq ensemble (GroupSpec { element; repetition; min_rep; max_rep }) =
-  match (element, repetition) with
-  | GroupAlea, GroupAlea ->
-      choose ensemble
-      |> Seq.concat_map (fun elm -> repeat_n elm (random_value min_rep max_rep))
-  | GroupSeries, GroupAlea ->
-      choose_series ensemble
-      |> Seq.concat_map (fun elm -> repeat_n elm (random_value min_rep max_rep))
-  | GroupSeries, GroupSeries ->
-      let elms = choose_series ensemble in
-      let reps = choose_series (range min_rep max_rep) in
-      Seq.map2 repeat_n elms reps |> Seq.concat
-  | GroupAlea, GroupSeries ->
-      let elms = choose ensemble in
-      let reps = choose_series (range min_rep max_rep) in
-      Seq.map2 repeat_n elms reps |> Seq.concat
 
 (* ensemble formation *)
 
@@ -600,7 +497,14 @@ let expected_value selection_principle array =
       array_average ensemble
   | Tendency sections ->
       let n_samples = 1000 in
-      let values = tendency_mask n_samples ensemble sections |> List.of_seq in
+      let _, values =
+        List.init n_samples id
+        |> List.fold_left
+             (fun (st, acc) _ ->
+               let v, st' = tendency_draw st in
+               (st', get_value v :: acc))
+             (tendency_init ~count:n_samples ensemble sections, [])
+      in
       let sum = List.fold_left ( +. ) 0.0 values in
       sum /. Float.of_int (List.length values)
   | Sequence seq ->
@@ -718,81 +622,6 @@ let ensemble_values_no_union ensemble =
       g |> elements_from_indexed_ensemble |> Array.map value_from_element
       |> fun x -> [ x ]
 
-(** Build a finite section of values based on principle and array *)
-let sel_seq_of_array n principle arr =
-  match principle with
-  | Alea -> alea_sq arr |> Seq.take n
-  | Series -> series_select arr |> Seq.take n
-  | Ratio ratios ->
-      ratios
-      |> List.concat_map (fun (i, n) -> repeat arr.(i) n)
-      |> Array.of_list |> series_select |> Seq.take n
-  | Group groupspec -> group_sq (Array.to_list arr) groupspec |> Seq.take n
-  | Sequence indices ->
-      sequence indices |> Seq.map (fun i -> arr.(i)) |> Seq.take n
-  | Tendency sections -> tendency_mask n arr sections
-(* NOTE: unlike the others, this has a certain number of events *)
-
-(** Like [sel_seq_of_array] but returns [n] per-time-point generators. Calling a
-    generator multiple times stays at the same "position" within the overall
-    sequence, so Tendency boundaries are frozen for a whole time point and only
-    advance when the outer sequence moves to the next element. For all
-    non-Tendency principles, a single shared mutable sequence is threaded
-    continuously across time points (the series does not restart per time
-    point). *)
-let sel_seq_gen_of_array n principle (arr : 'a array) : (unit -> 'a) Seq.t =
-  let l = Array.length arr in
-  match principle with
-  | Alea ->
-      let gen () = arr.(Random.int l) in
-      Seq.init n (fun _ -> gen)
-  | Series ->
-      let state = ref (series_select arr) in
-      let gen () =
-        match Seq.uncons !state with
-        | None -> arr.(0)
-        | Some (v, rest) ->
-            state := rest;
-            v
-      in
-      Seq.init n (fun _ -> gen)
-  | Ratio ratios ->
-      let ratio_arr =
-        ratios
-        |> List.concat_map (fun (i, cnt) -> repeat arr.(i) cnt)
-        |> Array.of_list
-      in
-      let state = ref (series_select ratio_arr) in
-      let gen () =
-        match Seq.uncons !state with
-        | None -> arr.(0)
-        | Some (v, rest) ->
-            state := rest;
-            v
-      in
-      Seq.init n (fun _ -> gen)
-  | Group groupspec ->
-      let state = ref (group_sq (Array.to_list arr) groupspec) in
-      let gen () =
-        match Seq.uncons !state with
-        | None -> arr.(0)
-        | Some (v, rest) ->
-            state := rest;
-            v
-      in
-      Seq.init n (fun _ -> gen)
-  | Sequence indices ->
-      let state = ref (sequence indices |> Seq.map (fun i -> arr.(i))) in
-      let gen () =
-        match Seq.uncons !state with
-        | None -> arr.(0)
-        | Some (v, rest) ->
-            state := rest;
-            v
-      in
-      Seq.init n (fun _ -> gen)
-  | Tendency sections -> tendency_mask_gen n arr sections
-
 (* do the combination case *)
 (* ---- Pure stateful selector ---- *)
 (* [sel_state] wraps the per-principle state. All draws are pure:
@@ -868,9 +697,37 @@ let sel_draw_pred (p : 'a -> bool) : 'a sel_state -> 'a * 'a sel_state =
       let v, s' = sequence_draw s in
       (get_value v, SSequence s')
 
-let sel_seq_of_ensemble_no_union n principle ensemble =
-  ensemble |> ensemble_values_no_union
-  |> List.map (fun arr -> sel_seq_of_array n principle arr)
+(** Draw [n] values from [arr] using [principle], threading a single state
+    through all draws (so e.g. [Series]/[Sequence] exhaust their options
+    before repeating). *)
+let sel_draw_n n principle arr =
+  let _, values =
+    List.init n id
+    |> List.fold_left
+         (fun (st, acc) _ ->
+           let v, st' = sel_draw st in
+           (st', v :: acc))
+         (sel_init principle n arr, [])
+  in
+  List.rev values
+
+(* Sample a value at the current position without consuming it. For
+   [Tendency] this samples within the current window without moving it; all
+   other principles thread one shared sequence through every draw regardless
+   of time point, so sampling is the same as drawing. *)
+let sel_sample : 'a sel_state -> 'a * 'a sel_state = function
+  | STendency (TendencyState { arr; lo; hi; _ } as s) ->
+      (tendency_sample arr lo hi, STendency s)
+  | st -> sel_draw st
+
+(* Move a [Tendency] state on to its next window, marking the end of a time
+   point. Other principles already advance on every [sel_sample], so this is
+   a no-op for them. *)
+let sel_advance_window : 'a sel_state -> 'a sel_state = function
+  | STendency s ->
+      let _, s' = tendency_draw s in
+      STendency s'
+  | st -> st
 
 let calculate_number_of_events variant_duration entry_delay_principle
     entry_delay_ensemble =
@@ -879,15 +736,13 @@ let calculate_number_of_events variant_duration entry_delay_principle
 
 let calculate_layer n_events instrument_principle inst_arr entry_delay_principle
     ed_arr =
-  let instr_seq = sel_seq_of_array n_events instrument_principle inst_arr in
-  let ed_seq =
-    sel_seq_of_array n_events entry_delay_principle ed_arr
-    |> Seq.map entry_to_float
+  let instrs = sel_draw_n n_events instrument_principle inst_arr in
+  let eds =
+    sel_draw_n n_events entry_delay_principle ed_arr |> List.map entry_to_float
   in
-  let pairs = Seq.zip instr_seq ed_seq |> Seq.take n_events |> List.of_seq in
   let _, events =
-    List.fold_left
-      (fun (time, acc) (instr, ed) ->
+    List.fold_left2
+      (fun (time, acc) instr ed ->
         let (Instrument
                { chordsize = Chordsize { minsize; maxsize }; instrument; _ }) =
           instr
@@ -898,7 +753,7 @@ let calculate_layer n_events instrument_principle inst_arr entry_delay_principle
         in
         let performance = Performance.of_string "dummy" in
         (time +. ed, { time; instrument; chordsize; performance } :: acc))
-      (0.0, []) pairs
+      (0.0, []) instrs eds
   in
   List.rev events
 
@@ -911,19 +766,16 @@ let calculate_layer_autonomous_density auto_density n_events
   in
   let _ = print_int_list "Possible densities as follows" density_list in
   let density_array = Array.of_list density_list in
-  let density_seq =
-    sel_seq_of_array n_events auto_density.selection_principle density_array
+  let densities =
+    sel_draw_n n_events auto_density.selection_principle density_array
   in
-  let ed_seq =
-    sel_seq_of_array n_events entry_delay_principle ed_arr
-    |> Seq.map entry_to_float
+  let eds =
+    sel_draw_n n_events entry_delay_principle ed_arr |> List.map entry_to_float
   in
-  let pairs = Seq.zip ed_seq density_seq |> Seq.take n_events |> List.of_seq in
-  let gen_seq = sel_seq_gen_of_array n_events instrument_principle inst_arr in
-  let rec fill_to_density time gen remaining acc =
-    if remaining <= 0 then acc
+  let rec fill_to_density time instr_state remaining acc =
+    if remaining <= 0 then (instr_state, acc)
     else
-      let instr = gen () in
+      let instr, instr_state' = sel_sample instr_state in
       let (Instrument
              { chordsize = Chordsize { minsize; maxsize }; instrument; _ }) =
         instr
@@ -934,20 +786,19 @@ let calculate_layer_autonomous_density auto_density n_events
       in
       let actual_chordsize = min chordsize remaining in
       let perf = Performance.of_string "dummy" in
-      fill_to_density time gen
-        (remaining - actual_chordsize)
+      fill_to_density time instr_state' (remaining - actual_chordsize)
         ({ time; instrument; chordsize = actual_chordsize; performance = perf }
         :: acc)
   in
+  let instr_state0 = sel_init instrument_principle n_events inst_arr in
   let _, _, events =
-    List.fold_left
-      (fun (time, gen_seq, acc) (ed, density) ->
-        match Seq.uncons gen_seq with
-        | None -> (time +. ed, gen_seq, acc)
-        | Some (gen, rest) ->
-            let new_events = fill_to_density time gen density [] in
-            (time +. ed, rest, new_events @ acc))
-      (0.0, gen_seq, []) pairs
+    List.fold_left2
+      (fun (time, instr_state, acc) ed density ->
+        let instr_state', new_events =
+          fill_to_density time instr_state density []
+        in
+        (time +. ed, sel_advance_window instr_state', new_events @ acc))
+      (0.0, instr_state0, []) eds densities
   in
   List.rev events
 
@@ -1026,11 +877,7 @@ let protos_to_events (protos : proto_event list) : score_event list =
           match (pe.instrument, pe.performance) with
           | ( Some
                 (Instrument
-                   {
-                     instrument;
-                     chordsize = Chordsize { minsize; maxsize };
-                     _;
-                   }),
+                   { instrument; chordsize = Chordsize { minsize; maxsize }; _ }),
               Some performance ) ->
               let chordsize =
                 if minsize = maxsize then minsize
@@ -1045,14 +892,13 @@ let protos_to_events (protos : proto_event list) : score_event list =
   List.rev events
 
 (** Calculate one layer using the hierarchy list. Entry delays are always
-    computed first (independent of hierarchy order) and stored on each proto
-    up front. The hierarchy then specifies the order in which [Ins] and [Per]
-    are filled, where later steps can condition on earlier ones. *)
+    computed first (independent of hierarchy order) and stored on each proto up
+    front. The hierarchy then specifies the order in which [Ins] and [Per] are
+    filled, where later steps can condition on earlier ones. *)
 let calculate_layer_hierarchical ~n_events ~hierarchy ~instr_arr
     ~instr_principle ~ed_arr ~ed_principle ~perf_arr ~perf_principle =
   let eds =
-    sel_seq_of_array n_events ed_principle ed_arr
-    |> Seq.map entry_to_float |> List.of_seq
+    sel_draw_n n_events ed_principle ed_arr |> List.map entry_to_float
   in
   let init_states =
     {
