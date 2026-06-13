@@ -95,7 +95,7 @@ let print_errors label errors =
   Printf.printf "%s failed:\n" label;
   List.iter (fun e -> Printf.printf "  - %s\n" (display_problem e)) errors
 
-let instrument_entry_test () =
+let basic_test () =
   let _ = print_header "starting instrument entry test" in
   let pure = Validated.pure in
   let ( <+> ) = Validated.( <+> ) in
@@ -140,23 +140,24 @@ let instrument_entry_test () =
       let ed_table =
         of_nested_list [ [ 0; 1; 2 ]; [ 3; 4; 5 ]; [ 0; 1; 2; 3; 4; 5; 6; 7 ] ]
       in
-      let performance_table = of_nested_list [ [ 0; 1; 2 ]; [ 1; 2 ]; [ 0 ] ] in
+      let performance_table =
+        of_nested_list [ [ 0; 1; 2 ]; [ 1; 2 ]; [ 0; 2 ] ]
+      in
       let result =
         Validated.join_v
           ((fun ed_list d hier ->
              mk_structure_formula ~variant_duration:60.0 ~instr_list
                ~instr_table ~number_of_instrument_groups:3 ~ed_list ~ed_table
-               ~performance_table ~entrydelay_combination:Combination
-               ~instrument_principle:(Tendency test_mask)
-               ~entrydelay_principle:Series
-               ~performance_principle:(Tendency test_mask) Combination
-               ~union:NoUnion ~density:d ~hierarchy:hier
+               ~performance_table ~entrydelay_combination:NoCombination
+               ~instrument_principle:Alea ~entrydelay_principle:Series
+               ~performance_principle:(Tendency test_mask)
+               ~performance_combination:Combination ~union:NoUnion ~density:d
+               ~hierarchy:hier
              |> Result.map build_score)
           <$> mk_par_list mk_entrydelay
                 [ 0.1; 0.2; 0.3; 1.0; 2.0; 3.0; 2.0; 5.0 ]
-          <+> mk_autonomous ~tr:12 ~low:1 ~high:10
-                ~selection_principle:(Tendency test_mask)
-          <+> mk_hierarchy [ Ins; Per ])
+          <+> mk_autonomous ~tr:12 ~low:1 ~high:3 ~selection_principle:Alea
+          <+> mk_hierarchy [ Per; Ins ])
       in
       match result with
       | Error errors -> print_errors "instrument_entry_test" errors
@@ -169,4 +170,4 @@ let instrument_entry_test () =
 let () =
   (* some seed *)
   ignore (Random.init 93);
-  instrument_entry_test ()
+  basic_test ()

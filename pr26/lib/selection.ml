@@ -41,7 +41,7 @@ type 'e series_state = SeriesState of { initial : 'e list; options : 'e list }
 type 'e sequence_state =
   | SequenceState of { initial : 'e list; options : 'e list }
 
-(* we need a way of fetching a value, but returning the other values *)
+(* Moses will return two lists, those that fit the predicate and those that dont *)
 let moses f lst =
   (* we expect small lists, so not worth doing fold_left *)
   List.fold_right
@@ -58,7 +58,9 @@ let pick_first pred lst =
   aux [] lst
 
 let series_init (arr : 'a array) : 'a series_state =
+  (* sorted, basically a set of possibilities *)
   let initial = Array.to_list arr in
+  (* shuffled *)
   let options = shuffle arr |> Array.to_list in
   SeriesState { initial; options }
 
@@ -77,7 +79,7 @@ let series_draw_predicate p (SeriesState { initial; options }) =
     (* we pick the first possible option *)
     match pick_first p (x :: xs) with
     | Some v, left -> (Value v, SeriesState { initial; options = left })
-    (* no possible options, pick the first value, mark impossible *)
+    (* no possible options, pick the first value, mark as impossible *)
     | None, left -> (Impossible x, SeriesState { initial; options = left })
   in
   match options with
@@ -100,7 +102,9 @@ let alea_draw (AleaState arr) =
 
 let alea_draw_predicate p (AleaState arr) =
   let yes = arr |> Array.to_list |> List.filter p in
-  (Value (List.nth yes (Random.int (List.length yes))), AleaState arr)
+  match yes with
+  | [] -> (Impossible arr.(Random.int (Array.length arr)), AleaState arr)
+  | _ -> (Value (List.nth yes (Random.int (List.length yes))), AleaState arr)
 
 (* ── Ratio ── *)
 (* ---------- *)
@@ -115,6 +119,13 @@ let ratio_init weighted =
   RatioState { initial; options }
 
 let ratio_draw (RatioState { initial; options }) =
+  (* note that for aestetic reasons, I have chosen a similarity to SERIES. 
+      a ratio driven set of values is drawn up, that is shuffled consumed fully before renewed.
+      It is not exactly a weighted choice, but with the predicate situation it is slightly better balanced. 
+      Especially note predicate: even if we get blocked by hierarchy, the ratio will still be expressed pretty well, 
+        but it will do its best "impossible" values when it can.
+      @Question: might this produce more "impossible values" than necessary?
+  *)
   let pick x xs = (Value x, RatioState { initial; options = xs }) in
   match options with
   | x :: xs -> pick x xs
@@ -192,6 +203,9 @@ let group_pick_rep = function
   | GRSeries s ->
       let r, s' = series_draw s in
       (get_value r, GRSeries s')
+
+let mk_group_spec element repetition min_rep max_rep =
+  GroupSpec { element; repetition; min_rep; max_rep }
 
 let group_init arr (GroupSpec { element; repetition; min_rep; max_rep }) =
   let rep_range = Array.init (max_rep - min_rep + 1) (fun i -> i + min_rep) in

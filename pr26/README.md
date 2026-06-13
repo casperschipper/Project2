@@ -22,8 +22,11 @@ You should be able to run it with:
 
 # Questions
 
+## Combination interface 
+
 If we derive playable performance modes from instrument, and we link groups through combination, we could also check if the 
-table groups are sane: does it include incompatible modes, that cannot be played by any instrument in the group?
+table groups are sane: does it include incompatible modes, that cannot be played by *any* instrument in the group?
+Should the composer be helped in some way to construct useful tables? If a parameter is combined, it probably makes sense to also combine the construction of tables somewhat.
 
 # TODOS
 
@@ -31,30 +34,28 @@ table groups are sane: does it include incompatible modes, that cannot be played
 [x] Any problem that may occur return it as result.
 [x] Implement autonomous density
 [x] Selection principles as sequences with more explicit context and state.
-[ ] Wire in the new selection principles
-
-
-[ ] modes of performance. in the instrument definition, the possible modes of
+[x] Wire in the new selection principles
+[x] modes of performance. in the instrument definition, the possible modes of
 performance of each instrument is given as a string, so each instrument contains
 one set of strings
 from these definitions the list of performance modes in the performance
 parameter is constructed (which cannot be edited by the user), but they can be
 arranged in the table (via indices). these prevents incoherence between
 instrument definition and performance parameter and simplifies entry
-
-
-[ ] Another question: how to deal with percussion? In manual both register and pitch can result in percussion.
-
-[ ] Hierarchy as a thing that can be computed from the current structure formula
-[ ] Hierarchy as defined by the user. 
-
-[ ] rewrite selection principles as exposing state in struct + next function
+[x] rewrite selection principles as exposing state in struct + next function
 (giving n values needed) and a function for getting possible next values (and
 being able to prohibit/filter), instead of unit seq, we give it a context, they
 output results, there may be no possible value
-
-
 [ ] Define input as a runtime prompt?
+
+[ ] Another question: how to deal with percussion? In manual both register and pitch can result in percussion.
+[/] Hierarchy as a thing that can be computed from the current structure formula
+[/] Hierarchy as defined by the user. 
+
+
+
+
+
 [ ] Store input as a reusable file?
 [ ] Implement another parameter x 
 
