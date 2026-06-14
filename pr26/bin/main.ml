@@ -36,6 +36,10 @@ let basic_test () =
   let piano = mk_instr "piano" in
   let basedrum = mk_instr "basedrum" in
   let marimba = mk_instr "marimba" in
+  let limited_dynamics =
+    [ "mf"; "f"; "ff"; "fff" ] |> List.map Dynamic.of_string
+    |> Dynamic_modes.of_list
+  in
   let instr_validated =
     (* add pitch compass, use error applicative to collect mistakes *)
     let of_list = Performance_modes.of_list in
@@ -43,16 +47,16 @@ let basic_test () =
       [
         inst <$> guitar <+> chordsize 1 2
         <+> pure (of_list [ normal; pluck; bow ])
-        <+> pitch_compass;
+        <+> pure default_dynamics <+> pitch_compass;
         inst <$> piano <+> chordsize 1 10
         <+> pure (of_list [ normal ])
-        <+> pitch_compass;
+        <+> pure default_dynamics <+> pitch_compass;
         inst <$> basedrum <+> chordsize 1 1
         <+> pure (of_list [ pluck; bow ])
-        <+> pitch_compass;
+        <+> pure default_dynamics <+> pitch_compass;
         inst <$> marimba <+> chordsize 1 4
         <+> pure (of_list [ normal ])
-        <+> pitch_compass;
+        <+> pure limited_dynamics <+> pitch_compass;
       ]
   in
   match instr_validated with
@@ -66,21 +70,27 @@ let basic_test () =
       let performance_table =
         of_nested_list [ [ 0; 1; 2 ]; [ 1; 2 ]; [ 0; 2 ] ]
       in
+      (* default_dynamics sorted: f=0, ff=1, fff=2, mf=3, p=4, pp=5, ppp=6 *)
+      let dynamics_table =
+        of_nested_list [ [ 0; 1; 2; 3; 4; 5; 6 ]; [ 0; 1; 2; 6 ]; [ 3; 6 ] ]
+      in
       let result =
         Validated.join_v
           ((fun ed_list d hier ->
              mk_structure_formula ~variant_duration:60.0 ~instr_list
                ~instr_table ~number_of_instrument_groups:3 ~ed_list ~ed_table
-               ~performance_table ~entrydelay_combination:NoCombination
-               ~instrument_principle:Alea ~entrydelay_principle:Series
+               ~performance_table ~dynamics_table
+               ~entrydelay_combination:NoCombination
+               ~instrument_principle:Series ~entrydelay_principle:Series
                ~performance_principle:(Tendency test_mask)
-               ~performance_combination:Combination ~union:NoUnion ~density:d
+               ~performance_combination:Combination ~dynamics_principle:Series
+               ~dynamics_combination:Combination ~union:NoUnion ~density:d
                ~hierarchy:hier
              |> Result.map build_score)
           <$> mk_par_list mk_entrydelay
                 [ 0.1; 0.2; 0.3; 1.0; 2.0; 3.0; 2.0; 5.0 ]
-          <+> mk_autonomous ~tr:12 ~low:1 ~high:3 ~selection_principle:Alea
-          <+> mk_hierarchy [ Per; Ins ])
+          <+> mk_autonomous ~tr:12 ~low:1 ~high:3 ~selection_principle:Series
+          <+> mk_hierarchy [ Ins; Dyn; Per ])
       in
       match result with
       | Error errors -> print_errors "instrument_entry_test" errors

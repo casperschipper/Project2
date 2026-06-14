@@ -26,7 +26,7 @@ type problem =
   | DuplicateHierarchy
   | InstrumentDensityRequiresInsFirst
 
-type hierarchy_elem = Ins | Per
+type hierarchy_elem = Ins | Per | Dyn
 
 (* | Dur
   | Har
@@ -205,11 +205,12 @@ type instrument =
       instrument : instr;
       chordsize : chordsize;
       performance : Performance_modes.t;
+      dynamics : Dynamic_modes.t;
       pitchcompass : pitch_compass;
     }
 
 (* this function allows you to extract all possible performance modes from the instrument list
-in this way, performances do not have to be defined separately (it makes no sense to have a performance mode 
+in this way, performances do not have to be defined separately (it makes no sense to have a performance mode
 for which there is no instrument)
 *)
 let extract_performances_from_instruments lst =
@@ -219,12 +220,21 @@ let extract_performances_from_instruments lst =
   |> Performance_modes.to_list |> Array.of_list
   |> fun arr -> ParameterList arr
 
+(* same as extract_performances_from_instruments, but for the dynamics each instrument can play *)
+let extract_dynamics_from_instruments lst =
+  List.fold_right
+    (fun (Instrument ins) acc -> Dynamic_modes.union ins.dynamics acc)
+    lst Dynamic_modes.empty
+  |> Dynamic_modes.to_list |> Array.of_list
+  |> fun arr -> ParameterList arr
+
 let print_instrument
     (Instrument
        {
          instrument = InstrumentName name;
          chordsize = Chordsize { minsize; maxsize };
          performance;
+         dynamics;
          pitchcompass =
            PitchCompass
              {
@@ -238,16 +248,22 @@ let print_instrument
     |> List.map Performance.to_string
     |> String.concat ","
   in
+  let dyns =
+    Dynamic_modes.elements dynamics
+    |> List.map Dynamic.to_string
+    |> String.concat ","
+  in
   let forbidden_str =
     Pitch_set.elements forbidden |> List.map string_of_int |> String.concat ","
   in
   Printf.printf
-    "instrument: %s, chordsize: %d-%d, performance: [%s], compass: \
-     %d%02d-%d%02d, forbidden: [%s]\n"
-    name minsize maxsize perfs min_oct min_rel max_oct max_rel forbidden_str
+    "instrument: %s, chordsize: %d-%d, performance: [%s], dynamics: [%s], \
+     compass: %d%02d-%d%02d, forbidden: [%s]\n"
+    name minsize maxsize perfs dyns min_oct min_rel max_oct max_rel
+    forbidden_str
 
-let inst instrument cs performance pitchcompass =
-  Instrument { instrument; chordsize = cs; performance; pitchcompass }
+let inst instrument cs performance dynamics pitchcompass =
+  Instrument { instrument; chordsize = cs; performance; dynamics; pitchcompass }
 
 (* for formation of the ensemble Alea, Series or Sequence will pick the groups from the table *)
 type ensemble_group_selection =

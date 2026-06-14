@@ -31,11 +31,14 @@ type structure_formula = {
   ed_table : ptable;
   number_of_instrument_groups : int;
   performance_table : ptable;
+  dynamics_table : ptable;
   instrument_principle : selection_principle;
   entrydelay_principle : selection_principle;
   entrydelay_combination : combination;
   performance_principle : selection_principle;
   performance_combination : combination;
+  dynamics_principle : selection_principle;
+  dynamics_combination : combination;
   union : union;
   density : vertical_density;
   hierarchy : hierarchy;
@@ -64,9 +67,10 @@ let mk portion smin smax emin emax =
     }
 
 let mk_structure_formula ~variant_duration ~instr_list ~instr_table ~ed_list
-    ~ed_table ~number_of_instrument_groups ~performance_table
+    ~ed_table ~number_of_instrument_groups ~performance_table ~dynamics_table
     ~entrydelay_combination ~instrument_principle ~entrydelay_principle
-    ~performance_principle ~performance_combination ~union ~density ~hierarchy =
+    ~performance_principle ~performance_combination ~dynamics_principle
+    ~dynamics_combination ~union ~density ~hierarchy =
   let hierarchy_errors =
     match (density, hierarchy) with
     | InstrumentDensity, first :: _ ->
@@ -77,6 +81,8 @@ let mk_structure_formula ~variant_duration ~instr_list ~instr_table ~ed_list
     check_combination "entrydelay" instr_table ed_table entrydelay_combination
     @ check_combination "performance" instr_table performance_table
         performance_combination
+    @ check_combination "dynamics" instr_table dynamics_table
+        dynamics_combination
   in
   match hierarchy_errors @ combination_errors with
   | [] ->
@@ -89,11 +95,14 @@ let mk_structure_formula ~variant_duration ~instr_list ~instr_table ~ed_list
           ed_table;
           number_of_instrument_groups;
           performance_table;
+          dynamics_table;
           entrydelay_combination;
           instrument_principle;
           entrydelay_principle;
           performance_principle;
           performance_combination;
+          dynamics_principle;
+          dynamics_combination;
           union;
           density;
           hierarchy;
