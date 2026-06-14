@@ -470,12 +470,15 @@ let generate_score_hierarchical ~variant_duration ~instrument_ensemble
         | [ single ] -> List.init (List.length instr_arrays) (fun _ -> single)
         | _ -> raw
       in
-      let entr_arrays = broadcast (ensemble_values_no_union entry_delay_ensemble) in
+      let entr_arrays =
+        broadcast (ensemble_values_no_union entry_delay_ensemble)
+      in
       let perf_arrays = broadcast (ensemble_values_no_union perf_ensemble) in
       let dyn_arrays = broadcast (ensemble_values_no_union dyn_ensemble) in
       let zip4 a b c d =
-        List.map2 (fun (x, y) (z, w) -> (x, y, z, w)) (List.combine a b)
-          (List.combine c d)
+        List.map2
+          (fun (x, y) (z, w) -> (x, y, z, w))
+          (List.combine a b) (List.combine c d)
       in
       zip4 instr_arrays entr_arrays perf_arrays dyn_arrays
       |> List.map (fun (instr_arr, entr_arr, perf_arr, dyn_arr) ->
@@ -486,8 +489,8 @@ let generate_score_hierarchical ~variant_duration ~instrument_ensemble
           let _ = Printf.printf "\nestimated events: %d " n_events in
           calculate_layer_hierarchical ~n_events ~hierarchy ~instr_arr
             ~instr_principle:instrument_principle ~ed_arr:entr_arr
-            ~ed_principle:entry_delay_principle ~perf_arr ~perf_principle ~dyn_arr
-            ~dyn_principle)
+            ~ed_principle:entry_delay_principle ~perf_arr ~perf_principle
+            ~dyn_arr ~dyn_principle)
 
 let build_score cfg =
   let instr_ensemble =
@@ -507,17 +510,14 @@ let build_score cfg =
   let perf_list =
     extract_performances_from_instruments (Array.to_list instr_list)
   in
-  let dyn_list =
-    extract_dynamics_from_instruments (Array.to_list instr_list)
-  in
+  let dyn_list = extract_dynamics_from_instruments (Array.to_list instr_list) in
   let perf_ensemble =
     match cfg.performance_combination with
     | Combination ->
         construct_ensemble_combination perf_list cfg.performance_table
           instr_ensemble
     | NoCombination ->
-        construct_ensemble perf_list cfg.performance_table EnsembleGroupSeries
-          1
+        construct_ensemble perf_list cfg.performance_table EnsembleGroupSeries 1
   in
   let dyn_ensemble =
     match cfg.dynamics_combination with
@@ -544,69 +544,48 @@ let build_score cfg =
         ~perf_principle:cfg.performance_principle ~dyn_ensemble
         ~dyn_principle:cfg.dynamics_principle ~union:cfg.union ~hierarchy
 
-let verify_hierarchy instrs layers =
-  let constraint_map =
-    List.map
-      (fun (Instrument { instrument; performance; dynamics; _ }) ->
-        (instrument, (performance, dynamics)))
-      instrs
-  in
-  let violations =
-    List.concat_map
-      (fun layer ->
-        List.filter_map
-          (fun event ->
-            match List.assoc_opt event.instrument constraint_map with
-            | None -> Some "unknown instrument"
-            | Some (valid_perfs, valid_dyns) ->
-                let perf_ok =
-                  Performance_modes.mem event.performance valid_perfs
-                in
-                let dyn_ok = Dynamic_modes.mem event.dynamic valid_dyns in
-                if perf_ok && dyn_ok then None
-                else
-                  let valid_perfs_str =
-                    Performance_modes.elements valid_perfs
-                    |> List.map Performance.to_string
-                    |> String.concat ", "
-                  in
-                  let valid_dyns_str =
-                    Dynamic_modes.elements valid_dyns
-                    |> List.map Dynamic.to_string
-                    |> String.concat ", "
-                  in
-                  let problems =
-                    (if perf_ok then []
-                     else
-                       [
-                         Printf.sprintf "performance '%s' (valid: %s)"
-                           (Performance.to_string event.performance)
-                           valid_perfs_str;
-                       ])
-                    @
-                    if dyn_ok then []
-                    else
-                      [
-                        Printf.sprintf "dynamic '%s' (valid: %s)"
-                          (Dynamic.to_string event.dynamic)
-                          valid_dyns_str;
-                      ]
-                  in
-                  Some
-                    (Printf.sprintf "%s got invalid %s"
-                       (match event.instrument with InstrumentName n -> n)
-                       (String.concat " and " problems)))
-          layer)
-      layers
-  in
-  print_endline "\n=== Hierarchy verification ===";
-  match violations with
-  | [] ->
-      print_endline
-        "OK: every performance and dynamic is valid for its instrument"
-  | vs ->
-      Printf.printf "VIOLATIONS (%d):\n" (List.length vs);
-      List.iter (fun msg -> Printf.printf "  - %s\n" msg) vs
+let build_constraint_map instrs =
+  List.map
+    (fun (Instrument { instrument; performance; dynamics; _ }) ->
+      (instrument, (performance, dynamics)))
+    instrs
+
+(* Describe what, if anything, is wrong with an event's performance/dynamic
+   given the instrument's allowed modes. Empty list means the event is fine. *)
+let event_problems constraint_map event =
+  match List.assoc_opt event.instrument constraint_map with
+  | None -> [ "unknown instrument" ]
+  | Some (valid_perfs, valid_dyns) ->
+      let perf_ok = Performance_modes.mem event.performance valid_perfs in
+      let dyn_ok = Dynamic_modes.mem event.dynamic valid_dyns in
+      let perf_problem =
+        if perf_ok then []
+        else
+          let valid_perfs_str =
+            Performance_modes.elements valid_perfs
+            |> List.map Performance.to_string
+            |> String.concat ", "
+          in
+          [
+            Printf.sprintf "performance '%s' (valid: %s)"
+              (Performance.to_string event.performance)
+              valid_perfs_str;
+          ]
+      in
+      let dyn_problem =
+        if dyn_ok then []
+        else
+          let valid_dyns_str =
+            Dynamic_modes.elements valid_dyns
+            |> List.map Dynamic.to_string |> String.concat ", "
+          in
+          [
+            Printf.sprintf "dynamic '%s' (valid: %s)"
+              (Dynamic.to_string event.dynamic)
+              valid_dyns_str;
+          ]
+      in
+      perf_problem @ dyn_problem
 
 let write_score filename layers =
   let oc = open_out filename in
@@ -620,23 +599,33 @@ let write_score filename layers =
     layers;
   close_out oc
 
-let print_layers layers =
+let print_layers instrs layers =
+  let constraint_map = build_constraint_map instrs in
+  let total_violations = ref 0 in
   print_endline "\n=== instrument_entry_test ===";
   List.iteri
     (fun i events ->
       Printf.printf "\n--- layer %d ---\n" i;
-      Printf.printf "%-8s %-14s %-5s %-12s %s\n" "time" "instrument" "cs"
-        "performance" "dynamic";
+      Printf.printf "%-8s %-14s %-5s %-12s %-8s %s\n" "time" "instrument" "cs"
+        "performance" "dynamic" "status";
       List.iter
-        (fun {
-               time;
-               instrument = InstrumentName name;
-               chordsize;
-               performance;
-               dynamic;
-             } ->
-          Printf.printf "%-8.3f %-14s %-5d %-12s %s\n" time name chordsize
+        (fun ({ time; instrument = InstrumentName name; chordsize; performance; dynamic } as event) ->
+          let problems = event_problems constraint_map event in
+          let status =
+            match problems with
+            | [] -> ""
+            | ps ->
+                incr total_violations;
+                "!! IMPOSSIBLE: " ^ String.concat ", " ps
+          in
+          Printf.printf "%-8.3f %-14s %-5d %-12s %-8s %s\n" time name chordsize
             (Performance.to_string performance)
-            (Dynamic.to_string dynamic))
+            (Dynamic.to_string dynamic) status)
         events)
-    layers
+    layers;
+  print_endline "";
+  if !total_violations = 0 then
+    print_endline "OK: every performance and dynamic is valid for its instrument"
+  else
+    Printf.printf "VIOLATIONS: %d event(s) have invalid performance/dynamic\n"
+      !total_violations

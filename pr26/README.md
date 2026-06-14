@@ -46,32 +46,35 @@ instrument definition and performance parameter and simplifies entry
 (giving n values needed) and a function for getting possible next values (and
 being able to prohibit/filter), instead of unit seq, we give it a context, they
 output results, there may be no possible value
-[ ] Define input as a runtime prompt?
 
+[ ] Define input as a runtime prompt?
 [ ] Another question: how to deal with percussion? In manual both register and pitch can result in percussion.
 [/] Hierarchy as a thing that can be computed from the current structure formula
 [/] Hierarchy as defined by the user. 
 
-
-
-
-
-[ ] Store input as a reusable file?
-[ ] Implement another parameter x 
-
-As things got complicated with the auto-density, I had a bit of help by claude (it got quite a bit confused as well together with me). But it produced compiling code, but it needs to be verified for sure:
-
-sel_seq_gen_of_array n principle arr : (unit -> 'a) Seq.t — a sequence of n generators, one element per time point. The outer sequence drives "how many time points," and calling the generator multiple times stays at the same position:
-
-  Alea — stateless, same gen closure for all time points, just picks randomly
-  Series / Ratio — shared state ref, so the series continues where the previous time point left off. A last ref tracks the most recently yielded value; if the series row boundary happens to produce a repeat (first of new shuffle = last of old), it skips that value and advances — satisfying the no-cross-timepoint-repeat rule without disturbing within-time-point distinctness (which series already guarantees)
-  Group / Sequence — shared state ref, no repeat guard needed (Group's repeat semantics are intentional; Sequence is a user-defined cycling order)
-  Tendency — delegates directly to the already-existing tendency_mask_gen, which already returns (unit -> 'a) Seq.t with frozen lo/hi bounds per time point
-  calculate_layer_autonomous_density — now uses sel_seq_gen_of_array. The fold threads gen_seq : (unit -> instrument) Seq.t through the accumulator; each iteration pops one generator with Seq.uncons and passes it to fill_to_density. fill_to_density is simpler — it just calls gen () repeatedly until the density target is met, no sequence threading required.
-
-
+[x] Implement another parameter x 
 
 Done
 
 [x] validation should collect as many errors as possible, not stop at first
 [x] Implement autonomous density
+
+
+Motivation of fold:
+Outer fold (calculate_layer_hierarchical): List.fold_left apply_step (protos, init_states) hierarchy walks the 3-element hierarchy list (e.g. [Ins; Dyn; Per]). Each step processes all proto-events for the layer before moving to the next hierarchy element. So the hierarchy order determines which field gets filled in across the whole layer first.
+
+Inner fold (inside each apply_step case): List.fold_left_map walks over every proto_event in the layer, threading the relevant sel_state (here dyn_state) through each draw — this is what makes Series/Sequence-style principles advance correctly across the whole layer rather than resetting per event.
+
+For the selected Dyn case specifically:
+
+For each proto pe, build a predicate d : Dynamic.t -> bool:
+
+If pe.instrument is already Some (meaning Ins ran before Dyn in the hierarchy) → restrict d to that specific instrument's dynamics set. This is the "conditioning" — the dynamic must be playable by the instrument already chosen for this event.
+If pe.instrument is None (meaning Dyn runs before Ins) → restrict d to dynamics playable by at least one instrument in states.instr_arr (the instrument pool for this layer). This is a weaker, "achievability" constraint — it just ensures that whatever dynamic gets picked, some instrument later could still satisfy it.
+sel_draw_pred pred st draws a value from dyn_state (initialized from dyn_arr/dyn_principle) restricted to pred, returning (v, st').
+
+The proto is updated to { pe with dynamic = Some v }, and st' becomes the new threaded dyn_state for the next proto.
+
+After the fold, (filled, { states with dyn_state = dyn_state' }) is returned — filled is the layer's protos with dynamic now set, and the updated dyn_state' carries forward into the next hierarchy step (though Dyn's own step doesn't need to be revisited).
+
+With the new [Ins; Dyn; Per] order in main.ml: Ins runs first (unconstrained, since pe.performance and pe.dynamic are both None at that point — apply_step's Ins predicate is Fun.const true). Then Dyn runs with pe.instrument = Some _, so it's tightly constrained to that instrument's allowed dynamics. Then Per runs similarly, constrained to that instrument's allowed performances. So instrument selection drives both performance and dynamic selection — the opposite of the earlier [Dyn; Per; Ins] order, where Dyn/Per were picked first under the looser "achievable by some instrument" predicate, and Ins then had to satisfy both.
