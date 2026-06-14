@@ -1,4 +1,4 @@
-open Pr26.Basics
+open Pr26.Parameters
 open Pr26.Structure_formula
 open Pr26.Score_generation
 open Pr26.Tools
