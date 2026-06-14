@@ -4,7 +4,7 @@ open Pr26.Score_generation
 open Pr26.Tools
 open Pr26.Selection
 
-(* let test_mask =
+let test_mask =
   TendencyMask
     [
       mk 1.0 0.2 0.3 0.8 0.9;
@@ -15,7 +15,7 @@ open Pr26.Selection
       (* narrowing : window shrinks inward         *)
       mk 1.0 0.2 0.8 0.8 0.2;
       (* crosswise : boundaries cross at midpoint  *)
-    ] *)
+    ]
 
 let basic_test () =
   let _ = print_header "starting instrument entry test" in
@@ -80,18 +80,17 @@ let basic_test () =
              mk_structure_formula ~variant_duration:60.0 ~instr_list
                ~instr_table ~number_of_instrument_groups:3 ~ed_list ~ed_table
                ~performance_table ~dynamics_table
-               ~entrydelay_combination:NoCombination
-               ~instrument_principle:Series ~entrydelay_principle:Series
-               ~performance_principle:Alea ~performance_combination:Combination
-               ~dynamics_principle:(Group (mkGroup GroupSeries GroupSeries 1 5))
+               ~entrydelay_combination:NoCombination ~instrument_principle:Alea
+               ~entrydelay_principle:Series ~performance_principle:Alea
+               ~performance_combination:Combination
+               ~dynamics_principle:(Tendency test_mask)
                ~dynamics_combination:Combination ~union:NoUnion ~density:d
                ~hierarchy:hier
              |> Result.map build_score)
           <$> mk_par_list mk_entrydelay
                 [ 0.1; 0.2; 0.3; 1.0; 2.0; 3.0; 2.0; 5.0 ]
-          <+> Ok InstrumentDensity
-              (*mk_autonomous ~tr:12 ~low:1 ~high:3 ~selection_principle:Series*)
-          <+> mk_hierarchy [ Ins; Per; Dyn ])
+          <+> mk_autonomous ~tr:12 ~low:1 ~high:3 ~selection_principle:Series
+          <+> mk_hierarchy [ Dyn; Ins; Per ])
       in
       match result with
       | Error errors -> print_errors "instrument_entry_test" errors
@@ -102,5 +101,5 @@ let basic_test () =
 
 let () =
   (* some seed *)
-  ignore (Random.init 1);
+  ignore (Random.init 2);
   basic_test ()
