@@ -4,12 +4,14 @@ open Tools
 
 type combination =
   | Combination
-  (* index of combined parameters is the same as instrument parameter *)
+  (* index of combined parameters is the same as instrument parameter 
+  It can also be multiple groups within one ensemble, if there are multiple instrument groups*)
   | NoCombination
 (* 
-- parameter selects their own group
-- independent of instrument
+A parameter that is not combined means:
 - only one group is selected
+- parameter selects their own group in formation of the ensemble
+- independent of instrument
 *)
 
 type union =
