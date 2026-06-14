@@ -1,18 +1,8 @@
 open Pr26.Basics
+open Pr26.Structure_formula
+open Pr26.Score_generation
 open Pr26.Tools
 open Pr26.Selection
-
-let uf = UnitFloat.of_float_exn
-
-let mk portion smin smax emin emax =
-  TendencySection
-    {
-      portion;
-      start_min = uf smin;
-      start_max = uf smax;
-      end_min = uf emin;
-      end_max = uf emax;
-    }
 
 let test_mask =
   TendencyMask
@@ -27,74 +17,6 @@ let test_mask =
       (* crosswise : boundaries cross at midpoint  *)
     ]
 
-let write_score filename layers =
-  let oc = open_out filename in
-  List.iteri
-    (fun i events ->
-      Printf.fprintf oc "# layer %d\n" i;
-      List.iter
-        (fun { time; instrument = InstrumentName name; chordsize; _ } ->
-          Printf.fprintf oc "%.3f %s %d\n" time name chordsize)
-        events)
-    layers;
-  close_out oc
-
-let print_layers layers =
-  print_endline "\n=== instrument_entry_test ===";
-  List.iteri
-    (fun i events ->
-      Printf.printf "\n--- layer %d ---\n" i;
-      Printf.printf "%-8s %-14s %-5s %s\n" "time" "instrument" "cs"
-        "performance";
-      List.iter
-        (fun { time; instrument = InstrumentName name; chordsize; performance }
-           ->
-          Printf.printf "%-8.3f %-14s %-5d %s\n" time name chordsize
-            (Performance.to_string performance))
-        events)
-    layers
-
-let verify_hierarchy instrs layers =
-  let perf_map =
-    List.map
-      (fun (Instrument { instrument; performance; _ }) ->
-        (instrument, performance))
-      instrs
-  in
-  let violations =
-    List.concat_map
-      (fun layer ->
-        List.filter_map
-          (fun event ->
-            match List.assoc_opt event.instrument perf_map with
-            | None -> Some "unknown instrument"
-            | Some valid ->
-                if Performance_modes.mem event.performance valid then None
-                else
-                  let valid_str =
-                    Performance_modes.elements valid
-                    |> List.map Performance.to_string
-                    |> String.concat ", "
-                  in
-                  Some
-                    (Printf.sprintf "%s got '%s' (valid: %s)"
-                       (match event.instrument with InstrumentName n -> n)
-                       (Performance.to_string event.performance)
-                       valid_str))
-          layer)
-      layers
-  in
-  print_endline "\n=== Hierarchy verification ===";
-  match violations with
-  | [] -> print_endline "OK: every performance is valid for its instrument"
-  | vs ->
-      Printf.printf "VIOLATIONS (%d):\n" (List.length vs);
-      List.iter (fun msg -> Printf.printf "  - %s\n" msg) vs
-
-let print_errors label errors =
-  Printf.printf "%s failed:\n" label;
-  List.iter (fun e -> Printf.printf "  - %s\n" (display_problem e)) errors
-
 let basic_test () =
   let _ = print_header "starting instrument entry test" in
   let pure = Validated.pure in
@@ -105,14 +27,17 @@ let basic_test () =
   let pitch_compass =
     mk_pitch_compass (absolute 1 1) (absolute 5 12) Pitch_set.empty
   in
+  (* define some instrument modes *)
   let normal = Performance.of_string "normal" in
   let pluck = Performance.of_string "plucking" in
   let bow = Performance.of_string "bowing" in
+  (* define instruments with these modes *)
   let guitar = mk_instr "guitar" in
   let piano = mk_instr "piano" in
   let basedrum = mk_instr "basedrum" in
   let marimba = mk_instr "marimba" in
   let instr_validated =
+    (* add pitch compass, use error applicative to collect mistakes *)
     let of_list = Performance_modes.of_list in
     Validated.sequence
       [
@@ -133,8 +58,6 @@ let basic_test () =
   match instr_validated with
   | Error errors -> print_errors "instrument_entry_test (instruments)" errors
   | Ok instrs -> (
-      let ( <$> ) = Validated.( <$> ) in
-      let ( <+> ) = Validated.( <+> ) in
       let instr_list = ParameterList (Array.of_list instrs) in
       let instr_table = of_nested_list [ [ 0; 1; 2; 3 ]; [ 1; 3 ]; [ 0 ] ] in
       let ed_table =
@@ -169,5 +92,5 @@ let basic_test () =
 
 let () =
   (* some seed *)
-  ignore (Random.init 93);
+  ignore (Random.init 1);
   basic_test ()

@@ -1,4 +1,5 @@
 open Pr26.Basics
+open Pr26.Score_generation
 open Pr26.Tools
 open Pr26.Selection
 
