@@ -10,7 +10,7 @@
     (instrument guitar
       (chordsize 1 2)
       (performance (normal plucking bowing overtone1 overtone2))
-      (dynamics    (ppp pp p mf f ff fff))
+      (dynamics    (p mf f))
       (compass (1 01) (5 12)))
 
     (instrument piano
@@ -64,9 +64,9 @@
   ;;   (tendency (section portion (start min max) (end min max)) ...)
 
   (principles
-    (instrument alea)
-    (entrydelay  alea)
-    (performance alea)
+    (instrument series)
+    (entrydelay  series)
+    (performance series)
     (dynamics (tendency
       ;;         portion  start-min start-max  end-min end-max
       (section   1.0      (start 0.5 0.5)      (end 0.0 1.0))
@@ -74,11 +74,14 @@
 
   (combination
     (entrydelay  none)
-    (performance none)
+    (performance combination)
     (dynamics    none))
 
+;; none means a layer per instrument group!
   (union none)
 
+;; you can either have autonomous density, using a principle, or density defined by the instrument chord size.
+;; If instrument is the density generator, it also becomes primary parameter in the hierarchy
   (density instrument-density)
 
   (hierarchy (Ins Dyn Per))
