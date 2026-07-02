@@ -4,3 +4,9 @@
  (flags
   (:standard -w -26))
  (libraries pr26 seq))
+
+(executable
+ (name main_sexp)
+ (flags
+  (:standard -w -26))
+ (libraries pr26 seq))

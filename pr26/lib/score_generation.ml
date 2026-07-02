@@ -167,84 +167,6 @@ let calculate_number_of_events variant_duration entry_delay_principle
   let avg_ed = expected_value entry_delay_principle entry_delay_ensemble in
   int_of_float (floor (variant_duration /. avg_ed))
 
-let calculate_layer n_events instrument_principle inst_arr entry_delay_principle
-    ed_arr =
-  let instrs = sel_draw_n n_events instrument_principle inst_arr in
-  let eds =
-    sel_draw_n n_events entry_delay_principle ed_arr |> List.map entry_to_float
-  in
-  let _, events =
-    List.fold_left2
-      (fun (time, acc) instr ed ->
-        let (Instrument
-               { chordsize = Chordsize { minsize; maxsize }; instrument; _ }) =
-          instr
-        in
-        let chordsize =
-          if minsize = maxsize then minsize
-          else Random.int (maxsize - minsize + 1) + minsize
-        in
-        let performance = Performance.of_string "dummy" in
-        let dynamic = Dynamic.of_string "mf" in
-        ( time +. ed,
-          { time; instrument; chordsize; performance; dynamic } :: acc ))
-      (0.0, []) instrs eds
-  in
-  List.rev events
-
-let calculate_layer_autonomous_density auto_density n_events
-    instrument_principle inst_arr entry_delay_principle ed_arr =
-  let density_list =
-    List.init
-      (auto_density.high - auto_density.low + 1)
-      (fun i -> i + auto_density.low)
-  in
-  let _ = print_int_list "Possible densities as follows" density_list in
-  let density_array = Array.of_list density_list in
-  let densities =
-    sel_draw_n n_events auto_density.selection_principle density_array
-  in
-  let eds =
-    sel_draw_n n_events entry_delay_principle ed_arr |> List.map entry_to_float
-  in
-  let rec fill_to_density time instr_state remaining acc =
-    if remaining <= 0 then (instr_state, acc)
-    else
-      let instr, instr_state' = sel_sample instr_state in
-      let (Instrument
-             { chordsize = Chordsize { minsize; maxsize }; instrument; _ }) =
-        instr
-      in
-      let chordsize =
-        if minsize = maxsize then minsize
-        else Random.int (maxsize - minsize + 1) + minsize
-      in
-      let actual_chordsize = min chordsize remaining in
-      let perf = Performance.of_string "dummy" in
-      let dyn = Dynamic.of_string "mf" in
-      fill_to_density time instr_state'
-        (remaining - actual_chordsize)
-        ({
-           time;
-           instrument;
-           chordsize = actual_chordsize;
-           performance = perf;
-           dynamic = dyn;
-         }
-        :: acc)
-  in
-  let instr_state0 = sel_init instrument_principle n_events inst_arr in
-  let _, _, events =
-    List.fold_left2
-      (fun (time, instr_state, acc) ed density ->
-        let instr_state', new_events =
-          fill_to_density time instr_state density []
-        in
-        (time +. ed, sel_advance_window instr_state', new_events @ acc))
-      (0.0, instr_state0, []) eds densities
-  in
-  List.rev events
-
 (* ---- Hierarchical layer calculation ---- *)
 
 (* States threaded through the hierarchy fold — one per parameter hierarchy controls.
@@ -394,54 +316,6 @@ let calculate_layer_hierarchical ~n_events ~hierarchy ~instr_arr
   let filled, _ = List.fold_left apply_step (protos, init_states) hierarchy in
   protos_to_events filled
 
-(** Generate a list of score events, using instrument based vertical density *)
-let generate_score ~variant_duration ~instrument_ensemble ~instrument_principle
-    ~entry_delay_ensemble ~entry_delay_principle ~union ~density:_density =
-  match union with
-  | Union ->
-      (* flatten all the indexed groups of the ensemble into one *)
-      let entr_arr = entry_delay_ensemble |> ensemble_values_union in
-      let instr_arr = ensemble_values_union instrument_ensemble in
-      let n_events =
-        calculate_number_of_events variant_duration entry_delay_principle
-          entr_arr
-      in
-      let _ = Printf.printf "estimated events: %d \n" n_events in
-      [
-        (match _density with
-        | InstrumentDensity ->
-            calculate_layer n_events instrument_principle instr_arr
-              entry_delay_principle entr_arr
-        | Autonomous autodensity ->
-            calculate_layer_autonomous_density autodensity n_events
-              instrument_principle instr_arr entry_delay_principle entr_arr);
-      ]
-  | NoUnion ->
-      (* no union, multiple groups possible for instrument *)
-      let instr_arrays = ensemble_values_no_union instrument_ensemble in
-      let entr_arr =
-        let raw = ensemble_values_no_union entry_delay_ensemble in
-        match raw with
-        | [ single ] -> List.init (List.length instr_arrays) (fun _ -> single)
-        | _ -> raw
-      in
-      let layer_from_group_arrays instr_array entr_array =
-        let n_events =
-          calculate_number_of_events variant_duration entry_delay_principle
-            entr_array
-        in
-        let _ = Printf.printf "\nestimated events: %d " n_events in
-        match _density with
-        | InstrumentDensity ->
-            calculate_layer n_events instrument_principle instr_array
-              entry_delay_principle entr_array
-        | Autonomous autodensity ->
-            calculate_layer_autonomous_density autodensity n_events
-              instrument_principle instr_array entry_delay_principle entr_array
-      in
-      (* treat the ensemble as a list of arrays and compute a layer for each group *)
-      List.map2 layer_from_group_arrays instr_arrays entr_arr
-
 let generate_score_hierarchical ~variant_duration ~instrument_ensemble
     ~instrument_principle ~entry_delay_ensemble ~entry_delay_principle
     ~perf_ensemble ~perf_principle ~dyn_ensemble ~dyn_principle ~union
@@ -493,18 +367,21 @@ let generate_score_hierarchical ~variant_duration ~instrument_ensemble
             ~dyn_arr ~dyn_principle)
 
 let build_score cfg =
+  let instr_to_string (Instrument { instrument = InstrumentName n; _ }) = n in
+  let ed_to_string (Entrydelay f) = Printf.sprintf "%.3f" f in
   let instr_ensemble =
-    construct_ensemble cfg.instr_list cfg.instr_table EnsembleGroupSeries
+    construct_ensemble ~label:"instrument" ~to_string:instr_to_string
+      cfg.instr_list cfg.instr_table EnsembleGroupSeries
       cfg.number_of_instrument_groups
   in
   let ed_ensemble =
     match cfg.entrydelay_combination with
     | Combination ->
-        (* the index of the instrument ensemble groups is reused for entry delay *)
-        construct_ensemble_combination cfg.ed_list cfg.ed_table instr_ensemble
+        construct_ensemble_combination ~label:"entrydelay"
+          ~to_string:ed_to_string cfg.ed_list cfg.ed_table instr_ensemble
     | NoCombination ->
-        (* there is only one group for the entry delay ensemble, and it is autonomous *)
-        construct_ensemble cfg.ed_list cfg.ed_table EnsembleGroupSeries 1
+        construct_ensemble ~label:"entrydelay" ~to_string:ed_to_string
+          cfg.ed_list cfg.ed_table EnsembleGroupSeries 1
   in
   let (ParameterList instr_list) = cfg.instr_list in
   let perf_list =
@@ -514,35 +391,31 @@ let build_score cfg =
   let perf_ensemble =
     match cfg.performance_combination with
     | Combination ->
-        construct_ensemble_combination perf_list cfg.performance_table
+        construct_ensemble_combination ~label:"performance"
+          ~to_string:Performance.to_string perf_list cfg.performance_table
           instr_ensemble
     | NoCombination ->
-        construct_ensemble perf_list cfg.performance_table EnsembleGroupSeries 1
+        construct_ensemble ~label:"performance" ~to_string:Performance.to_string
+          perf_list cfg.performance_table EnsembleGroupSeries 1
   in
   let dyn_ensemble =
     match cfg.dynamics_combination with
     | Combination ->
-        construct_ensemble_combination dyn_list cfg.dynamics_table
+        construct_ensemble_combination ~label:"dynamics"
+          ~to_string:Dynamic.to_string dyn_list cfg.dynamics_table
           instr_ensemble
     | NoCombination ->
-        construct_ensemble dyn_list cfg.dynamics_table EnsembleGroupSeries 1
+        construct_ensemble ~label:"dynamics" ~to_string:Dynamic.to_string
+          dyn_list cfg.dynamics_table EnsembleGroupSeries 1
   in
-  match cfg.hierarchy with
-  | [] ->
-      generate_score ~variant_duration:cfg.variant_duration
-        ~instrument_ensemble:instr_ensemble
-        ~instrument_principle:cfg.instrument_principle
-        ~entry_delay_ensemble:ed_ensemble
-        ~entry_delay_principle:cfg.entrydelay_principle ~union:cfg.union
-        ~density:cfg.density
-  | hierarchy ->
-      generate_score_hierarchical ~variant_duration:cfg.variant_duration
-        ~instrument_ensemble:instr_ensemble
-        ~instrument_principle:cfg.instrument_principle
-        ~entry_delay_ensemble:ed_ensemble
-        ~entry_delay_principle:cfg.entrydelay_principle ~perf_ensemble
-        ~perf_principle:cfg.performance_principle ~dyn_ensemble
-        ~dyn_principle:cfg.dynamics_principle ~union:cfg.union ~hierarchy
+  generate_score_hierarchical ~variant_duration:cfg.variant_duration
+    ~instrument_ensemble:instr_ensemble
+    ~instrument_principle:cfg.instrument_principle
+    ~entry_delay_ensemble:ed_ensemble
+    ~entry_delay_principle:cfg.entrydelay_principle ~perf_ensemble
+    ~perf_principle:cfg.performance_principle ~dyn_ensemble
+    ~dyn_principle:cfg.dynamics_principle ~union:cfg.union
+    ~hierarchy:cfg.hierarchy
 
 let build_constraint_map instrs =
   List.map
@@ -609,7 +482,13 @@ let print_layers instrs layers =
       Printf.printf "%-8s %-14s %-5s %-12s %-8s %s\n" "time" "instrument" "cs"
         "performance" "dynamic" "status";
       List.iter
-        (fun ({ time; instrument = InstrumentName name; chordsize; performance; dynamic } as event) ->
+        (fun ({
+                time;
+                instrument = InstrumentName name;
+                chordsize;
+                performance;
+                dynamic;
+              } as event) ->
           let problems = event_problems constraint_map event in
           let status =
             match problems with
@@ -620,12 +499,14 @@ let print_layers instrs layers =
           in
           Printf.printf "%-8.3f %-14s %-5d %-12s %-8s %s\n" time name chordsize
             (Performance.to_string performance)
-            (Dynamic.to_string dynamic) status)
+            (Dynamic.to_string dynamic)
+            status)
         events)
     layers;
   print_endline "";
   if !total_violations = 0 then
-    print_endline "OK: every performance and dynamic is valid for its instrument"
+    print_endline
+      "OK: every performance and dynamic is valid for its instrument"
   else
     Printf.printf "VIOLATIONS: %d event(s) have invalid performance/dynamic\n"
       !total_violations

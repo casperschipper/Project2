@@ -80,7 +80,7 @@ let test_estimating_entry_delay () =
     |> of_nested_list
   in
   let entry_delay_ensemble =
-    construct_ensemble entry_delay_array entry_delay_table EnsembleGroupAlea 2
+    construct_ensemble ~label:"entrydelay" entry_delay_array entry_delay_table EnsembleGroupAlea 2
   in
   let test_expected_value principle =
     print_string (principle_to_string principle);

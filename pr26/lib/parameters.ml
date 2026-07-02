@@ -25,6 +25,7 @@ type problem =
   | InvalidPitchCompass
   | DuplicateHierarchy
   | InstrumentDensityRequiresInsFirst
+  | ParseError of string
 
 type hierarchy_elem = Ins | Per | Dyn
 
@@ -52,6 +53,7 @@ let display_problem p =
   | DuplicateHierarchy -> "each hierarchy level may only appear once"
   | InstrumentDensityRequiresInsFirst ->
       "InstrumentDensity requires Ins to be first in the hierarchy"
+  | ParseError msg -> "parse error: " ^ msg
 
 let entry_to_float (Entrydelay x) = x
 (* let value_to_float v = match v with Entry (Entrydelay x) -> x *)
@@ -388,8 +390,8 @@ let select_groups number_of_groups parlist grps =
 let index_table_groups (Table table) =
   table |> Array.mapi (fun i item -> (i, item))
 
-let construct_ensemble ?(verbose = true) parlist table principle
-    number_of_groups =
+let construct_ensemble ~label ?(verbose = true) ?(to_string = fun _ -> "_")
+    parlist table principle number_of_groups =
   let result =
     match principle with
     | EnsembleGroupAlea ->
@@ -413,20 +415,21 @@ let construct_ensemble ?(verbose = true) parlist table principle
           Printf.sprintf "Sequence [%s]"
             (sq |> List.map string_of_int |> String.concat ", ")
     in
-    Printf.printf "construct_ensemble: principle=%s, number_of_groups=%d\n"
-      principle_str number_of_groups;
+    Printf.printf "construct_ensemble [%s]: principle=%s, number_of_groups=%d\n"
+      label principle_str number_of_groups;
     let groups =
       match result with Ensemble lst -> lst | SingleGroup g -> [ g ]
     in
     List.iter
       (fun (IndexedEnsembleGroup { index; group }) ->
         let elements = match group with EnsembleGroup arr -> arr in
-        let elem_idxs =
+        let elem_strs =
           elements
-          |> Array.map (fun e -> string_of_int e.index)
+          |> Array.map (fun e ->
+              Printf.sprintf "%d:%s" e.index (to_string e.value))
           |> Array.to_list |> String.concat ", "
         in
-        Printf.printf "  group[%d]: [%s]\n" index elem_idxs)
+        Printf.printf "  group[%d]: [%s]\n" index elem_strs)
       groups
   end;
   result
@@ -440,28 +443,28 @@ let group_indexes_from_ensemble instrument_ensemble =
 let combination_compatibility (Table instrument_table) (Table other_table) =
   Array.length instrument_table == Array.length other_table
 
-let construct_ensemble_combination ?(verbose = true) parlist table
-    instrument_ensemble =
+let construct_ensemble_combination ~label ?(verbose = true)
+    ?(to_string = fun _ -> "_") parlist table instrument_ensemble =
   let indexes = group_indexes_from_ensemble instrument_ensemble in
   let n_groups = List.length indexes in
   let itable = index_table_groups table |> Array.to_list in
   let result = sequence itable |> select_groups n_groups parlist in
   if verbose then begin
-    let principle_str = "combination" in
-    Printf.printf "construct_ensemble: principle=%s, number_of_groups=%d\n"
-      principle_str n_groups;
+    Printf.printf "construct_ensemble [%s]: principle=combination, number_of_groups=%d\n"
+      label n_groups;
     let groups =
       match result with Ensemble lst -> lst | SingleGroup g -> [ g ]
     in
     List.iter
       (fun (IndexedEnsembleGroup { index; group }) ->
         let elements = match group with EnsembleGroup arr -> arr in
-        let elem_idxs =
+        let elem_strs =
           elements
-          |> Array.map (fun e -> string_of_int e.index)
+          |> Array.map (fun e ->
+              Printf.sprintf "%d:%s" e.index (to_string e.value))
           |> Array.to_list |> String.concat ", "
         in
-        Printf.printf "  group[%d]: [%s]\n" index elem_idxs)
+        Printf.printf "  group[%d]: [%s]\n" index elem_strs)
       groups
   end;
   result
