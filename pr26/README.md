@@ -53,6 +53,7 @@ output results, there may be no possible value
 [/] Hierarchy as defined by the user. 
 
 [x] Implement another parameter x 
+[ ] Total problems: be able to tell which user definition caused a problem.
 
 Done
 

@@ -1,0 +1,97 @@
+; structure formula
+
+variant_duration = 180.0
+number_of_instrument_groups = 3
+
+[performance] 
+  normal
+  plucking
+  bowing
+  striking
+  pizzicato
+  overtone1
+  overtone2
+
+
+[instruments]
+guitar:
+  chordsize   = 1-2
+  performance = normal, plucking, bowing, overtone1, overtone2
+  dynamics    = ppp, pp, p, mf, f, ff, fff
+  compass     = 1.01-5.12
+
+piano:
+  chordsize   = 1-10
+  performance = normal, bowing, pizzicato
+  dynamics    = ppp, pp, p, mf, f, ff, fff
+  compass     = 1.01-5.12
+
+basedrum:
+  chordsize   = 1-1
+  performance = plucking, bowing
+  dynamics    = ppp, pp, p, mf, f, ff, fff
+  compass     = 1.01-5.12
+
+marimba:
+  chordsize   = 1-4
+  performance = normal
+  dynamics    = mf, f, ff, fff
+  compass     = 1.01-5.12
+
+[instrument_table]
+  0 1 2 3
+  0 1
+  2 3
+
+[entrydelays]
+  0 0.1
+  1 0.2 
+  2 0.3 
+  3 1.0 
+  4 2.0
+  5 3.0 
+  6 2.0
+  7 5.0
+
+[entrydelay_table]
+  0 1 2
+  3 4 5
+  0 1 2 3 4 5 6 7
+
+[performance_table]
+  0 1 2
+  0 2
+  1 2
+
+[dynamics_table]
+  0 1 2 3 4 5 6
+  0 1 2 3 4 5 6
+  0 1 2 3 4 5 6
+
+[principles]
+  instrument   = alea
+  entrydelay   = series
+  performance  = alea
+  dynamics     = tendency
+
+[combination]
+  entrydelay   = none
+  performance  = combination
+  dynamics     = combination
+
+[union]
+  none
+
+[density]
+  autonomous low=1 high=3 tr=12 principle=series
+
+[hierarchy]
+  Dyn Ins Per
+
+[tendency_mask]
+  name = 
+; portion  start_min  start_max  end_min  end_max
+  1.0      0.2        0.3        0.8      0.9
+  1.0      0.0        0.1        0.1      1.0
+  1.0      0.0        1.0        0.0      0.1
+  1.0      0.2        0.8        0.8      0.2

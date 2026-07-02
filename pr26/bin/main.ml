@@ -72,12 +72,17 @@ let basic_test () =
       in
       (* default_dynamics sorted: f=0, ff=1, fff=2, mf=3, p=4, pp=5, ppp=6 *)
       let dynamics_table =
-        of_nested_list [ [ 0; 1; 2; 3; 4; 5; 6 ]; [ 0; 1; 2; 6 ]; [ 3; 6 ] ]
+        of_nested_list
+          [
+            [ 0; 1; 2; 3; 4; 5; 6 ];
+            [ 0; 1; 2; 3; 4; 5; 6 ];
+            [ 0; 1; 2; 3; 4; 5; 6 ];
+          ]
       in
       let result =
         Validated.join_v
           ((fun ed_list d hier ->
-             mk_structure_formula ~variant_duration:60.0 ~instr_list
+             mk_structure_formula ~variant_duration:180.0 ~instr_list
                ~instr_table ~number_of_instrument_groups:3 ~ed_list ~ed_table
                ~performance_table ~dynamics_table
                ~entrydelay_combination:NoCombination ~instrument_principle:Alea
