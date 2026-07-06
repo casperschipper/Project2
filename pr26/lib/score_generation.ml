@@ -586,8 +586,11 @@ let write_score filename layers =
     (fun i events ->
       Printf.fprintf oc "# layer %d\n" i;
       List.iter
-        (fun { time; instrument = InstrumentName name; chordsize; _ } ->
-          Printf.fprintf oc "%.3f %s %d\n" time name chordsize)
+        (fun { time; instrument = InstrumentName name; chordsize; performance;
+               dynamic } ->
+          Printf.fprintf oc "%.3f %s %d %s %s\n" time name chordsize
+            (Performance.to_string performance)
+            (Dynamic.to_string dynamic))
         events)
     layers;
   close_out oc

@@ -1,480 +1,444 @@
 # layer 0
-0.000 guitar 3
-0.400 marimba 1
-0.400 basedrum 1
-1.200 piano 4
-1.700 guitar 5
-2.400 marimba 1
-2.400 basedrum 1
-2.700 piano 1
-2.800 piano 2
-3.400 guitar 3
-3.600 marimba 2
-3.900 basedrum 1
-4.400 guitar 2
-5.000 piano 5
-5.800 basedrum 1
-6.000 marimba 2
-6.400 piano 10
-6.500 basedrum 1
-7.200 guitar 5
-8.000 marimba 4
-8.700 guitar 6
-9.100 piano 3
-9.400 marimba 3
-9.900 basedrum 1
-9.900 piano 1
-10.000 basedrum 1
-10.000 guitar 2
-10.200 marimba 3
-10.800 marimba 3
-11.600 basedrum 1
-11.600 piano 10
-12.200 guitar 6
-12.300 marimba 4
-13.000 guitar 1
-13.400 piano 8
-13.600 basedrum 1
-13.600 piano 1
-14.100 guitar 1
-14.400 marimba 2
-14.600 basedrum 1
-14.600 guitar 1
-14.700 marimba 1
-14.700 basedrum 1
-15.500 piano 6
-16.100 marimba 2
-16.500 guitar 5
-17.200 piano 5
-17.500 basedrum 1
-18.000 basedrum 1
-18.100 guitar 5
-18.600 piano 9
-18.800 marimba 4
-19.100 basedrum 1
-19.100 guitar 5
-19.900 marimba 2
-20.600 piano 2
-21.200 piano 8
-21.600 guitar 4
-22.000 marimba 4
-22.800 basedrum 1
-22.800 piano 3
-22.900 marimba 1
-23.200 guitar 6
-23.900 basedrum 1
-24.500 marimba 3
-24.700 basedrum 1
-25.200 piano 1
-25.300 guitar 6
-25.600 basedrum 1
-26.400 guitar 3
-26.600 marimba 1
-27.000 piano 8
-27.500 guitar 6
-28.100 marimba 1
-28.100 basedrum 1
-28.800 piano 5
-29.200 guitar 2
-29.800 marimba 2
-30.100 basedrum 1
-30.100 piano 5
-30.800 basedrum 1
-30.800 guitar 1
-30.900 piano 10
-31.700 marimba 3
-31.900 basedrum 1
-32.400 piano 1
-33.200 marimba 3
-33.800 guitar 2
-34.300 guitar 4
-35.000 basedrum 1
-35.000 marimba 3
-35.300 piano 1
-35.400 marimba 4
-35.800 piano 4
-36.000 guitar 1
-36.000 basedrum 1
-36.300 piano 8
-36.900 marimba 2
-37.000 basedrum 1
-37.500 guitar 6
-38.300 basedrum 1
-38.300 guitar 5
-39.000 marimba 1
-39.000 piano 4
-39.400 basedrum 1
-39.600 guitar 4
-40.200 marimba 1
-41.000 piano 7
-41.100 marimba 2
-41.300 guitar 6
-42.000 basedrum 1
-42.000 piano 2
-42.400 piano 10
-42.700 basedrum 1
-42.700 guitar 4
-43.200 marimba 2
-43.500 guitar 2
-44.300 basedrum 1
-44.300 piano 2
-45.000 marimba 4
-45.200 piano 10
-45.300 marimba 1
-45.800 basedrum 1
-45.800 guitar 6
-46.200 marimba 3
-46.800 basedrum 1
-46.800 guitar 3
-47.400 piano 10
-48.200 marimba 3
-48.400 guitar 4
-48.800 basedrum 1
-49.500 piano 3
-49.600 guitar 1
-49.600 marimba 2
-50.100 basedrum 1
-50.400 piano 7
-51.000 guitar 3
-51.100 marimba 1
-51.100 basedrum 1
-51.600 piano 1
-51.900 marimba 4
-52.100 guitar 3
-52.800 piano 2
-53.600 basedrum 1
-53.600 piano 5
-54.000 basedrum 1
-54.000 marimba 2
-54.700 guitar 2
-54.900 marimba 1
-55.500 guitar 6
-55.900 basedrum 1
-55.900 piano 4
-56.700 basedrum 1
-56.800 marimba 3
-57.300 piano 2
-57.600 guitar 4
-58.200 piano 2
-58.300 basedrum 1
-59.100 marimba 3
-59.300 guitar 5
-60.000 marimba 2
-60.400 piano 8
-60.700 guitar 5
-61.200 basedrum 1
-61.200 marimba 4
-62.000 guitar 6
-62.500 piano 7
-63.200 basedrum 1
-63.200 guitar 1
-63.300 marimba 1
-63.700 piano 1
-63.700 basedrum 1
-63.900 guitar 2
-64.200 basedrum 1
-64.800 marimba 4
-65.500 piano 8
-65.900 basedrum 1
-65.900 guitar 2
-66.500 piano 4
-67.300 marimba 4
-67.500 guitar 2
-67.600 marimba 4
-67.900 piano 10
-68.400 basedrum 1
-68.400 marimba 4
-69.200 piano 4
-69.700 basedrum 1
-70.100 guitar 6
-70.200 guitar 6
-70.500 basedrum 1
-71.200 marimba 3
-71.400 piano 1
-72.000 marimba 2
-72.400 basedrum 1
-72.400 guitar 6
-73.100 piano 4
-73.300 guitar 4
-73.600 marimba 4
-74.100 piano 2
-74.200 basedrum 1
-75.000 basedrum 1
-75.000 marimba 2
-75.600 piano 1
-75.600 guitar 1
-75.700 basedrum 1
-76.300 piano 3
-76.700 guitar 6
-76.900 marimba 3
-77.400 marimba 4
-77.700 guitar 1
-77.700 basedrum 1
-78.500 piano 6
-79.200 piano 6
-79.800 basedrum 1
-79.800 guitar 3
-80.000 marimba 1
-80.000 guitar 6
-80.300 basedrum 1
-80.400 marimba 1
-81.100 piano 10
-81.900 marimba 3
-82.300 basedrum 1
-82.300 guitar 3
-82.800 piano 7
-83.200 piano 8
-83.400 marimba 2
-84.000 guitar 2
-84.100 basedrum 1
-84.100 piano 6
-84.600 marimba 1
-84.900 basedrum 1
-84.900 guitar 1
-85.600 basedrum 1
-86.400 guitar 4
-86.500 piano 8
-87.300 marimba 4
-87.800 piano 7
-88.100 guitar 3
-88.800 marimba 1
-89.200 basedrum 1
-89.800 guitar 2
-90.000 marimba 4
-90.300 basedrum 1
-91.000 piano 7
-91.800 basedrum 1
-92.200 piano 6
-92.400 guitar 1
-92.400 marimba 4
-92.500 marimba 3
-93.100 piano 5
-93.600 basedrum 1
-93.600 guitar 6
-93.800 marimba 4
-94.500 piano 4
-94.800 basedrum 1
-94.800 guitar 2
-95.300 piano 7
-96.100 basedrum 1
-96.200 marimba 2
-96.600 guitar 6
-97.200 guitar 6
-97.800 piano 8
-98.000 basedrum 1
-98.000 marimba 2
-98.100 guitar 6
-98.500 basedrum 1
-99.000 marimba 1
-99.000 piano 6
-99.300 piano 8
-100.100 guitar 6
-100.800 basedrum 1
-100.800 marimba 2
-101.100 piano 4
-101.700 basedrum 1
-101.700 guitar 1
-101.900 marimba 2
-102.400 basedrum 1
-103.200 guitar 2
-103.900 piano 10
-104.000 marimba 3
-104.400 guitar 2
-105.100 marimba 2
-105.300 piano 9
-105.600 basedrum 1
-105.700 marimba 1
-105.700 guitar 2
-106.500 basedrum 1
-107.100 piano 4
-107.600 guitar 4
-108.000 marimba 4
-108.700 basedrum 1
-108.800 piano 5
-109.000 basedrum 1
-109.000 piano 2
-109.400 marimba 3
-109.900 guitar 3
-110.200 marimba 2
-110.800 guitar 2
-111.600 piano 6
-112.000 basedrum 1
-112.100 basedrum 1
-112.100 piano 6
-112.700 marimba 2
-112.900 guitar 4
-113.200 guitar 2
-114.000 basedrum 1
-114.500 piano 2
-115.200 marimba 3
-115.900 basedrum 1
-115.900 marimba 2
-116.400 guitar 5
-116.700 piano 1
-116.800 piano 6
-117.200 guitar 2
-118.000 marimba 1
-118.600 basedrum 1
-118.600 guitar 5
-118.800 piano 7
-119.500 basedrum 1
-120.100 marimba 4
-120.600 guitar 4
-120.900 marimba 3
-121.300 basedrum 1
-121.300 piano 4
-122.100 piano 1
-122.200 basedrum 1
-122.200 marimba 3
-122.400 guitar 2
-122.800 basedrum 1
-123.500 guitar 6
-123.800 piano 5
-124.600 marimba 2
-125.200 basedrum 1
-125.200 piano 4
-125.300 guitar 6
-125.800 marimba 1
-126.000 marimba 1
-126.000 piano 2
-126.100 basedrum 1
-126.600 guitar 4
-127.000 piano 3
-127.800 guitar 3
-128.500 marimba 1
-128.500 basedrum 1
-129.100 guitar 3
-129.300 basedrum 1
-129.600 marimba 3
-129.700 piano 9
-130.400 guitar 6
-131.000 piano 9
-131.800 basedrum 1
-131.800 marimba 2
-132.200 basedrum 1
-132.400 guitar 6
-132.900 piano 4
-133.200 marimba 2
-133.300 piano 6
-133.800 basedrum 1
-133.800 guitar 1
-134.100 marimba 4
-134.500 marimba 1
-134.500 piano 5
-135.300 basedrum 1
-136.000 guitar 2
-136.600 basedrum 1
-136.600 guitar 6
-136.800 piano 1
-137.400 marimba 4
-138.200 marimba 2
-138.500 piano 5
-139.200 guitar 5
-139.700 basedrum 1
-139.700 marimba 2
-139.800 basedrum 1
-139.800 guitar 5
-140.000 piano 5
-140.400 guitar 1
-140.400 basedrum 1
-141.000 marimba 4
-141.300 piano 6
-142.100 guitar 4
-142.600 marimba 2
-143.000 piano 8
-143.100 basedrum 1
-143.100 piano 3
-143.800 guitar 3
-144.000 marimba 3
-144.300 basedrum 1
-145.000 guitar 1
-145.000 marimba 3
-145.800 basedrum 1
-146.200 piano 6
-146.700 guitar 5
-146.800 piano 4
-147.400 basedrum 1
-147.400 marimba 4
-147.600 guitar 2
-148.200 marimba 3
-148.300 basedrum 1
-148.800 piano 4
-149.000 piano 9
-149.300 guitar 3
-150.100 marimba 4
-150.500 basedrum 1
-151.200 basedrum 1
-151.200 piano 8
-151.500 marimba 4
-152.200 guitar 2
-152.800 marimba 4
-153.300 basedrum 1
-153.300 guitar 6
-153.500 piano 3
-153.600 marimba 3
-154.400 guitar 4
-154.800 basedrum 1
-154.800 piano 2
-155.600 basedrum 1
-156.000 guitar 3
-156.700 piano 6
-157.200 marimba 1
-157.200 piano 5
-157.400 guitar 2
-158.000 basedrum 1
-158.300 marimba 2
-158.400 piano 3
-159.100 basedrum 1
-159.700 marimba 1
-160.200 guitar 6
-160.400 basedrum 1
-160.700 marimba 2
-161.500 guitar 1
-161.600 piano 7
-162.000 piano 3
-162.400 marimba 3
-163.100 guitar 2
-163.200 basedrum 1
-163.800 guitar 1
-164.100 basedrum 1
-164.100 piano 6
-164.900 marimba 4
-165.400 piano 3
-165.600 guitar 1
-166.300 marimba 4
-166.400 basedrum 1
-166.400 basedrum 1
-166.900 piano 10
-167.200 guitar 4
-167.600 marimba 1
-167.600 piano 10
-168.400 basedrum 1
-168.600 guitar 4
-169.200 marimba 1
-169.900 piano 2
-170.300 guitar 4
-170.500 basedrum 1
-170.500 marimba 4
-171.300 marimba 3
-171.600 piano 7
-172.200 basedrum 1
-172.700 guitar 4
-172.800 guitar 4
-173.000 basedrum 1
-173.000 marimba 4
-173.500 piano 9
-173.800 basedrum 1
-173.800 piano 1
-173.900 guitar 6
-174.300 marimba 2
-174.900 piano 1
-175.600 marimba 4
-176.400 guitar 6
-177.000 basedrum 1
-177.100 piano 7
-177.900 basedrum 1
-177.900 marimba 3
-178.100 guitar 5
-178.500 marimba 2
-178.800 piano 2
-179.500 guitar 1
+0.000 marimba 1 normal ff
+0.200 guitar 1 bowing ff
+0.200 basedrum 1 plucking ff
+0.200 guitar 2 plucking fff
+2.200 guitar 2 plucking fff
+3.200 basedrum 1 bowing fff
+3.200 guitar 1 bowing fff
+3.200 piano 2 normal fff
+8.200 marimba 2 normal ff
+8.300 guitar 2 bowing fff
+10.300 guitar 1 plucking mf
+10.300 marimba 2 normal ff
+13.300 piano 9 bowing fff
+13.600 marimba 4 normal ff
+18.600 marimba 2 normal ff
+18.600 guitar 1 normal fff
+21.600 piano 7 normal mf
+23.600 basedrum 1 plucking mf
+23.600 basedrum 1 bowing mf
+24.600 piano 3 normal mf
+24.900 piano 4 bowing mf
+25.000 marimba 1 normal fff
+25.200 guitar 1 bowing mf
+27.200 guitar 2 normal p
+32.200 basedrum 1 bowing p
+32.200 guitar 2 plucking p
+34.200 piano 3 bowing pp
+34.400 basedrum 1 plucking p
+34.400 basedrum 1 plucking pp
+34.500 marimba 3 normal fff
+34.800 marimba 2 normal fff
+34.800 basedrum 1 bowing pp
+35.800 marimba 1 normal mf
+38.800 piano 8 normal pp
+40.800 marimba 3 normal mf
+43.800 guitar 2 bowing ppp
+44.000 basedrum 1 bowing pp
+44.000 piano 2 bowing ppp
+44.300 guitar 1 bowing f
+44.300 marimba 2 normal f
+46.300 marimba 1 normal f
+46.300 basedrum 1 bowing f
+47.300 piano 2 normal f
+52.300 piano 8 normal ff
+54.300 piano 4 bowing f
+54.400 marimba 1 normal f
+54.400 piano 9 normal ff
+55.400 piano 3 bowing ff
+58.400 marimba 1 normal f
+58.400 guitar 2 bowing f
+60.400 guitar 2 normal ff
+62.400 piano 2 normal fff
+62.600 marimba 3 normal ff
+67.600 piano 9 bowing ff
+67.900 piano 4 bowing mf
+68.000 piano 5 bowing mf
+73.000 piano 10 bowing fff
+73.100 basedrum 1 bowing fff
+73.100 marimba 4 normal fff
+73.400 marimba 1 normal ff
+73.400 piano 9 normal mf
+75.400 basedrum 1 bowing p
+78.400 guitar 1 plucking fff
+78.600 basedrum 1 bowing f
+78.600 marimba 2 normal ff
+79.600 basedrum 1 plucking pp
+79.600 marimba 1 normal ff
+81.600 marimba 1 normal mf
+81.600 basedrum 1 plucking ff
+84.600 piano 8 normal pp
+84.900 piano 6 bowing f
+85.000 marimba 2 normal f
+85.000 basedrum 1 plucking fff
+87.000 guitar 1 bowing ff
+87.200 guitar 1 normal pp
+87.200 marimba 2 normal f
+89.200 basedrum 1 bowing fff
+89.200 guitar 1 normal p
+89.200 basedrum 1 plucking ppp
+90.200 basedrum 1 bowing p
+95.200 marimba 2 normal f
+98.200 guitar 2 normal pp
+100.200 marimba 3 normal fff
+100.300 basedrum 1 bowing f
+100.300 basedrum 1 bowing p
+100.300 marimba 2 normal fff
+105.300 piano 8 normal fff
+106.300 piano 2 bowing p
+106.300 guitar 2 normal fff
+108.300 guitar 1 normal fff
+108.500 piano 8 bowing mf
+108.800 guitar 2 bowing f
+108.800 guitar 2 plucking f
+109.800 marimba 2 normal f
+114.800 marimba 1 normal ff
+114.800 piano 9 normal ff
+117.800 guitar 1 normal f
+117.800 guitar 2 plucking mf
+118.100 piano 1 bowing fff
+120.100 piano 9 bowing f
+122.100 guitar 2 plucking ff
+122.100 basedrum 1 bowing ff
+122.200 basedrum 1 bowing ff
+122.400 guitar 1 bowing f
+122.500 guitar 2 normal ff
+122.500 basedrum 1 bowing f
+123.500 basedrum 1 bowing ff
+123.500 basedrum 1 bowing f
+126.500 guitar 1 bowing f
+126.500 guitar 1 bowing f
+126.800 marimba 4 normal f
+128.800 piano 4 normal f
+129.000 piano 6 normal f
+134.000 guitar 2 bowing p
+136.000 piano 4 bowing p
+136.300 marimba 2 normal ff
+136.300 piano 8 normal fff
+137.300 basedrum 1 bowing fff
+137.300 marimba 2 normal fff
+139.300 guitar 1 plucking fff
+144.300 piano 4 normal fff
+144.400 guitar 1 normal mf
+144.400 piano 5 bowing mf
+146.400 marimba 4 normal ff
+146.600 guitar 2 bowing mf
+146.600 guitar 1 normal fff
+149.600 guitar 1 normal mf
+149.600 marimba 4 normal fff
+152.600 piano 4 normal mf
+153.600 basedrum 1 plucking mf
+153.900 piano 7 normal mf
+154.100 piano 1 bowing mf
+154.100 marimba 1 normal fff
+154.100 guitar 1 plucking mf
+154.200 marimba 3 normal ff
+156.200 piano 7 normal mf
+158.200 guitar 1 normal mf
+163.200 marimba 3 normal fff
+164.200 piano 6 normal mf
+167.200 piano 8 bowing p
+167.300 piano 7 bowing mf
+172.300 basedrum 1 bowing fff
+172.600 piano 2 bowing mf
+172.800 guitar 1 bowing pp
+174.800 guitar 2 normal ff
+174.800 piano 9 normal ff
+176.800 marimba 3 normal mf
+# layer 1
+0.000 guitar 1 plucking fff
+0.000 piano 3 bowing ff
+5.000 guitar 1 bowing ff
+5.000 guitar 1 bowing fff
+5.000 guitar 2 plucking fff
+7.000 guitar 1 bowing fff
+7.100 piano 4 bowing fff
+8.100 piano 3 bowing fff
+8.400 piano 3 bowing fff
+11.400 piano 2 bowing fff
+13.400 guitar 2 bowing fff
+13.400 guitar 1 bowing mf
+13.600 piano 8 bowing fff
+18.600 piano 9 bowing mf
+18.900 guitar 1 plucking mf
+18.900 piano 1 bowing mf
+19.900 guitar 2 bowing mf
+19.900 guitar 1 bowing mf
+21.900 guitar 2 plucking mf
+23.900 piano 10 bowing mf
+26.900 piano 10 bowing mf
+27.100 piano 2 bowing mf
+27.200 guitar 1 bowing p
+27.200 guitar 1 bowing p
+27.200 guitar 2 plucking p
+27.300 piano 10 bowing p
+28.300 piano 8 bowing p
+28.600 guitar 1 plucking pp
+28.800 piano 6 bowing p
+30.800 guitar 2 plucking pp
+32.800 guitar 2 bowing pp
+35.800 piano 9 bowing pp
+40.800 piano 1 bowing pp
+40.800 piano 3 bowing pp
+42.800 guitar 2 bowing pp
+47.800 piano 10 bowing pp
+48.100 guitar 2 plucking f
+48.100 guitar 2 bowing f
+51.100 piano 2 bowing f
+51.200 piano 7 bowing f
+52.200 guitar 1 plucking ff
+52.400 piano 8 bowing f
+54.400 guitar 1 bowing ff
+54.400 piano 8 bowing ff
+54.500 piano 10 bowing ff
+54.800 guitar 2 plucking fff
+56.800 guitar 1 bowing fff
+56.800 guitar 1 plucking fff
+58.800 piano 3 bowing fff
+59.000 piano 9 bowing fff
+62.000 piano 4 bowing fff
+63.000 piano 10 bowing ff
+68.000 guitar 2 bowing fff
+68.200 guitar 2 bowing ff
+68.200 piano 6 bowing mf
+68.500 piano 7 bowing mf
+70.500 guitar 2 bowing p
+70.500 guitar 2 plucking fff
+70.600 guitar 2 bowing mf
+73.600 guitar 2 bowing fff
+74.600 piano 3 bowing p
+76.600 guitar 1 plucking mf
+76.600 piano 3 bowing ff
+81.600 piano 5 bowing ff
+82.600 piano 9 bowing ff
+82.700 piano 9 bowing f
+87.700 guitar 2 bowing fff
+87.900 piano 4 bowing f
+88.200 guitar 1 plucking ppp
+88.200 guitar 1 plucking ff
+90.200 piano 8 bowing ppp
+92.200 guitar 2 bowing p
+92.200 guitar 1 plucking ppp
+95.200 piano 10 bowing mf
+95.400 guitar 2 plucking mf
+98.400 guitar 2 bowing fff
+98.500 guitar 1 bowing mf
+98.500 piano 3 bowing ff
+100.500 piano 8 bowing ff
+105.500 guitar 2 plucking ff
+105.500 guitar 2 bowing f
+105.800 piano 9 bowing mf
+106.800 piano 10 bowing ff
+108.800 piano 9 bowing fff
+111.800 piano 2 bowing f
+113.800 guitar 2 bowing mf
+114.100 guitar 1 bowing f
+114.100 guitar 2 bowing ff
+114.300 piano 9 bowing ff
+119.300 guitar 2 bowing fff
+119.400 piano 8 bowing fff
+121.400 guitar 2 bowing fff
+121.400 guitar 1 bowing fff
+122.400 guitar 2 plucking fff
+122.400 piano 3 bowing f
+122.700 piano 1 bowing f
+122.700 guitar 2 bowing ff
+123.700 guitar 2 bowing f
+125.700 guitar 2 bowing f
+125.800 piano 6 bowing f
+128.800 piano 2 bowing f
+130.800 guitar 1 bowing f
+130.800 guitar 2 plucking f
+135.800 guitar 1 bowing p
+135.800 guitar 2 bowing fff
+136.000 piano 6 bowing fff
+139.000 piano 9 bowing ff
+144.000 piano 4 bowing pp
+145.000 piano 3 bowing fff
+147.000 piano 4 bowing p
+149.000 piano 10 bowing fff
+149.200 piano 9 bowing p
+149.500 piano 10 bowing p
+149.600 guitar 2 bowing mf
+149.800 piano 8 bowing mf
+149.900 guitar 2 plucking mf
+149.900 guitar 2 bowing mf
+150.900 piano 5 bowing mf
+153.900 piano 2 bowing mf
+155.900 piano 8 bowing mf
+156.200 piano 2 bowing mf
+161.200 guitar 1 plucking mf
+161.200 guitar 2 plucking mf
+163.200 piano 10 bowing p
+163.300 piano 5 bowing mf
+168.300 guitar 1 plucking mf
+168.300 guitar 2 bowing mf
+171.300 piano 4 bowing fff
+173.300 guitar 1 plucking fff
+173.300 guitar 2 plucking p
+173.500 piano 10 bowing fff
+174.500 piano 10 bowing mf
+176.500 piano 5 bowing pp
+176.800 piano 4 bowing p
+# layer 2
+0.000 marimba 1 normal ff
+0.200 marimba 1 normal ff
+0.200 basedrum 1 plucking fff
+0.200 marimba 3 normal ff
+5.200 marimba 2 normal ff
+5.300 marimba 3 normal ff
+7.300 marimba 1 normal ff
+7.300 marimba 2 normal ff
+7.600 basedrum 1 plucking fff
+7.600 marimba 2 normal ff
+9.600 marimba 1 normal ff
+9.600 marimba 1 normal ff
+9.600 marimba 2 normal ff
+10.600 marimba 3 normal ff
+13.600 marimba 3 normal ff
+14.600 marimba 4 normal ff
+14.700 basedrum 1 plucking mf
+14.700 marimba 4 normal ff
+16.700 marimba 3 normal fff
+17.000 marimba 2 normal fff
+17.200 basedrum 1 plucking mf
+17.200 marimba 4 normal fff
+20.200 basedrum 1 plucking mf
+25.200 marimba 1 normal fff
+25.200 basedrum 1 plucking p
+27.200 basedrum 1 plucking p
+27.200 marimba 2 normal fff
+27.300 basedrum 1 plucking p
+27.600 marimba 4 normal fff
+32.600 marimba 4 normal fff
+34.600 marimba 1 normal fff
+34.600 basedrum 1 plucking pp
+34.600 basedrum 1 plucking pp
+34.800 marimba 2 normal fff
+35.800 marimba 4 normal mf
+37.800 basedrum 1 plucking pp
+37.800 basedrum 1 plucking pp
+37.800 basedrum 1 plucking pp
+40.800 basedrum 1 plucking pp
+40.800 marimba 3 normal mf
+41.000 marimba 1 normal mf
+41.100 basedrum 1 plucking ppp
+41.100 marimba 2 normal mf
+44.100 marimba 3 normal f
+46.100 marimba 2 normal f
+46.100 basedrum 1 plucking f
+46.400 marimba 1 normal f
+46.400 marimba 3 normal f
+47.400 basedrum 1 plucking ff
+47.400 marimba 2 normal f
+52.400 basedrum 1 plucking ff
+54.400 marimba 1 normal f
+54.400 basedrum 1 plucking f
+59.400 marimba 2 normal f
+61.400 basedrum 1 plucking ff
+61.400 basedrum 1 plucking fff
+61.400 basedrum 1 plucking ff
+62.400 basedrum 1 plucking ff
+62.600 basedrum 1 plucking f
+62.600 marimba 3 normal f
+65.600 basedrum 1 plucking ff
+65.600 marimba 4 normal f
+65.900 basedrum 1 plucking ff
+67.900 basedrum 1 plucking f
+67.900 marimba 1 normal fff
+67.900 marimba 1 normal ff
+68.000 basedrum 1 plucking mf
+68.000 basedrum 1 plucking fff
+68.200 marimba 3 normal f
+68.300 marimba 1 normal f
+68.300 marimba 1 normal f
+68.300 marimba 3 normal ff
+69.300 marimba 4 normal ff
+69.600 marimba 2 normal ff
+71.600 marimba 3 normal ff
+74.600 marimba 2 normal ff
+76.600 marimba 4 normal f
+81.600 marimba 3 normal ff
+83.600 basedrum 1 plucking ff
+83.600 marimba 3 normal mf
+83.900 basedrum 1 plucking p
+85.900 marimba 4 normal fff
+90.900 basedrum 1 plucking fff
+90.900 basedrum 1 plucking pp
+90.900 marimba 2 normal ff
+93.900 basedrum 1 plucking pp
+94.900 marimba 3 normal mf
+95.000 marimba 3 normal mf
+95.200 marimba 3 normal fff
+97.200 marimba 4 normal f
+97.300 basedrum 1 plucking mf
+97.600 basedrum 1 plucking fff
+97.600 marimba 1 normal fff
+98.600 marimba 4 normal ff
+103.600 basedrum 1 plucking mf
+103.600 basedrum 1 plucking f
+103.800 marimba 3 normal fff
+105.800 basedrum 1 plucking f
+105.800 marimba 1 normal f
+105.800 marimba 2 normal ff
+108.800 basedrum 1 plucking f
+108.800 marimba 3 normal ff
+109.000 basedrum 1 plucking f
+111.000 marimba 4 normal ff
+111.100 marimba 3 normal f
+112.100 marimba 2 normal f
+112.100 basedrum 1 plucking ff
+115.100 basedrum 1 plucking f
+115.400 basedrum 1 plucking ff
+115.400 basedrum 1 plucking f
+117.400 basedrum 1 plucking f
+117.400 marimba 3 normal ff
+122.400 marimba 3 normal ff
+122.700 marimba 4 normal f
+125.700 marimba 3 normal f
+127.700 basedrum 1 plucking f
+127.900 basedrum 1 plucking f
+127.900 basedrum 1 plucking f
+129.900 basedrum 1 plucking f
+129.900 basedrum 1 plucking f
+129.900 marimba 3 normal f
+130.900 marimba 2 normal f
+131.000 marimba 3 normal ff
+136.000 marimba 4 normal ff
+137.000 basedrum 1 plucking mf
+137.100 basedrum 1 plucking fff
+137.100 marimba 3 normal ff
+142.100 basedrum 1 plucking p
+142.100 marimba 2 normal fff
+142.400 basedrum 1 plucking p
+142.400 marimba 2 normal fff
+142.600 marimba 4 normal fff
+144.600 basedrum 1 plucking mf
+147.600 basedrum 1 plucking mf
+147.600 basedrum 1 plucking mf
+147.600 basedrum 1 plucking mf
+149.600 basedrum 1 plucking mf
+149.800 basedrum 1 plucking mf
+149.800 marimba 3 normal ff
+154.800 basedrum 1 plucking mf
+154.800 basedrum 1 plucking mf
+155.800 marimba 2 normal ff
+158.800 marimba 4 normal ff
+159.100 marimba 4 normal fff
+161.100 basedrum 1 plucking mf
+161.100 basedrum 1 plucking mf
+163.100 basedrum 1 plucking mf
+163.200 basedrum 1 plucking mf
+163.200 basedrum 1 plucking mf
+165.200 basedrum 1 plucking mf
+165.200 marimba 2 normal ff
+165.400 basedrum 1 plucking p
+167.400 basedrum 1 plucking mf
+168.400 marimba 4 normal ff
+173.400 marimba 4 normal fff
+173.700 marimba 2 normal ff
+176.700 basedrum 1 plucking ff
+176.700 marimba 2 normal ff
+176.800 basedrum 1 plucking ff
+176.800 basedrum 1 plucking p
