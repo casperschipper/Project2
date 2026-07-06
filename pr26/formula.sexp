@@ -9,19 +9,19 @@
   (instruments
     (instrument guitar
       (chordsize 1 6)
-      (performance (normal muted bowing overtone1 overtone2))
+      (performance (normal muted overtone1))
       (dynamics    (p mf f))
       (compass (1 01) (5 12)))
 
     (instrument piano
       (chordsize 1 10)
-      (performance (normal bowing pizzicato))
+      (performance (normal pizzicato))
       (dynamics    (ppp pp p mf f ff fff))
       (compass (1 01) (5 12)))
 
     (instrument basedrum
       (chordsize 1 1)
-      (performance (normal plucking))
+      (performance (normal bowing))
       (dynamics    (ppp pp p mf f ff fff))
       (compass (1 01) (1 01)))
 
@@ -32,15 +32,15 @@
       (compass (1 01) (5 12))))
 
   (instrument-table
+    (0 1 2 3)
     (0)
-    (0 1)
     (2 3))
 
 ;; Note that we are using the direct names of the 
   (performance-table
-    (normal muted bowing overtone1 overtone2)
-    (normal muted)
-    (normal plucking))
+    (normal normal muted overtone1 pizzicato bowing)
+    (normal muted overtone1)
+    (normal bowing))
 
   (entrydelays (0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8))
 
@@ -69,11 +69,11 @@
   (principles
     (instrument series)
     (entrydelay  series)
-    (performance series)
-    (dynamics (tendency
+    (performance (tendency
       ;;         portion  start-min start-max  end-min end-max
       (section   1.0      (start 0.5 0.5)      (end 0.0 1.0))
-      (section   1.0      (start 0.5 1.0)      (end 0.5 0.0)))))
+      (section   1.0      (start 0.5 1.0)      (end 0.5 0.0))))
+    (dynamics series))
 
   (combination
     (entrydelay  none)
@@ -85,8 +85,8 @@
 
 ;; you can either have autonomous density, using a principle, or density defined by the instrument chord size.
 ;; If instrument is the density generator, it also becomes primary parameter in the hierarchy
-  (density instrument-density)
+  (density (autonomous (low 1) (high 2) (tr 12) (principle series)))
 
-  (hierarchy (Ins Dyn Per))
+  (hierarchy (Per Ins Dyn))
 
 )

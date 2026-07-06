@@ -114,6 +114,11 @@ module Parse = struct
   let fail msg = Error [ ParseError msg ]
   let lift r = Result.map_error (fun e -> [ e ]) r
 
+  let rec sexp_to_string = function
+    | Sexp.Atom s -> s
+    | Sexp.List items ->
+        "(" ^ (items |> List.map sexp_to_string |> String.concat " ") ^ ")"
+
   let require_float = function
     | Sexp.Atom s -> (
         match float_of_string_opt s with
@@ -355,7 +360,15 @@ module Parse = struct
         lift
           (mk_autonomous ~tr:tr_v ~low:low_v ~high:high_v ~selection_principle:p)
     | [ Sexp.Atom "instrument-density" ] -> Ok InstrumentDensity
-    | _ -> fail "density expects (autonomous ...) or instrument-density"
+    | other ->
+        fail
+          (Printf.sprintf
+             "density expects either\n\
+             \  (autonomous (low <int>) (high <int>) (tr <int>) (principle \
+              <selection-principle>))\n\
+             \  or instrument-density\n\
+              got: (density %s)"
+             (other |> List.map sexp_to_string |> String.concat " "))
 
   let parse_hierarchy_elem = function
     | "Ins" -> Ok Ins

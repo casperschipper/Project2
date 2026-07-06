@@ -162,6 +162,22 @@ let sel_advance_window : 'a sel_state -> 'a sel_state = function
       STendency s'
   | st -> st
 
+(* Same as [sel_draw_pred], but for [Tendency] this samples within the
+   current window without moving it (mirrors how [sel_sample] relates to
+   [sel_draw]). Used to draw several values within one timepoint (e.g. several
+   instruments for autonomous density) while only moving each tendency mask's
+   window once per timepoint, via a single later [sel_advance_window] call. *)
+let sel_sample_pred (p : 'a -> bool) : 'a sel_state -> 'a * 'a sel_state =
+  function
+  | STendency (TendencyState { arr; lo; hi; _ } as s) ->
+      let filtered = arr |> Array.to_list |> List.filter p |> Array.of_list in
+      let v =
+        if Array.length filtered = 0 then tendency_sample arr lo hi
+        else tendency_sample filtered lo hi
+      in
+      (v, STendency s)
+  | st -> sel_draw_pred p st
+
 let calculate_number_of_events variant_duration entry_delay_principle
     entry_delay_ensemble =
   let avg_ed = expected_value entry_delay_principle entry_delay_ensemble in
@@ -277,8 +293,11 @@ let protos_to_events (protos : proto_event list) : score_event list =
               Some performance,
               Some dynamic ) ->
               let chordsize =
-                if minsize = maxsize then minsize
-                else Random.int (maxsize - minsize + 1) + minsize
+                match pe.nr_of_tones with
+                | Some n -> n
+                | None ->
+                    if minsize = maxsize then minsize
+                    else Random.int (maxsize - minsize + 1) + minsize
               in
               Some { time = t; instrument; chordsize; performance; dynamic }
           | _ -> None
@@ -288,13 +307,95 @@ let protos_to_events (protos : proto_event list) : score_event list =
   in
   List.rev events
 
+(* Fill in performance/dynamic for one already-instrument-picked proto,
+   conditioned on that instrument, in the relative order [Per]/[Dyn] appear in
+   [per_dyn_order] (their order doesn't affect each other's outcome, only
+   which selector state advances first). Uses [sel_sample_pred] rather than
+   [sel_draw_pred] so a tendency mask's window is not moved yet — several of
+   these calls may happen within the same timepoint. *)
+let fill_conditioned_performance_dynamic per_dyn_order states instr proto =
+  List.fold_left
+    (fun (Proto pe, states) elem ->
+      match elem with
+      | Per ->
+          let (Instrument { performance = modes; _ }) = instr in
+          let pred p = Performance_modes.mem p modes in
+          let v, st' = sel_sample_pred pred states.perf_state in
+          (Proto { pe with performance = Some v }, { states with perf_state = st' })
+      | Dyn ->
+          let (Instrument { dynamics = modes; _ }) = instr in
+          let pred d = Dynamic_modes.mem d modes in
+          let v, st' = sel_sample_pred pred states.dyn_state in
+          (Proto { pe with dynamic = Some v }, { states with dyn_state = st' })
+      | Ins -> (Proto pe, states))
+    (proto, states) per_dyn_order
+
+(* Autonomous density keeps picking instruments (each with its own randomly
+   chosen chordsize, drawn from that instrument's own min/max) until the
+   sampled [target] density is reached or exceeded — overshooting on the last
+   pick is fine. Every instrument picked this way starts a full proto event
+   (with its own performance/dynamic, conditioned on it), all sharing the same
+   timepoint. Returns the protos for this timepoint (oldest first) and the
+   selector states advanced by one sample per pick. *)
+let fill_autonomous_timepoint per_dyn_order states target =
+  let rec loop states total acc =
+    let instr, instr_state' =
+      sel_sample_pred (Fun.const true) states.instr_state
+    in
+    let (Instrument { chordsize = Chordsize { minsize; maxsize }; _ }) =
+      instr
+    in
+    let chordsize =
+      if minsize = maxsize then minsize
+      else Random.int (maxsize - minsize + 1) + minsize
+    in
+    let states = { states with instr_state = instr_state' } in
+    let (Proto p) = empty_proto in
+    let base =
+      Proto { p with instrument = Some instr; nr_of_tones = Some chordsize }
+    in
+    let proto, states =
+      fill_conditioned_performance_dynamic per_dyn_order states instr base
+    in
+    let total' = total + chordsize in
+    let acc' = proto :: acc in
+    if total' >= target then (List.rev acc', states)
+    else loop states total' acc'
+  in
+  loop states 0 []
+
+(* All protos in a timepoint group share the same start time: only the last
+   one carries the entrydelay to the next timepoint, the rest carry a 0.0
+   entrydelay so [protos_to_events]'s running time doesn't move between them. *)
+let stamp_group_entrydelay group ed =
+  let n = List.length group in
+  List.mapi
+    (fun i (Proto pe) ->
+      let delay = if i = n - 1 then ed else 0.0 in
+      Proto { pe with entrydelay = Some (Entrydelay delay) })
+    group
+
+let advance_all_windows states =
+  {
+    states with
+    instr_state = sel_advance_window states.instr_state;
+    perf_state = sel_advance_window states.perf_state;
+    dyn_state = sel_advance_window states.dyn_state;
+  }
+
 (** Calculate one layer using the hierarchy list. Entry delays are always
     computed first (independent of hierarchy order) and stored on each proto up
     front. The hierarchy then specifies the order in which [Ins] and [Per] are
-    filled, where later steps can condition on earlier ones. *)
+    filled, where later steps can condition on earlier ones.
+
+    With [InstrumentDensity], each timepoint is exactly one event and its
+    chordsize comes from the picked instrument's own range (as usual).
+    With [Autonomous], each timepoint samples a target density and keeps
+    adding instruments (see [fill_autonomous_timepoint]) until it is reached;
+    all of them start at the timepoint's shared time. *)
 let calculate_layer_hierarchical ~n_events ~hierarchy ~instr_arr
     ~instr_principle ~ed_arr ~ed_principle ~perf_arr ~perf_principle ~dyn_arr
-    ~dyn_principle =
+    ~dyn_principle ~density =
   let eds =
     sel_draw_n n_events ed_principle ed_arr |> List.map entry_to_float
   in
@@ -306,20 +407,39 @@ let calculate_layer_hierarchical ~n_events ~hierarchy ~instr_arr
       instr_arr;
     }
   in
-  let protos =
-    List.map
-      (fun ed ->
-        let (Proto p) = empty_proto in
-        Proto { p with entrydelay = Some (Entrydelay ed) })
-      eds
-  in
-  let filled, _ = List.fold_left apply_step (protos, init_states) hierarchy in
-  protos_to_events filled
+  match density with
+  | InstrumentDensity ->
+      let protos =
+        List.map
+          (fun ed ->
+            let (Proto p) = empty_proto in
+            Proto { p with entrydelay = Some (Entrydelay ed) })
+          eds
+      in
+      let filled, _ =
+        List.fold_left apply_step (protos, init_states) hierarchy
+      in
+      protos_to_events filled
+  | Autonomous { low; high; selection_principle } ->
+      let dens_arr = Array.init (high - low + 1) (fun i -> low + i) in
+      let per_dyn_order = hierarchy |> List.filter (fun e -> e <> Ins) in
+      let _, _, groups =
+        List.fold_left
+          (fun (states, dens_state, acc) ed ->
+            let target, dens_state' = sel_sample dens_state in
+            let group, states' =
+              fill_autonomous_timepoint per_dyn_order states target
+            in
+            (advance_all_windows states', sel_advance_window dens_state', stamp_group_entrydelay group ed :: acc))
+          (init_states, sel_init selection_principle n_events dens_arr, [])
+          eds
+      in
+      groups |> List.rev |> List.concat |> protos_to_events
 
 let generate_score_hierarchical ~variant_duration ~instrument_ensemble
     ~instrument_principle ~entry_delay_ensemble ~entry_delay_principle
     ~perf_ensemble ~perf_principle ~dyn_ensemble ~dyn_principle ~union
-    ~hierarchy =
+    ~hierarchy ~density =
   match union with
   | Union ->
       let entr_arr = ensemble_values_union entry_delay_ensemble in
@@ -335,7 +455,7 @@ let generate_score_hierarchical ~variant_duration ~instrument_ensemble
         calculate_layer_hierarchical ~n_events ~hierarchy ~instr_arr
           ~instr_principle:instrument_principle ~ed_arr:entr_arr
           ~ed_principle:entry_delay_principle ~perf_arr ~perf_principle ~dyn_arr
-          ~dyn_principle;
+          ~dyn_principle ~density;
       ]
   | NoUnion ->
       let instr_arrays = ensemble_values_no_union instrument_ensemble in
@@ -364,7 +484,7 @@ let generate_score_hierarchical ~variant_duration ~instrument_ensemble
           calculate_layer_hierarchical ~n_events ~hierarchy ~instr_arr
             ~instr_principle:instrument_principle ~ed_arr:entr_arr
             ~ed_principle:entry_delay_principle ~perf_arr ~perf_principle
-            ~dyn_arr ~dyn_principle)
+            ~dyn_arr ~dyn_principle ~density)
 
 let build_score cfg =
   let instr_to_string (Instrument { instrument = InstrumentName n; _ }) = n in
@@ -415,7 +535,7 @@ let build_score cfg =
     ~entry_delay_principle:cfg.entrydelay_principle ~perf_ensemble
     ~perf_principle:cfg.performance_principle ~dyn_ensemble
     ~dyn_principle:cfg.dynamics_principle ~union:cfg.union
-    ~hierarchy:cfg.hierarchy
+    ~hierarchy:cfg.hierarchy ~density:cfg.density
 
 let build_constraint_map instrs =
   List.map
