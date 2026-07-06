@@ -9,7 +9,7 @@
   (instruments
     (instrument guitar
       (chordsize 1 2)
-      (performance (normal plucking bowing overtone1 overtone2))
+      (performance (normal muted bowing overtone1 overtone2))
       (dynamics    (p mf f))
       (compass (1 01) (5 12)))
 
@@ -23,7 +23,7 @@
       (chordsize 1 1)
       (performance (normal plucking))
       (dynamics    (ppp pp p mf f ff fff))
-      (compass (1 01) (5 12)))
+      (compass (1 01) (1 01)))
 
     (instrument marimba
       (chordsize 1 4) 
