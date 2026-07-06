@@ -22,6 +22,7 @@ type problem =
   | TableSizeMismatch of string
   | InvalidDensity of string
   | UnknownPerformance of string
+  | UnknownDynamic of string
   | InvalidPitchCompass
   | DuplicateHierarchy
   | InstrumentDensityRequiresInsFirst
@@ -49,6 +50,7 @@ let display_problem p =
   | TableSizeMismatch table_error -> table_error
   | InvalidDensity str -> "invalid density definition: " ^ str
   | UnknownPerformance s -> "unknown performance mode: " ^ s
+  | UnknownDynamic s -> "unknown dynamic mode: " ^ s
   | InvalidPitchCompass -> "pitch compass minimum must not exceed maximum"
   | DuplicateHierarchy -> "each hierarchy level may only appear once"
   | InstrumentDensityRequiresInsFirst ->

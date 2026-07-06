@@ -171,6 +171,32 @@ module Parse = struct
     let* rows = items |> List.map parse_row |> sequence in
     Ok (Table (Array.of_list rows))
 
+  (* performance-table / dynamics-table entries may either be raw indexes into
+     the mode list derived from the instruments (kept for backwards
+     compatibility), or the mode names themselves, resolved against [names]
+     (given in the same order as [extract_performances_from_instruments] /
+     [extract_dynamics_from_instruments]) *)
+  let parse_named_table unknown names items =
+    let index_of_name = names |> List.mapi (fun i name -> (name, i)) in
+    let resolve_cell = function
+      | Sexp.Atom s -> (
+          match int_of_string_opt s with
+          | Some i -> Ok i
+          | None -> (
+              match List.assoc_opt s index_of_name with
+              | Some i -> Ok i
+              | None -> lift (Error (unknown s))))
+      | Sexp.List _ -> fail "expected atom for table entry"
+    in
+    let parse_row = function
+      | Sexp.List row_items ->
+          let* ints = row_items |> List.map resolve_cell |> sequence in
+          Ok (Array.of_list ints)
+      | Sexp.Atom _ -> fail "expected list for table row, got atom"
+    in
+    let* rows = items |> List.map parse_row |> sequence in
+    Ok (Table (Array.of_list rows))
+
   let parse_combination = function
     | [ Sexp.Atom "none" ] -> Ok NoCombination
     | [ Sexp.Atom "combination" ] -> Ok Combination
@@ -378,13 +404,24 @@ module Parse = struct
       let* args = require_field "entrydelay-table" items in
       parse_table args
     in
+    let (ParameterList instr_arr) = instr_list in
     let* performance_table =
       let* args = require_field "performance-table" items in
-      parse_table args
+      let (ParameterList perf_arr) =
+        extract_performances_from_instruments (Array.to_list instr_arr)
+      in
+      let perf_names =
+        perf_arr |> Array.to_list |> List.map Performance.to_string
+      in
+      parse_named_table (fun s -> UnknownPerformance s) perf_names args
     in
     let* dynamics_table =
       let* args = require_field "dynamics-table" items in
-      parse_table args
+      let (ParameterList dyn_arr) =
+        extract_dynamics_from_instruments (Array.to_list instr_arr)
+      in
+      let dyn_names = dyn_arr |> Array.to_list |> List.map Dynamic.to_string in
+      parse_named_table (fun s -> UnknownDynamic s) dyn_names args
     in
     let* principles = require_field "principles" items in
     let* instrument_principle =

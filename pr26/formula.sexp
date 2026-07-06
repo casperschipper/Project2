@@ -8,7 +8,7 @@
 
   (instruments
     (instrument guitar
-      (chordsize 1 2)
+      (chordsize 1 6)
       (performance (normal muted bowing overtone1 overtone2))
       (dynamics    (p mf f))
       (compass (1 01) (5 12)))
@@ -32,21 +32,24 @@
       (compass (1 01) (5 12))))
 
   (instrument-table
-    (0 3)
+    (0)
     (0 1)
     (2 3))
 
+;; Note that we are using the direct names of the 
+  (performance-table
+    (normal muted bowing overtone1 overtone2)
+    (normal muted)
+    (normal plucking))
+
   (entrydelays (0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8))
+
 
   (entrydelay-table
     (0 1 2)
     (3 4 5)
     (0 1 2 3 4 5 6 7))
 
-  (performance-table
-    (0 1)
-    (0 1 2 3 4)
-    (0))
 
   (dynamics-table
     (0 1 2 3 4 5 6)
