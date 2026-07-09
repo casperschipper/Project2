@@ -23,6 +23,9 @@ type tendency_section =
 
 type tendency_mask_spec = TendencyMask of tendency_section list
 
+(* 
+  The main sum type representing which method (and what parameters) we are using for selection from the ensemble
+*)
 type selection_principle =
   | Alea (* random choice with possible repetition *)
   | Series (* random choice but exhaust all other options before repetition *)
@@ -32,23 +35,28 @@ type selection_principle =
   | Tendency of tendency_mask_spec
   | Sequence of int list (* user defined order, looped *)
 
+(* A selection either results in a value, or in an impossible, 
+where the hierarchy prevented picking a value *)
 type 'a selection_result = Value of 'a | Impossible of 'a
 
 let get_value sr = match sr with Value v -> v | Impossible v -> v
 
+(* We do not use Seq.t, we explicitely define the state as a type, so we can handle when it is updated separately from when we draw values from it *)
 type 'e series_state = SeriesState of { initial : 'e list; options : 'e list }
 
+(* sequence is just the initial user chosen order and the current available options*)
 type 'e sequence_state =
   | SequenceState of { initial : 'e list; options : 'e list }
 
-(* Moses will return two lists, those that fit the predicate and those that dont *)
+(* Moses will return two lists, those that fit the predicate and those that dont.
+This is useful when handling the hierarchy condition *)
 let moses f lst =
   (* we expect small lists, so not worth doing fold_left *)
   List.fold_right
     (fun x (yes, no) -> if f x then (x :: yes, no) else (yes, x :: no))
     lst ([], [])
 
-(* pick first item that qualifies, and returns the remaining options *)
+(* pick first item that qualifies pred, and returns the remaining options *)
 let pick_first pred lst =
   let rec aux acc = function
     | [] -> (None, List.rev acc)
