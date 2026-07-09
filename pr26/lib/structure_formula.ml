@@ -276,7 +276,7 @@ module Parse = struct
     | [ Sexp.List (Sexp.Atom "sequence" :: [ Sexp.List ints ]) ] ->
         let* is = ints |> List.map require_int |> sequence in
         Ok (Sequence is)
-    | [ Sexp.List (Sexp.Atom "ratio" :: pairs) ] ->
+    | [ Sexp.List (Sexp.Atom "ratio" :: [ Sexp.List pairs ]) ] ->
         let parse_pair = function
           | Sexp.List [ Sexp.Atom a; Sexp.Atom b ] ->
               let* i = require_int (Sexp.Atom a) in

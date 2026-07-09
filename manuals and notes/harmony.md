@@ -8,9 +8,9 @@ Three principles:
 
 First observation: in the manual, values need to be provided for all. We will not require this.
 
-Chord is complicated, as it includes vertical density.
-HARMONY has three principles in PR-2: CHORD, ROW and INTERVAL
-(EMR-3 §8.2). This module implements only ROW, the simplest of the
+# On the implementation of pitch/register handling.
+
+This module implements only ROW, the simplest of the
 three: unlike CHORD it never becomes "main parameter" and never
 determines vertical density (that stays independent, see EMR-3 p.115
 / fig 9-5), and unlike INTERVAL it has no constraint matrix to solve -

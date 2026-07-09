@@ -76,7 +76,7 @@
 
   (principles
     (instrument (ensemble series) (sample series)) ;; two selection principles, one for the ensemble, one for the actual score constructions from the ensemble
-    (entrydelay (ensemble series) (sample (ratio (0 3) (1 2) (2 1))))
+    (entrydelay (ensemble series) (sample (ratio ((0 3) (1 2) (2 1)))))
     (performance
       (ensemble alea)
       (sample alea))
