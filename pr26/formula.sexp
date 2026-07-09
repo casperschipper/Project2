@@ -3,7 +3,6 @@
 (structure-formula
 
   (variant-duration 180.0)
-  (number-of-instrument-groups 1)
   (octave-division 12)
 
   (instruments
@@ -66,14 +65,19 @@
   ;;          (repetitions 2 5))            -- min and max repetitions
   ;;   (tendency (section portion (start min max) (end min max)) ...)
 
+  (number-of-instrument-groups 1) ;; this is a main parameter to handle the number of groups selected.
+
+
   (principles
-    (instrument series)
-    (entrydelay  series)
-    (performance (tendency
+    (instrument (ensemble series) (sample series)) ;; two selection principles, one for the ensemble, one for the actual score constructions from the ensemble
+    (entrydelay (ensemble series) (sample series))
+    (performance
+      (ensemble alea)
+      (sample (tendency
       ;;         portion  start-min start-max  end-min end-max
       (section   1.0      (start 0.5 0.5)      (end 0.0 1.0))
-      (section   1.0      (start 0.5 1.0)      (end 0.5 0.0))))
-    (dynamics series))
+        (section   1.0      (start 0.5 1.0)      (end 0.5 0.0)))))
+    (dynamics (ensemble series) (sample series)))
 
   (combination
     (entrydelay  none)

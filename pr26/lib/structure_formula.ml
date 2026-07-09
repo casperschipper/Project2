@@ -27,11 +27,15 @@ type structure_formula = {
   variant_duration : float;
   instr_list : instrument parameter_list;
   instr_table : ptable;
+  instr_ensemble_group_selection : ensemble_group_selection;
   ed_list : entrydelay parameter_list;
   ed_table : ptable;
+  ent_ensemble_group_selection : ensemble_group_selection;
   number_of_instrument_groups : int;
   performance_table : ptable;
+  perf_ensemble_group_selection : ensemble_group_selection;
   dynamics_table : ptable;
+  dyn_ensemble_group_selection : ensemble_group_selection;
   instrument_principle : selection_principle;
   entrydelay_principle : selection_principle;
   entrydelay_combination : combination;
@@ -66,11 +70,13 @@ let mk portion smin smax emin emax =
       end_max = uf emax;
     }
 
-let mk_structure_formula ~variant_duration ~instr_list ~instr_table ~ed_list
-    ~ed_table ~number_of_instrument_groups ~performance_table ~dynamics_table
-    ~entrydelay_combination ~instrument_principle ~entrydelay_principle
-    ~performance_principle ~performance_combination ~dynamics_principle
-    ~dynamics_combination ~union ~hierarchy ~density =
+let mk_structure_formula ~variant_duration ~instr_list ~instr_table
+    ~instr_ensemble_group_selection ~ed_list ~ed_table
+    ~ent_ensemble_group_selection ~number_of_instrument_groups
+    ~performance_table ~perf_ensemble_group_selection ~dynamics_table
+    ~dyn_ensemble_group_selection ~entrydelay_combination ~instrument_principle
+    ~entrydelay_principle ~performance_principle ~performance_combination
+    ~dynamics_principle ~dynamics_combination ~union ~hierarchy ~density =
   let hierarchy_errors =
     match (density, hierarchy) with
     | InstrumentDensity, first :: _ ->
@@ -91,11 +97,15 @@ let mk_structure_formula ~variant_duration ~instr_list ~instr_table ~ed_list
           variant_duration;
           instr_list;
           instr_table;
+          instr_ensemble_group_selection;
           ed_list;
           ed_table;
+          ent_ensemble_group_selection;
           number_of_instrument_groups;
           performance_table;
+          perf_ensemble_group_selection;
           dynamics_table;
+          dyn_ensemble_group_selection;
           entrydelay_combination;
           instrument_principle;
           entrydelay_principle;
@@ -248,6 +258,17 @@ module Parse = struct
     | Sexp.Atom "series" -> Ok GroupSeries
     | _ -> fail "group selector expects 'alea' or 'series'"
 
+  let parse_ensemble_group_selection = function
+    | [ Sexp.Atom "alea" ] -> Ok EnsembleGroupAlea
+    | [ Sexp.Atom "series" ] -> Ok EnsembleGroupSeries
+    | [ Sexp.List (Sexp.Atom "sequence" :: ints) ] ->
+        let* is = ints |> List.map require_int |> sequence in
+        Ok (EnsembleGroupSequence is)
+    | _ ->
+        fail
+          "ensemble group selection expects 'alea', 'series', or (sequence \
+           (...))"
+
   let parse_principle items =
     match items with
     | [ Sexp.Atom "alea" ] -> Ok Alea
@@ -300,7 +321,10 @@ module Parse = struct
         let* r2 = require_int (Sexp.Atom r2) in
         let* p2 = require_int (Sexp.Atom p2) in
         lift
-          (mk_pitch_compass (absolute r1 p1) (absolute r2 p2) Pitch_set.empty)
+          (mk_pitch_compass
+             (absolute (Register r1) p1)
+             (absolute (Register r2) p2)
+             Pitch_set.empty)
     | _ -> fail "compass expects (register pitch) (register pitch)"
 
   let parse_instrument = function
@@ -437,21 +461,25 @@ module Parse = struct
       parse_named_table (fun s -> UnknownDynamic s) dyn_names args
     in
     let* principles = require_field "principles" items in
-    let* instrument_principle =
-      let* args = require_field "instrument" principles in
-      parse_principle args
+    let parse_param_principles name =
+      let* args = require_field name principles in
+      let* ens_args = require_field "ensemble" args in
+      let* ens = parse_ensemble_group_selection ens_args in
+      let* samp_args = require_field "sample" args in
+      let* samp = parse_principle samp_args in
+      Ok (ens, samp)
     in
-    let* entrydelay_principle =
-      let* args = require_field "entrydelay" principles in
-      parse_principle args
+    let* instr_ensemble_group_selection, instrument_principle =
+      parse_param_principles "instrument"
     in
-    let* performance_principle =
-      let* args = require_field "performance" principles in
-      parse_principle args
+    let* ent_ensemble_group_selection, entrydelay_principle =
+      parse_param_principles "entrydelay"
     in
-    let* dynamics_principle =
-      let* args = require_field "dynamics" principles in
-      parse_principle args
+    let* perf_ensemble_group_selection, performance_principle =
+      parse_param_principles "performance"
+    in
+    let* dyn_ensemble_group_selection, dynamics_principle =
+      parse_param_principles "dynamics"
     in
     let* combination = require_field "combination" items in
     let* entrydelay_combination =
@@ -489,10 +517,13 @@ module Parse = struct
       lift (mk_hierarchy elems)
     in
     mk_structure_formula ~variant_duration ~instr_list ~instr_table
-      ~number_of_instrument_groups ~ed_list ~ed_table ~performance_table
-      ~dynamics_table ~entrydelay_combination ~instrument_principle
-      ~entrydelay_principle ~performance_principle ~performance_combination
-      ~dynamics_principle ~dynamics_combination ~union ~density ~hierarchy
+      ~instr_ensemble_group_selection ~number_of_instrument_groups ~ed_list
+      ~ed_table ~ent_ensemble_group_selection ~performance_table
+      ~perf_ensemble_group_selection ~dynamics_table
+      ~dyn_ensemble_group_selection ~entrydelay_combination
+      ~instrument_principle ~entrydelay_principle ~performance_principle
+      ~performance_combination ~dynamics_principle ~dynamics_combination ~union
+      ~density ~hierarchy
 
   let read_file path =
     let ic = open_in path in

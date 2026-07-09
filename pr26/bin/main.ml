@@ -25,7 +25,8 @@ let basic_test () =
   let ( <$> ) = Validated.( <$> ) in
   (* just map over error *)
   let pitch_compass =
-    mk_pitch_compass (absolute 1 1) (absolute 5 12) Pitch_set.empty
+    mk_pitch_compass (absolute (Register 1) 1) (absolute (Register 5) 12)
+      Pitch_set.empty
   in
   (* define some instrument modes *)
   let normal = Performance.of_string "normal" in
@@ -83,8 +84,12 @@ let basic_test () =
         Validated.join_v
           ((fun ed_list d hier ->
              mk_structure_formula ~variant_duration:180.0 ~instr_list
-               ~instr_table ~number_of_instrument_groups:3 ~ed_list ~ed_table
-               ~performance_table ~dynamics_table
+               ~instr_table ~instr_ensemble_group_selection:EnsembleGroupSeries
+               ~number_of_instrument_groups:3 ~ed_list ~ed_table
+               ~ent_ensemble_group_selection:EnsembleGroupSeries
+               ~performance_table
+               ~perf_ensemble_group_selection:EnsembleGroupSeries
+               ~dynamics_table ~dyn_ensemble_group_selection:EnsembleGroupSeries
                ~entrydelay_combination:NoCombination ~instrument_principle:Alea
                ~entrydelay_principle:Series ~performance_principle:Alea
                ~performance_combination:Combination
@@ -101,7 +106,7 @@ let basic_test () =
       | Error errors -> print_errors "instrument_entry_test" errors
       | Ok layers ->
           print_layers instrs layers;
-          write_score "score.projekt2" layers;
+          write_score "score.projekt2" instrs layers;
           print_endline "Score written to score.projekt2")
 
 let () =

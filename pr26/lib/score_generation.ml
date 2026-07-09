@@ -321,7 +321,8 @@ let fill_conditioned_performance_dynamic per_dyn_order states instr proto =
           let (Instrument { performance = modes; _ }) = instr in
           let pred p = Performance_modes.mem p modes in
           let v, st' = sel_sample_pred pred states.perf_state in
-          (Proto { pe with performance = Some v }, { states with perf_state = st' })
+          ( Proto { pe with performance = Some v },
+            { states with perf_state = st' } )
       | Dyn ->
           let (Instrument { dynamics = modes; _ }) = instr in
           let pred d = Dynamic_modes.mem d modes in
@@ -389,10 +390,10 @@ let advance_all_windows states =
     filled, where later steps can condition on earlier ones.
 
     With [InstrumentDensity], each timepoint is exactly one event and its
-    chordsize comes from the picked instrument's own range (as usual).
-    With [Autonomous], each timepoint samples a target density and keeps
-    adding instruments (see [fill_autonomous_timepoint]) until it is reached;
-    all of them start at the timepoint's shared time. *)
+    chordsize comes from the picked instrument's own range (as usual). With
+    [Autonomous], each timepoint samples a target density and keeps adding
+    instruments (see [fill_autonomous_timepoint]) until it is reached; all of
+    them start at the timepoint's shared time. *)
 let calculate_layer_hierarchical ~n_events ~hierarchy ~instr_arr
     ~instr_principle ~ed_arr ~ed_principle ~perf_arr ~perf_principle ~dyn_arr
     ~dyn_principle ~density =
@@ -430,7 +431,9 @@ let calculate_layer_hierarchical ~n_events ~hierarchy ~instr_arr
             let group, states' =
               fill_autonomous_timepoint per_dyn_order states target
             in
-            (advance_all_windows states', sel_advance_window dens_state', stamp_group_entrydelay group ed :: acc))
+            ( advance_all_windows states',
+              sel_advance_window dens_state',
+              stamp_group_entrydelay group ed :: acc ))
           (init_states, sel_init selection_principle n_events dens_arr, [])
           eds
       in
@@ -580,17 +583,46 @@ let event_problems constraint_map event =
       in
       perf_problem @ dyn_problem
 
-let write_score filename layers =
+(* Aligns rows of already-stringified cells by padding each column to its
+   widest value. Knows nothing about score events, so it can't drift out of
+   sync with whatever ends up being printed. *)
+module Table = struct
+  let column_widths = function
+    | [] -> []
+    | row :: _ as rows ->
+        let init = List.map (fun _ -> 0) row in
+        List.fold_left
+          (List.map2 (fun w cell -> max w (String.length cell)))
+          init rows
+
+  let render_row widths row =
+    List.map2
+      (fun w cell -> cell ^ String.make (max 0 (w - String.length cell)) ' ')
+      widths row
+    |> String.concat " "
+end
+
+let write_score filename instrs layers =
+  let constraint_map = build_constraint_map instrs in
+  let cells_of
+      { time; instrument = InstrumentName name; chordsize; performance;
+        dynamic } =
+    [ Printf.sprintf "%.3f" time; name; string_of_int chordsize;
+      Performance.to_string performance; Dynamic.to_string dynamic ]
+  in
+  let widths = Table.column_widths (List.concat_map (List.map cells_of) layers) in
   let oc = open_out filename in
   List.iteri
     (fun i events ->
       Printf.fprintf oc "# layer %d\n" i;
       List.iter
-        (fun { time; instrument = InstrumentName name; chordsize; performance;
-               dynamic } ->
-          Printf.fprintf oc "%.3f %s %d %s %s\n" time name chordsize
-            (Performance.to_string performance)
-            (Dynamic.to_string dynamic))
+        (fun event ->
+          Printf.fprintf oc "%s" (Table.render_row widths (cells_of event));
+          (match event_problems constraint_map event with
+          | [] -> ()
+          | problems ->
+              Printf.fprintf oc " # IMPOSSIBLE: %s" (String.concat ", " problems));
+          Printf.fprintf oc "\n")
         events)
     layers;
   close_out oc

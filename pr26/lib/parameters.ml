@@ -178,7 +178,11 @@ let remove_performances (PerformanceList known) strings =
 
 module Pitch_set = Set.Make (Int)
 
-type absolute_pitch = Absolute of int * int
+type register = Register of int
+
+let reg2int (Register i) = i
+
+type absolute_pitch = Absolute of register * int
 type relative_pitch = Relative of int
 
 let absolute_koenig absolute = (absolute / 100, absolute mod 100)
@@ -186,9 +190,9 @@ let absolute register relative = Absolute (register, relative)
 
 let absolute_of_koenig n =
   let oct, rel = absolute_koenig n in
-  Absolute (oct, rel)
+  Absolute (Register oct, rel)
 
-let absolute_compare (Absolute (o1, r1)) (Absolute (o2, r2)) =
+let absolute_compare (Absolute (Register o1, r1)) (Absolute (Register o2, r2)) =
   let c = Int.compare o1 o2 in
   if c <> 0 then c else Int.compare r1 r2
 
@@ -242,8 +246,8 @@ let print_instrument
          pitchcompass =
            PitchCompass
              {
-               min = Absolute (min_oct, min_rel);
-               max = Absolute (max_oct, max_rel);
+               min = Absolute (Register min_oct, min_rel);
+               max = Absolute (Register max_oct, max_rel);
                forbidden;
              };
        }) =
@@ -254,8 +258,7 @@ let print_instrument
   in
   let dyns =
     Dynamic_modes.elements dynamics
-    |> List.map Dynamic.to_string
-    |> String.concat ","
+    |> List.map Dynamic.to_string |> String.concat ","
   in
   let forbidden_str =
     Pitch_set.elements forbidden |> List.map string_of_int |> String.concat ","
@@ -452,7 +455,8 @@ let construct_ensemble_combination ~label ?(verbose = true)
   let itable = index_table_groups table |> Array.to_list in
   let result = sequence itable |> select_groups n_groups parlist in
   if verbose then begin
-    Printf.printf "construct_ensemble [%s]: principle=combination, number_of_groups=%d\n"
+    Printf.printf
+      "construct_ensemble [%s]: principle=combination, number_of_groups=%d\n"
       label n_groups;
     let groups =
       match result with Ensemble lst -> lst | SingleGroup g -> [ g ]
@@ -528,3 +532,135 @@ let expected_value selection_principle array =
 let print_errors label errors =
   Printf.printf "%s failed:\n" label;
   List.iter (fun e -> Printf.printf "  - %s\n" (display_problem e)) errors
+
+(* HARMONY *)
+
+(* HARMONY has three principles in PR-2: CHORD, ROW and INTERVAL
+   (EMR-3 §8.2). This module implements only ROW, the simplest of the
+   three: unlike CHORD it never becomes "main parameter" and never
+   determines vertical density (that stays independent, see EMR-3 p.115
+   / fig 9-5), and unlike INTERVAL it has no constraint matrix to solve -
+   it is just a given sequence of steps that gets transposed as a whole
+   each time it has been used up. *)
+
+(* Original PR-2 marks a percussion event by "abusing" a pitch value: relative
+   pitch 0, and register (0,0). We replace that with a real sum
+   type: a tone is either a pitch (a register plus a step within it) or a
+   percussion event, which carries no pitch information at all. *)
+
+type step =
+  | Step of int (* relative pitch within the tone system, i.e. 1..tr *)
+
+type pitch = Pitched of register * step | Percussion
+
+(* HARMONY (and so ROW) only ever decides the step. The octave placement
+   (register) is a separate hierarchy parameter whose order relative to
+   HARMONY the composer chooses freely (EMR-3 p.74-77, fig 7-6), so no
+   register is known yet at this stage. ROW therefore produces this
+   lighter value; combine it with a register, once one is chosen
+   elsewhere, via [attach_register]. *)
+
+type row_value = Tone of step | RowPercussion
+
+type harmony_problem =
+  | InvalidStep of { n : int; tr : int }
+  | InvalidCallNumber of int
+
+let display_problem = function
+  | InvalidStep { n; tr } ->
+      Printf.sprintf "relative pitch %d is out of range 1..%d" n tr
+  | InvalidCallNumber n ->
+      Printf.sprintf "%d is not a valid TRANSP-ROW call number (0-4)" n
+
+let mk_step ~tr n =
+  if n < 1 || n > tr then Error (InvalidStep { n; tr }) else Ok (Step n)
+
+(* the composer writes relative pitches 0..tr into the row; 0 is PR-2's
+   percussion sentinel, which becomes its own case here instead *)
+let mk_row_value ~tr n =
+  if n = 0 then Ok RowPercussion
+  else mk_step ~tr n |> Result.map (fun s -> Tone s)
+
+type row = Row of row_value array
+
+let mk_row ~tr ints =
+  ints
+  |> List.map (mk_row_value ~tr)
+  |> sequence_result
+  |> Result.map (fun lst -> Row (Array.of_list lst))
+
+let attach_register register = function
+  | RowPercussion -> Percussion
+  | Tone step -> Pitched (register, step)
+
+(* TRANSP-ROW, entry 20 *)
+type transposition =
+  | NoTransposition (* 0 *)
+  | TransposeAlea (* 1 *)
+  | TransposeSeries (* 2 *)
+  | TransposeChromatic (* 3: ascending sequence 1..tr *)
+  | TransposeSerial (* 4: the row itself is reused as transposition intervals *)
+
+let transposition_of_call_number = function
+  | 0 -> Ok NoTransposition
+  | 1 -> Ok TransposeAlea
+  | 2 -> Ok TransposeSeries
+  | 3 -> Ok TransposeChromatic
+  | 4 -> Ok TransposeSerial
+  | n -> Error (InvalidCallNumber n)
+
+let row_value_to_int = function RowPercussion -> 0 | Tone (Step n) -> n
+
+(* SERIES, applied to the fixed range 1..tr: exhausts every interval once
+   (in shuffled order) before any interval repeats *)
+let series_over_range tr =
+  let full = Array.init tr (fun i -> i + 1) in
+  let shuffled () = shuffle full |> Array.to_list in
+  let f remain =
+    match remain with
+    | [] -> ( match shuffled () with x :: xs -> Some (x, xs) | [] -> None)
+    | x :: xs -> Some (x, xs)
+  in
+  Seq.unfold f (shuffled ())
+
+(* one transposition interval per completed pass through the row *)
+let transposition_intervals ~tr transposition (Row elements) : int Seq.t =
+  match transposition with
+  | NoTransposition -> Seq.repeat 0
+  | TransposeAlea -> choose (List.init tr (fun i -> i + 1))
+  | TransposeSeries -> series_over_range tr
+  | TransposeChromatic ->
+      Seq.cycle (List.to_seq (List.init tr (fun i -> i + 1)))
+  | TransposeSerial ->
+      Seq.cycle (Array.to_seq (Array.map row_value_to_int elements))
+
+let transpose_step ~tr k (Step n) = Step (((n - 1 + k) mod tr) + 1)
+
+let transpose_value ~tr k = function
+  | RowPercussion -> RowPercussion
+  | Tone s -> Tone (transpose_step ~tr k s)
+
+(** [row_stream ~tr ~transposition row] is the infinite stream of row values
+    PR-2 distributes over entry points: the row as given, then - once it has
+    been used up in full - transposed again and again (EMR-3 p.76-77), the
+    transposition interval for each pass drawn according to [transposition]. *)
+let row_stream ~tr ~transposition (Row elements as row) : row_value Seq.t =
+  let intervals = transposition_intervals ~tr transposition row in
+  let rec expand cumulative intervals () =
+    match intervals () with
+    | Seq.Nil -> Seq.Nil
+    | Seq.Cons (k, rest) ->
+        let pass =
+          elements |> Array.to_seq |> Seq.map (transpose_value ~tr cumulative)
+        in
+        Seq.append pass (expand ((cumulative + k) mod tr) rest) ()
+  in
+  expand 0 intervals
+
+let row_value_to_string = function
+  | RowPercussion -> "*"
+  | Tone (Step n) -> string_of_int n
+
+let pitch_to_string = function
+  | Percussion -> "*"
+  | Pitched (Register r, Step s) -> Printf.sprintf "%d.%d" r s

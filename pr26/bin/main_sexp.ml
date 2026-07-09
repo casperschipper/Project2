@@ -12,5 +12,5 @@ let () =
       in
       let layers = build_score sf in
       print_layers instrs layers;
-      write_score "score.projekt2" layers;
+      write_score "score.projekt2" instrs layers;
       print_endline "Score written to score.projekt2"
