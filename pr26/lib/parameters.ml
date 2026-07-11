@@ -207,11 +207,17 @@ let mk_pitch_compass min max forbidden =
   if absolute_compare min max > 0 then Error InvalidPitchCompass
   else Ok (PitchCompass { min; max; forbidden })
 
+type allowed_durations = AllowedDurations of { min : float; max : float }
+
+let print_allowed_durations (AllowedDurations { min; max }) =
+  Printf.sprintf "Allowed durations: from %f till %f"
+
 (* an instrument, may also have certain limitations *)
 type instrument =
   | Instrument of {
       instrument : instr;
       chordsize : chordsize;
+      durations : allowed_durations;
       performance : Performance_modes.t;
       dynamics : Dynamic_modes.t;
       pitchcompass : pitch_compass;
@@ -250,6 +256,7 @@ let print_instrument
                max = Absolute (Register max_oct, max_rel);
                forbidden;
              };
+        durations
        }) =
   let perfs =
     Performance_modes.elements performance
@@ -269,8 +276,16 @@ let print_instrument
     name minsize maxsize perfs dyns min_oct min_rel max_oct max_rel
     forbidden_str
 
-let inst instrument cs performance dynamics pitchcompass =
-  Instrument { instrument; chordsize = cs; performance; dynamics; pitchcompass }
+let inst instrument cs performance dynamics pitchcompass durations =
+  Instrument
+    {
+      instrument;
+      chordsize = cs;
+      performance;
+      dynamics;
+      pitchcompass;
+      durations;
+    }
 
 (* for formation of the ensemble Alea, Series or Sequence will pick the groups from the table *)
 type ensemble_group_selection =

@@ -17,6 +17,10 @@ Important historical change:
 in the original version of PR2, only instrument parameter allowed selection of several groups into one ensemble.
 But latter, one could also make sure that based on the instrument selected, it would also use the appropriate groups from other parameters. 
 
+# Random hierarchy:
+
+Only possible if all data is "prepared for that", but what does this mean compositionally?
+
 # Timing:
 
 ENTRY POINTS

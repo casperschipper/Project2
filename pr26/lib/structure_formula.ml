@@ -18,20 +18,37 @@ type union =
   | Union
   (* ensemble groups merged into a single unit, no layers *)
   | NoUnion
+
+type chord_duration = ChordOneDuration | ChordDurationPerNote
+
+type duration_mode =
+  | DurIndependent of chord_duration (* mode 0 *)
+  | DurEqualsEntry (* mode 1, implies also ChordDurationPerNote *)
+  | DurShorterThanEntry of chord_duration
+(* If DUR-ENTRY = 2, valid lists must be given and valid ensembles
+must be formed for both parameters. If ENTRY DELAY comes first, elements
+are rejected in the DURATION ensemble if they are greater than the sel-
+ected entry delay. If no "allowed" durations &vailable, a "wrong" dur-
+ation is provided with a comment. If, on the other hand, DURATION comes
+first, elements in the ENTRY DELAY ensemble which are smaller than the
+selected duration are rejected. If such "allowed" entry delays Chord duration all the same*)
+
 (* the number of layers is equal to the number of groups in the ensemble, the combined parameters also have same number of groups *)
 
-(* we combine all the parameters currently supported into one record, so we can validate dependencies
-current dependencies include, the number of groups in
-*)
 type structure_formula = {
   variant_duration : float;
   instr_list : instrument parameter_list;
   instr_table : ptable;
+  number_of_instrument_groups : int;
   instr_ensemble_group_selection : ensemble_group_selection;
   ed_list : entrydelay parameter_list;
   ed_table : ptable;
   ent_ensemble_group_selection : ensemble_group_selection;
-  number_of_instrument_groups : int;
+  dur_list : duration parameter_list;
+  dur_table : ptable;
+  dur_ensemble_group_selection : ensemble_group_selection;
+  duration_combination : combination;
+  duration_relation_mode : duration_mode;
   performance_table : ptable;
   perf_ensemble_group_selection : ensemble_group_selection;
   dynamics_table : ptable;
@@ -76,7 +93,9 @@ let mk_structure_formula ~variant_duration ~instr_list ~instr_table
     ~performance_table ~perf_ensemble_group_selection ~dynamics_table
     ~dyn_ensemble_group_selection ~entrydelay_combination ~instrument_principle
     ~entrydelay_principle ~performance_principle ~performance_combination
-    ~dynamics_principle ~dynamics_combination ~union ~hierarchy ~density =
+    ~dynamics_principle ~dynamics_combination ~union ~hierarchy ~density
+    ~dur_list ~dur_table ~duration_combination ~dur_ensemble_group_selection
+    ~duration_relation_mode =
   let hierarchy_errors =
     match (density, hierarchy) with
     | InstrumentDensity, first :: _ ->
@@ -89,6 +108,7 @@ let mk_structure_formula ~variant_duration ~instr_list ~instr_table
         performance_combination
     @ check_combination "dynamics" instr_table dynamics_table
         dynamics_combination
+    @ check_combination "duration" instr_table dur_table duration_combination
   in
   match hierarchy_errors @ combination_errors with
   | [] ->
@@ -116,6 +136,11 @@ let mk_structure_formula ~variant_duration ~instr_list ~instr_table
           union;
           density;
           hierarchy;
+          dur_list;
+          dur_table;
+          dur_ensemble_group_selection;
+          duration_relation_mode;
+          duration_combination;
         }
   | errs -> Error errs
 
