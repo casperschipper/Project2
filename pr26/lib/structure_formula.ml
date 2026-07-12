@@ -144,6 +144,8 @@ let mk_structure_formula ~variant_duration ~instr_list ~instr_table
         }
   | errs -> Error errs
 
+(* structure formula AST parsers *)
+
 module Parse = struct
   let ( let* ) = Result.bind
   let fail msg = Error [ ParseError msg ]
@@ -241,6 +243,24 @@ module Parse = struct
     | [ Sexp.Atom "none" ] -> Ok NoCombination
     | [ Sexp.Atom "combination" ] -> Ok Combination
     | _ -> fail "expected 'none' or 'combination'"
+
+  let parse_chord_duration = function
+    | [ Sexp.Atom "one" ] -> Ok ChordOneDuration
+    | [ Sexp.Atom "per-note" ] -> Ok ChordDurationPerNote
+    | _ -> fail "chord duration expects 'one' or 'per-note'"
+
+  let parse_duration_mode = function
+    | [ Sexp.List (Sexp.Atom "independent" :: cd) ] ->
+        let* c = parse_chord_duration cd in
+        Ok (DurIndependent c)
+    | [ Sexp.Atom "equals-entry" ] -> Ok DurEqualsEntry
+    | [ Sexp.List (Sexp.Atom "shorter-than-entry" :: cd) ] ->
+        let* c = parse_chord_duration cd in
+        Ok (DurShorterThanEntry c)
+    | _ ->
+        fail
+          "duration relation expects (independent one|per-note), \
+           equals-entry, or (shorter-than-entry one|per-note)"
 
   let parse_tendency_section = function
     | Sexp.List (Sexp.Atom "section" :: Sexp.Atom portion_s :: rest) -> (
@@ -387,7 +407,16 @@ module Parse = struct
           let* args = require_field "compass" fields in
           parse_compass args
         in
-        Ok (inst instr cs perf dyns compass)
+        let* durations =
+          let* args = require_field "durations" fields in
+          match args with
+          | [ Sexp.Atom a; Sexp.Atom b ] ->
+              let* min_v = require_float (Sexp.Atom a) in
+              let* max_v = require_float (Sexp.Atom b) in
+              lift (mk_allowed_durations min_v max_v)
+          | _ -> fail "durations expects two floats"
+        in
+        Ok (inst instr cs perf dyns compass durations)
     | _ -> fail "expected (instrument name ...)"
 
   let parse_density items =
@@ -466,6 +495,22 @@ module Parse = struct
       let* args = require_field "entrydelay-table" items in
       parse_table args
     in
+    let* dur_list =
+      let* args = require_field "durations" items in
+      let* floats =
+        match args with
+        | [ Sexp.List inner ] -> inner |> List.map require_float |> sequence
+        | _ -> fail "durations expects (durations (...))"
+      in
+      let* durs =
+        floats |> List.map (fun f -> lift (mk_duration f)) |> sequence
+      in
+      Ok (ParameterList (Array.of_list durs))
+    in
+    let* dur_table =
+      let* args = require_field "duration-table" items in
+      parse_table args
+    in
     let (ParameterList instr_arr) = instr_list in
     let* performance_table =
       let* args = require_field "performance-table" items in
@@ -506,6 +551,11 @@ module Parse = struct
     let* dyn_ensemble_group_selection, dynamics_principle =
       parse_param_principles "dynamics"
     in
+    let* dur_ensemble_group_selection =
+      let* args = require_field "duration" principles in
+      let* ens_args = require_field "ensemble" args in
+      parse_ensemble_group_selection ens_args
+    in
     let* combination = require_field "combination" items in
     let* entrydelay_combination =
       let* args = require_field "entrydelay" combination in
@@ -518,6 +568,14 @@ module Parse = struct
     let* dynamics_combination =
       let* args = require_field "dynamics" combination in
       parse_combination args
+    in
+    let* duration_combination =
+      let* args = require_field "duration" combination in
+      parse_combination args
+    in
+    let* duration_relation_mode =
+      let* args = require_field "duration-relation" items in
+      parse_duration_mode args
     in
     let* union =
       let* args = require_field "union" items in
@@ -548,7 +606,8 @@ module Parse = struct
       ~dyn_ensemble_group_selection ~entrydelay_combination
       ~instrument_principle ~entrydelay_principle ~performance_principle
       ~performance_combination ~dynamics_principle ~dynamics_combination ~union
-      ~density ~hierarchy
+      ~density ~hierarchy ~dur_list ~dur_table ~duration_combination
+      ~dur_ensemble_group_selection ~duration_relation_mode
 
   let read_file path =
     let ic = open_in path in

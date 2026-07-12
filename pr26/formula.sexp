@@ -1,5 +1,7 @@
 ;;; structure formula
-
+;;; evaluate this sexp with:
+;;; dune exec bin/main_sexp.exe
+;;; duration is still a "dummy" parameter
 (structure-formula
 
   (variant-duration 30.0)
@@ -10,25 +12,29 @@
       (chordsize 1 6)
       (performance (normal muted overtone1))
       (dynamics    (p mf f))
-      (compass (1 01) (5 12)))
+      (compass (1 01) (5 12))
+      (durations 0.25 4.0))
 
     (instrument piano
       (chordsize 1 10)
       (performance (normal pizzicato))
       (dynamics    (ppp pp p mf f ff fff))
-      (compass (1 01) (5 12)))
+      (compass (1 01) (5 12))
+      (durations 0.25 4.0))
 
     (instrument basedrum
       (chordsize 1 1)
       (performance (normal bowing))
       (dynamics    (ppp pp p mf f ff fff))
-      (compass (1 01) (1 01)))
+      (compass (1 01) (1 01))
+      (durations 0.25 4.0))
 
     (instrument marimba
-      (chordsize 1 4) 
+      (chordsize 1 4)
       (performance (normal bowing))
       (dynamics    (mf f ff fff))
-      (compass (1 01) (5 12))))
+      (compass (1 01) (5 12))
+      (durations 0.25 4.0)))
 
   (instrument-table
     (0 1 2 3)
@@ -48,6 +54,13 @@
     (0 1 2)
     (3 4 5)
     (0 1 2 3 4 5 6 7))
+
+  (durations (0.25 0.5 1.0 2.0 4.0))
+
+  (duration-table
+    (0 1 2)
+    (3 4)
+    (0 1 2 3 4))
 
 
   (dynamics-table
@@ -80,12 +93,16 @@
     (performance
       (ensemble alea)
       (sample alea))
-    (dynamics (ensemble series) (sample series)))
+    (dynamics (ensemble series) (sample series))
+    (duration (ensemble series)))
 
   (combination
     (entrydelay  none)
     (performance combination)
-    (dynamics    none))
+    (dynamics    none)
+    (duration    none))
+
+  (duration-relation (independent one))
 
 ;; none means a layer per instrument group!
   (union none)

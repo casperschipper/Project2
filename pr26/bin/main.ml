@@ -44,20 +44,21 @@ let basic_test () =
   let instr_validated =
     (* add pitch compass, use error applicative to collect mistakes *)
     let of_list = Performance_modes.of_list in
+    let durations = mk_allowed_durations 0.25 4.0 in
     Validated.sequence
       [
         inst <$> guitar <+> chordsize 1 2
         <+> pure (of_list [ normal; pluck; bow ])
-        <+> pure default_dynamics <+> pitch_compass;
+        <+> pure default_dynamics <+> pitch_compass <+> durations;
         inst <$> piano <+> chordsize 1 10
         <+> pure (of_list [ normal; bow ])
-        <+> pure default_dynamics <+> pitch_compass;
+        <+> pure default_dynamics <+> pitch_compass <+> durations;
         inst <$> basedrum <+> chordsize 1 1
         <+> pure (of_list [ pluck; bow ])
-        <+> pure default_dynamics <+> pitch_compass;
+        <+> pure default_dynamics <+> pitch_compass <+> durations;
         inst <$> marimba <+> chordsize 1 4
         <+> pure (of_list [ normal ])
-        <+> pure limited_dynamics <+> pitch_compass;
+        <+> pure limited_dynamics <+> pitch_compass <+> durations;
       ]
   in
   match instr_validated with
@@ -80,9 +81,10 @@ let basic_test () =
             [ 0; 1; 2; 3; 4; 5; 6 ];
           ]
       in
+      let dur_table = of_nested_list [ [ 0; 1; 2 ]; [ 3; 4 ]; [ 0; 1; 2; 3; 4 ] ] in
       let result =
         Validated.join_v
-          ((fun ed_list d hier ->
+          ((fun ed_list dur_list d hier ->
              mk_structure_formula ~variant_duration:180.0 ~instr_list
                ~instr_table ~instr_ensemble_group_selection:EnsembleGroupSeries
                ~number_of_instrument_groups:3 ~ed_list ~ed_table
@@ -95,10 +97,14 @@ let basic_test () =
                ~performance_combination:Combination
                ~dynamics_principle:(Tendency test_mask)
                ~dynamics_combination:Combination ~union:NoUnion ~density:d
-               ~hierarchy:hier
+               ~hierarchy:hier ~dur_list ~dur_table
+               ~duration_combination:NoCombination
+               ~dur_ensemble_group_selection:EnsembleGroupSeries
+               ~duration_relation_mode:(DurIndependent ChordOneDuration)
              |> Result.map build_score)
           <$> mk_par_list mk_entrydelay
                 [ 0.1; 0.2; 0.3; 1.0; 2.0; 3.0; 2.0; 5.0 ]
+          <+> mk_par_list mk_duration [ 0.25; 0.5; 1.0; 2.0; 4.0 ]
           <+> mk_autonomous ~tr:12 ~low:1 ~high:3 ~selection_principle:Series
           <+> mk_hierarchy [ Dyn; Ins; Per ])
       in

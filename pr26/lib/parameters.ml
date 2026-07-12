@@ -26,6 +26,8 @@ type problem =
   | InvalidPitchCompass
   | DuplicateHierarchy
   | InstrumentDensityRequiresInsFirst
+  | NegativeDuration of float
+  | InvalidDurationRange of string
   | ParseError of string
 
 type hierarchy_elem = Ins | Per | Dyn
@@ -55,6 +57,9 @@ let display_problem p =
   | DuplicateHierarchy -> "each hierarchy level may only appear once"
   | InstrumentDensityRequiresInsFirst ->
       "InstrumentDensity requires Ins to be first in the hierarchy"
+  | NegativeDuration x ->
+      "duration is " ^ string_of_float x ^ ", but may not be negative"
+  | InvalidDurationRange msg -> msg
   | ParseError msg -> "parse error: " ^ msg
 
 let entry_to_float (Entrydelay x) = x
@@ -67,6 +72,9 @@ let mk_instr str =
 
 let mk_entrydelay ed =
   if ed < 0.0 then Error (NegativeEntry ed) else Ok (Entrydelay ed)
+
+let mk_duration d =
+  if d < 0.0 then Error (NegativeDuration d) else Ok (Duration d)
 
 (* This is the full list of parameters, currently a should only be instr or entrydelay *)
 type 'a parameter_list = ParameterList of 'a Array.t
@@ -210,7 +218,14 @@ let mk_pitch_compass min max forbidden =
 type allowed_durations = AllowedDurations of { min : float; max : float }
 
 let print_allowed_durations (AllowedDurations { min; max }) =
-  Printf.sprintf "Allowed durations: from %f till %f"
+  Printf.sprintf "Allowed durations: from %f till %f" min max
+
+let mk_allowed_durations mini maxi =
+  if mini < 0.0 || maxi < 0.0 then
+    Error (InvalidDurationRange "duration may not be negative")
+  else if mini > maxi then
+    Error (InvalidDurationRange "min duration exceeds max duration")
+  else Ok (AllowedDurations { min = mini; max = maxi })
 
 (* an instrument, may also have certain limitations *)
 type instrument =
@@ -272,9 +287,10 @@ let print_instrument
   in
   Printf.printf
     "instrument: %s, chordsize: %d-%d, performance: [%s], dynamics: [%s], \
-     compass: %d%02d-%d%02d, forbidden: [%s]\n"
+     compass: %d%02d-%d%02d, forbidden: [%s], %s\n"
     name minsize maxsize perfs dyns min_oct min_rel max_oct max_rel
     forbidden_str
+    (print_allowed_durations durations)
 
 let inst instrument cs performance dynamics pitchcompass durations =
   Instrument
