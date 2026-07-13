@@ -605,12 +605,24 @@ end
 let write_score filename instrs layers =
   let constraint_map = build_constraint_map instrs in
   let cells_of
-      { time; instrument = InstrumentName name; chordsize; performance;
-        dynamic } =
-    [ Printf.sprintf "%.3f" time; name; string_of_int chordsize;
-      Performance.to_string performance; Dynamic.to_string dynamic ]
+      {
+        time;
+        instrument = InstrumentName name;
+        chordsize;
+        performance;
+        dynamic;
+      } =
+    [
+      Printf.sprintf "%.3f" time;
+      name;
+      string_of_int chordsize;
+      Performance.to_string performance;
+      Dynamic.to_string dynamic;
+    ]
   in
-  let widths = Table.column_widths (List.concat_map (List.map cells_of) layers) in
+  let widths =
+    Table.column_widths (List.concat_map (List.map cells_of) layers)
+  in
   let oc = open_out filename in
   List.iteri
     (fun i events ->
@@ -621,7 +633,8 @@ let write_score filename instrs layers =
           (match event_problems constraint_map event with
           | [] -> ()
           | problems ->
-              Printf.fprintf oc " # IMPOSSIBLE: %s" (String.concat ", " problems));
+              Printf.fprintf oc " # IMPOSSIBLE: %s"
+                (String.concat ", " problems));
           Printf.fprintf oc "\n")
         events)
     layers;
