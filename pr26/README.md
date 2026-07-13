@@ -25,10 +25,10 @@ This uses the formula.sexp
 
 * Do we allow random hierarchy? I found that allowing it really changes what input would work at all. In general, finding an input that "works" is hard, but with random hierarchy, all bets are off.
 * Although not in the spec: would it be useful to have a "bypass hierarchy" option per parameter? So that apart from the "primary" parameter in the hierarchy, another can also be fully expressed? It may be helpful just to see what the selection principle would be like without the restrictions.
-* What does page 81 in the duration chapter actually say. Is it just stating something obvious, or something deeply weird?
+* What does page 81 in the duration chapter actually say. Is it just stating something obvious, or something that makes the selection very different (especially the case where big chords have to be built with instruments that can fulfil all requirements, wouldn't this result in a lot of impossible values?)
 * How do we implement the time point generation?
 * What is our policy on users having to provide dummy values? For example in harmony, where all "modes" need data, even if you always use only one mode, but also if entry=duration, then one of the users data is completely ignored. Apart from annoying, it may make it harder to read the structure formula. It also makes for "smelly" code when it is implemented like this.
-* Proposal for dur: entry delay values are required, if you choose entry=dur, then duration is skipped.
+* Proposal for dur: entry delay values are required, if you choose entry=dur, then duration is skipped. Drawback is that values of dur cannot be easily used as entry delays (which might have been useful?)
 
 
 
