@@ -1,631 +1,526 @@
 # layer 0
-0.000  guitar     overtone1   f       0.800   
-0.000  guitar     muted       p       0.800   
-0.000  guitar     normal      p       0.800   
-0.000  guitar     normal      mf      0.800   
-0.000  guitar     overtone1   mf      0.800   
-0.300  guitar     muted       mf      0.800   
-0.300  guitar     muted       mf      0.800   
-0.400  guitar     normal      p       0.800   
-0.400  guitar     normal      p       0.800   
-0.400  guitar     muted       f       0.800   
-0.400  guitar     normal      f       0.800   
-0.400  guitar     muted       f       0.800   
-0.400  guitar     overtone1   p       0.800   
-0.500  guitar     normal      mf      0.800   
-0.600  guitar     muted       p       0.800   
-0.600  guitar     normal      mf      0.800   
-0.600  guitar     muted       mf      0.800   
-0.900  guitar     muted       f       0.800   
-0.900  guitar     overtone1   f       0.800   
-0.900  guitar     muted       f       0.800   
-0.900  guitar     overtone1   mf      0.800   
-1.000  guitar     normal      p       0.800   
-1.200  guitar     overtone1   f       0.800   
-1.200  guitar     muted       f       0.800   
-1.200  guitar     overtone1   f       0.800   
-1.200  guitar     normal      mf      0.800   
-1.200  guitar     overtone1   mf      0.800   
-1.400  guitar     overtone1   f       0.800   
-1.400  guitar     normal      f       0.800   
-1.400  guitar     normal      f       0.800   
-1.400  guitar     normal      f       0.800   
-1.400  guitar     muted       f       0.800   
-1.400  guitar     muted       p       0.800   
-1.700  guitar     overtone1   p       0.800   
-1.700  guitar     overtone1   p       0.800   
-1.700  guitar     normal      p       0.800   
-1.800  guitar     normal      mf      0.800   
-1.800  guitar     normal      f       0.800   
-1.900  guitar     normal      f       0.800   
-1.900  guitar     normal      f       0.800   
-1.900  guitar     normal      f       0.800   
-1.900  guitar     normal      f       0.800   
-2.100  guitar     muted       p       0.800   
-2.100  guitar     normal      p       0.800   
-2.100  guitar     normal      p       0.800   
-2.200  guitar     normal      mf      0.800   
-2.200  guitar     normal      mf      0.800   
-2.500  guitar     overtone1   p       0.800   
-2.500  guitar     normal      f       0.800   
-2.500  guitar     normal      f       0.800   
-2.500  guitar     muted       mf      0.800   
-2.500  guitar     normal      mf      0.800   
-2.500  guitar     normal      mf      0.800   
-2.600  guitar     normal      f       0.800   
-2.900  guitar     normal      p       0.800   
-2.900  guitar     muted       p       0.800   
-2.900  guitar     normal      p       0.800   
-2.900  guitar     normal      p       0.800   
-2.900  guitar     normal      mf      0.800   
-3.100  guitar     muted       mf      0.800   
-3.100  guitar     normal      mf      0.800   
-3.100  guitar     muted       mf      0.800   
-3.100  guitar     normal      mf      0.800   
-3.300  guitar     overtone1   f       0.800   
-3.300  guitar     muted       p       0.800   
-3.600  guitar     normal      p       0.800   
-3.600  guitar     normal      p       0.800   
-3.600  guitar     overtone1   p       0.800   
-3.700  guitar     overtone1   f       0.800   
-3.700  guitar     normal      f       0.800   
-3.700  guitar     normal      f       0.800   
-3.700  guitar     normal      f       0.800   
-3.700  guitar     normal      f       0.800   
-3.800  guitar     normal      mf      0.800   
-4.000  guitar     normal      mf      0.800   
-4.000  guitar     muted       mf      0.800   
-4.000  guitar     normal      mf      0.800   
-4.000  guitar     normal      p       0.800   
-4.000  guitar     normal      f       0.800   
-4.000  guitar     normal      f       0.800   
-4.100  guitar     normal      p       0.800   
-4.100  guitar     normal      p       0.800   
-4.100  guitar     normal      f       0.800   
-4.100  guitar     muted       f       0.800   
-4.300  guitar     normal      mf      0.800   
-4.300  guitar     normal      mf      0.800   
-4.500  guitar     overtone1   f       0.800   
-4.700  guitar     overtone1   mf      0.800   
-4.700  guitar     normal      mf      0.800   
-4.700  guitar     overtone1   mf      0.800   
-4.700  guitar     normal      p       0.800   
-5.000  guitar     muted       p       0.800   
-5.000  guitar     overtone1   p       0.800   
-5.000  guitar     normal      p       0.800   
-5.100  guitar     normal      mf      0.800   
-5.100  guitar     normal      mf      0.800   
-5.100  guitar     normal      mf      0.800   
-5.100  guitar     normal      mf      0.800   
-5.100  guitar     overtone1   f       0.800   
-5.100  guitar     overtone1   f       0.800   
-5.300  guitar     overtone1   f       0.800   
-5.300  guitar     muted       f       0.800   
-5.300  guitar     overtone1   f       0.800   
-5.300  guitar     normal      f       0.800   
-5.300  guitar     overtone1   f       0.800   
-5.500  guitar     normal      p       0.800   
-5.500  guitar     overtone1   p       0.800   
-5.800  guitar     muted       mf      0.800   
-5.900  guitar     muted       f       0.800   
-5.900  guitar     normal      f       0.800   
-5.900  guitar     muted       f       0.800   
-5.900  guitar     overtone1   f       0.800   
-6.000  guitar     muted       p       0.800   
-6.000  guitar     overtone1   p       0.800   
-6.000  guitar     normal      p       0.800   
-6.000  guitar     muted       p       0.800   
-6.000  guitar     muted       p       0.800   
-6.200  guitar     normal      mf      0.800   
-6.200  guitar     muted       mf      0.800   
-6.200  guitar     normal      p       0.800   
-6.200  guitar     normal      p       0.800   
-6.200  guitar     overtone1   mf      0.800   
-6.200  guitar     normal      mf      0.800   
-6.300  guitar     overtone1   f       0.800   
-6.300  guitar     normal      f       0.800   
-6.300  guitar     muted       f       0.800   
-6.500  guitar     normal      mf      0.800   
-6.800  guitar     normal      f       0.800   
-6.800  guitar     muted       f       0.800   
-6.800  guitar     overtone1   f       0.800   
-6.800  guitar     normal      f       0.800   
-6.800  guitar     overtone1   f       0.800   
-6.800  guitar     overtone1   p       0.800   
-6.900  guitar     normal      p       0.800   
-6.900  guitar     normal      p       0.800   
-6.900  guitar     muted       p       0.800   
-7.100  guitar     normal      mf      0.800   
-7.100  guitar     overtone1   f       0.800   
-7.100  guitar     muted       f       0.800   
-7.100  guitar     overtone1   f       0.800   
-7.100  guitar     overtone1   p       0.800   
-7.400  guitar     normal      mf      0.800   
-7.400  guitar     overtone1   mf      0.800   
-7.600  guitar     overtone1   p       0.800   
-7.600  guitar     overtone1   p       0.800   
-7.600  guitar     normal      mf      0.800   
-7.600  guitar     normal      mf      0.800   
-7.700  guitar     overtone1   f       0.800   
-7.700  guitar     normal      f       0.800   
-8.000  guitar     normal      mf      0.800   
-8.000  guitar     normal      mf      0.800   
-8.000  guitar     normal      f       0.800   
-8.200  guitar     muted       p       0.800   
-8.300  guitar     normal      mf      0.800   
-8.300  guitar     normal      mf      0.800   
-8.300  guitar     overtone1   mf      0.800   
-8.300  guitar     overtone1   f       0.800   
-8.300  guitar     normal      f       0.800   
-8.600  guitar     muted       p       0.800   
-8.600  guitar     normal      f       0.800   
-8.600  guitar     muted       f       0.800   
-8.600  guitar     muted       f       0.800   
-8.600  guitar     normal      p       0.800   
-8.600  guitar     overtone1   p       0.800   
-8.700  guitar     normal      mf      0.800   
-8.700  guitar     normal      mf      0.800   
-8.700  guitar     muted       f       0.800   
-8.700  guitar     muted       f       0.800   
-8.900  guitar     muted       mf      0.800   
-8.900  guitar     muted       mf      0.800   
-8.900  guitar     muted       mf      0.800   
-8.900  guitar     normal      p       0.800   
-9.000  guitar     normal      f       0.800   
-9.000  guitar     normal      f       0.800   
-9.000  guitar     normal      f       0.800   
-9.000  guitar     normal      f       0.800   
-9.000  guitar     normal      f       0.800   
-9.100  guitar     normal      mf      0.800   
-9.400  guitar     muted       p       0.800   
-9.400  guitar     normal      p       0.800   
-9.400  guitar     muted       p       0.800   
-9.400  guitar     normal      p       0.800   
-9.400  guitar     overtone1   p       0.800   
-9.400  guitar     normal      p       0.800   
-9.600  guitar     muted       mf      0.800   
-9.600  guitar     normal      mf      0.800   
-9.600  guitar     normal      f       0.800   
-9.700  guitar     normal      p       0.800   
-9.700  guitar     muted       p       0.800   
-10.000 guitar     normal      f       0.800   
-10.000 guitar     muted       f       0.800   
-10.000 guitar     muted       f       0.800   
-10.000 guitar     muted       f       0.800   
-10.000 guitar     normal      mf      0.800   
-10.000 guitar     muted       mf      0.800   
-10.200 guitar     muted       f       0.800   
-10.200 guitar     muted       f       0.800   
-10.200 guitar     normal      p       0.800   
-10.200 guitar     normal      p       0.800   
-10.400 guitar     normal      mf      0.800   
-10.400 guitar     normal      mf      0.800   
-10.400 guitar     normal      mf      0.800   
-10.400 guitar     overtone1   mf      0.800   
-10.400 guitar     muted       mf      0.800   
-10.700 guitar     muted       p       0.800   
-10.800 guitar     normal      f       0.800   
-10.800 guitar     overtone1   f       0.800   
-10.900 guitar     overtone1   mf      0.800   
-10.900 guitar     overtone1   mf      0.800   
-10.900 guitar     normal      f       0.800   
-11.000 guitar     muted       p       0.800   
-11.000 guitar     normal      p       0.800   
-11.000 guitar     muted       p       0.800   
-11.100 guitar     overtone1   f       0.800   
-11.100 guitar     normal      f       0.800   
-11.100 guitar     overtone1   f       0.800   
-11.100 guitar     muted       mf      0.800   
-11.100 guitar     normal      mf      0.800   
-11.300 guitar     normal      p       0.800   
-11.300 guitar     normal      f       0.800   
-11.300 guitar     muted       f       0.800   
-11.300 guitar     muted       p       0.800   
-11.300 guitar     normal      p       0.800   
-11.300 guitar     overtone1   p       0.800   
-11.600 guitar     normal      mf      0.800   
-11.600 guitar     overtone1   mf      0.800   
-11.600 guitar     muted       p       0.800   
-11.600 guitar     muted       mf      0.800   
-11.800 guitar     overtone1   f       0.800   
-12.000 guitar     normal      p       0.800   
-12.000 guitar     muted       p       0.800   
-12.100 guitar     muted       f       0.800   
-12.100 guitar     overtone1   f       0.800   
-12.100 guitar     normal      mf      0.800   
-12.100 guitar     normal      mf      0.800   
-12.400 guitar     normal      p       0.800   
-12.400 guitar     normal      p       0.800   
-12.400 guitar     normal      p       0.800   
-12.500 guitar     normal      f       0.800   
-12.500 guitar     normal      f       0.800   
-12.500 guitar     muted       mf      0.800   
-12.500 guitar     normal      mf      0.800   
-12.500 guitar     normal      mf      0.800   
-12.700 guitar     normal      mf      0.800   
-12.700 guitar     muted       mf      0.800   
-13.000 guitar     normal      p       0.800   
-13.200 guitar     normal      f       0.800   
-13.200 guitar     normal      f       0.800   
-13.200 guitar     overtone1   f       0.800   
-13.200 guitar     normal      f       0.800   
-13.200 guitar     muted       mf      0.800   
-13.200 guitar     overtone1   mf      0.800   
-13.300 guitar     normal      f       0.800   
-13.300 guitar     normal      f       0.800   
-13.300 guitar     muted       f       0.800   
-13.400 guitar     normal      p       0.800   
-13.400 guitar     normal      p       0.800   
-13.400 guitar     normal      p       0.800   
-13.400 guitar     muted       p       0.800   
-13.400 guitar     overtone1   p       0.800   
-13.500 guitar     normal      f       0.800   
-13.500 guitar     normal      f       0.800   
-13.500 guitar     overtone1   mf      0.800   
-13.500 guitar     normal      p       0.800   
-13.500 guitar     normal      p       0.800   
-13.500 guitar     overtone1   f       0.800   
-13.700 guitar     normal      mf      0.800   
-13.700 guitar     normal      mf      0.800   
-13.800 guitar     overtone1   p       0.800   
-13.800 guitar     muted       p       0.800   
-13.800 guitar     overtone1   p       0.800   
-13.800 guitar     overtone1   p       0.800   
-14.100 guitar     normal      mf      0.800   
-14.200 guitar     normal      f       0.800   
-14.200 guitar     normal      p       0.800   
-14.200 guitar     normal      p       0.800   
-14.200 guitar     overtone1   p       0.800   
-14.400 guitar     normal      f       0.800   
-14.400 guitar     muted       f       0.800   
-14.400 guitar     muted       f       0.800   
-14.400 guitar     overtone1   f       0.800   
-14.400 guitar     normal      mf      0.800   
-14.500 guitar     overtone1   p       0.800   
-14.500 guitar     muted       p       0.800   
-14.600 guitar     normal      mf      0.800   
-14.600 guitar     normal      mf      0.800   
-14.600 guitar     normal      mf      0.800   
-14.800 guitar     overtone1   f       0.800   
-14.900 guitar     normal      mf      0.800   
-14.900 guitar     normal      mf      0.800   
-14.900 guitar     overtone1   p       0.800   
-14.900 guitar     normal      p       0.800   
-14.900 guitar     overtone1   p       0.800   
-14.900 guitar     overtone1   p       0.800   
-15.000 guitar     overtone1   f       0.800   
-15.000 guitar     normal      f       0.800   
-15.000 guitar     normal      f       0.800   
-15.300 guitar     overtone1   f       0.800   
-15.300 guitar     overtone1   f       0.800   
-15.600 guitar     normal      p       0.800   
-15.800 guitar     normal      mf      0.800   
-15.800 guitar     normal      mf      0.800   
-15.800 guitar     normal      mf      0.800   
-15.800 guitar     muted       mf      0.800   
-15.900 guitar     overtone1   mf      0.800   
-15.900 guitar     muted       p       0.800   
-15.900 guitar     overtone1   p       0.800   
-15.900 guitar     muted       p       0.800   
-15.900 guitar     muted       p       0.800   
-15.900 guitar     muted       f       0.800   
-16.000 guitar     normal      mf      0.800   
-16.000 guitar     muted       mf      0.800   
-16.000 guitar     muted       mf      0.800   
-16.000 guitar     normal      mf      0.800   
-16.000 guitar     overtone1   p       0.800   
-16.100 guitar     muted       f       0.800   
-16.100 guitar     normal      f       0.800   
-16.100 guitar     normal      p       0.800   
-16.100 guitar     overtone1   p       0.800   
-16.100 guitar     normal      p       0.800   
-16.400 guitar     overtone1   mf      0.800   
-16.400 guitar     normal      f       0.800   
-16.600 guitar     muted       p       0.800   
-16.600 guitar     normal      p       0.800   
-16.600 guitar     muted       p       0.800   
-16.700 guitar     muted       mf      0.800   
-16.800 guitar     overtone1   f       0.800   
-16.800 guitar     overtone1   f       0.800   
-16.800 guitar     overtone1   f       0.800   
-16.800 guitar     normal      f       0.800   
-17.100 guitar     normal      p       0.800   
-17.100 guitar     muted       p       0.800   
-17.100 guitar     normal      p       0.800   
-17.100 guitar     normal      mf      0.800   
-17.100 guitar     normal      mf      0.800   
-17.100 guitar     overtone1   mf      0.800   
-17.200 guitar     normal      f       0.800   
-17.200 guitar     normal      f       0.800   
-17.200 guitar     normal      f       0.800   
-17.400 guitar     overtone1   f       0.800   
-17.600 guitar     normal      p       0.800   
-17.600 guitar     muted       p       0.800   
-17.600 guitar     overtone1   p       0.800   
-17.600 guitar     normal      p       0.800   
-17.600 guitar     normal      p       0.800   
-17.600 guitar     muted       mf      0.800   
-17.700 guitar     normal      p       0.800   
-17.700 guitar     normal      p       0.800   
-17.700 guitar     overtone1   p       0.800   
-17.700 guitar     muted       p       0.800   
-17.700 guitar     normal      p       0.800   
-17.800 guitar     overtone1   mf      0.800   
-17.800 guitar     normal      f       0.800   
-18.100 guitar     muted       p       0.800   
-18.100 guitar     muted       p       0.800   
-18.100 guitar     overtone1   p       0.800   
-18.100 guitar     muted       p       0.800   
-18.200 guitar     overtone1   mf      0.800   
-18.200 guitar     normal      mf      0.800   
-18.200 guitar     normal      mf      0.800   
-18.200 guitar     normal      mf      0.800   
-18.500 guitar     normal      f       0.800   
-18.500 guitar     muted       f       0.800   
-18.500 guitar     normal      f       0.800   
-18.600 guitar     normal      f       0.800   
-18.600 guitar     overtone1   f       0.800   
-18.600 guitar     normal      f       0.800   
-18.600 guitar     normal      f       0.800   
-18.600 guitar     overtone1   f       0.800   
-18.700 guitar     muted       p       0.800   
-18.900 guitar     normal      mf      0.800   
-18.900 guitar     muted       mf      0.800   
-19.100 guitar     normal      f       0.800   
-19.100 guitar     muted       f       0.800   
-19.100 guitar     muted       f       0.800   
-19.100 guitar     normal      f       0.800   
-19.100 guitar     muted       f       0.800   
-19.100 guitar     muted       f       0.800   
-19.200 guitar     normal      p       0.800   
-19.200 guitar     muted       p       0.800   
-19.500 guitar     normal      mf      0.800   
-19.500 guitar     normal      mf      0.800   
-19.500 guitar     overtone1   mf      0.800   
-19.500 guitar     overtone1   f       0.800   
-19.500 guitar     normal      f       0.800   
-19.600 guitar     overtone1   mf      0.800   
-19.600 guitar     normal      mf      0.800   
-19.600 guitar     overtone1   mf      0.800   
-19.600 guitar     muted       mf      0.800   
-19.800 guitar     normal      p       0.800   
-19.800 guitar     overtone1   p       0.800   
-19.800 guitar     normal      p       0.800   
-19.800 guitar     overtone1   p       0.800   
-19.800 guitar     overtone1   p       0.800   
-19.800 guitar     muted       p       0.800   
-19.900 guitar     muted       mf      0.800   
-20.100 guitar     normal      f       0.800   
-20.100 guitar     normal      f       0.800   
-20.100 guitar     overtone1   f       0.800   
-20.300 guitar     overtone1   f       0.800   
-20.400 guitar     normal      p       0.800   
-20.400 guitar     normal      p       0.800   
-20.400 guitar     muted       p       0.800   
-20.400 guitar     muted       p       0.800   
-20.400 guitar     overtone1   p       0.800   
-20.500 guitar     normal      mf      0.800   
-20.500 guitar     normal      mf      0.800   
-20.500 guitar     normal      mf      0.800   
-20.800 guitar     normal      p       0.800   
-20.800 guitar     normal      p       0.800   
-20.800 guitar     muted       p       0.800   
-20.800 guitar     normal      mf      0.800   
-20.900 guitar     muted       f       0.800   
-20.900 guitar     overtone1   f       0.800   
-20.900 guitar     overtone1   f       0.800   
-20.900 guitar     normal      f       0.800   
-20.900 guitar     muted       mf      0.800   
-20.900 guitar     overtone1   mf      0.800   
-21.000 guitar     normal      p       0.800   
-21.000 guitar     normal      p       0.800   
-21.200 guitar     muted       f       0.800   
-21.500 guitar     normal      mf      0.800   
-21.500 guitar     normal      mf      0.800   
-21.500 guitar     overtone1   p       0.800   
-21.600 guitar     normal      f       0.800   
-21.600 guitar     normal      f       0.800   
-21.600 guitar     normal      f       0.800   
-21.600 guitar     normal      f       0.800   
-21.600 guitar     normal      p       0.800   
-21.600 guitar     overtone1   p       0.800   
-21.700 guitar     overtone1   mf      0.800   
-21.700 guitar     overtone1   mf      0.800   
-21.700 guitar     muted       mf      0.800   
-21.700 guitar     overtone1   mf      0.800   
-21.700 guitar     muted       f       0.800   
-21.800 guitar     normal      p       0.800   
-21.800 guitar     normal      p       0.800   
-22.000 guitar     normal      mf      0.800   
-22.000 guitar     normal      mf      0.800   
-22.000 guitar     normal      mf      0.800   
-22.000 guitar     overtone1   mf      0.800   
-22.200 guitar     normal      f       0.800   
-22.200 guitar     muted       f       0.800   
-22.200 guitar     muted       f       0.800   
-22.200 guitar     overtone1   f       0.800   
-22.300 guitar     normal      f       0.800   
-22.600 guitar     overtone1   mf      0.800   
-22.600 guitar     normal      mf      0.800   
-22.600 guitar     normal      mf      0.800   
-22.600 guitar     overtone1   mf      0.800   
-22.600 guitar     overtone1   p       0.800   
-22.700 guitar     muted       f       0.800   
-22.700 guitar     muted       f       0.800   
-22.700 guitar     overtone1   f       0.800   
-22.700 guitar     normal      f       0.800   
-22.700 guitar     overtone1   p       0.800   
-22.700 guitar     normal      p       0.800   
-22.800 guitar     normal      mf      0.800   
-22.800 guitar     normal      mf      0.800   
-22.800 guitar     normal      mf      0.800   
-22.900 guitar     normal      p       0.800   
-22.900 guitar     overtone1   p       0.800   
-23.000 guitar     muted       f       0.800   
-23.000 guitar     normal      f       0.800   
-23.000 guitar     overtone1   f       0.800   
-23.000 guitar     normal      f       0.800   
-23.200 guitar     normal      mf      0.800   
-23.500 guitar     overtone1   p       0.800   
-23.500 guitar     normal      p       0.800   
-23.500 guitar     normal      p       0.800   
-23.600 guitar     normal      mf      0.800   
-23.600 guitar     normal      f       0.800   
-23.900 guitar     muted       f       0.800   
-23.900 guitar     normal      f       0.800   
-23.900 guitar     normal      mf      0.800   
-23.900 guitar     overtone1   p       0.800   
-23.900 guitar     muted       p       0.800   
-23.900 guitar     overtone1   p       0.800   
-24.100 guitar     muted       p       0.800   
-24.100 guitar     normal      p       0.800   
-24.100 guitar     overtone1   mf      0.800   
-24.100 guitar     muted       mf      0.800   
-24.100 guitar     normal      mf      0.800   
-24.400 guitar     normal      f       0.800   
-24.600 guitar     normal      f       0.800   
-24.600 guitar     normal      f       0.800   
-24.600 guitar     normal      f       0.800   
-24.600 guitar     normal      f       0.800   
-24.600 guitar     normal      f       0.800   
-24.600 guitar     normal      mf      0.800   
-24.700 guitar     overtone1   p       0.800   
-24.700 guitar     muted       p       0.800   
-24.700 guitar     muted       p       0.800   
-24.700 guitar     normal      p       0.800   
-24.900 guitar     overtone1   mf      0.800   
-24.900 guitar     muted       mf      0.800   
-24.900 guitar     normal      mf      0.800   
-25.100 guitar     overtone1   f       0.800   
-25.100 guitar     muted       f       0.800   
-25.100 guitar     overtone1   f       0.800   
-25.100 guitar     overtone1   f       0.800   
-25.100 guitar     normal      f       0.800   
-25.200 guitar     normal      p       0.800   
-25.200 guitar     normal      p       0.800   
-25.400 guitar     muted       mf      0.800   
-25.400 guitar     normal      mf      0.800   
-25.400 guitar     muted       mf      0.800   
-25.500 guitar     overtone1   f       0.800   
-25.500 guitar     normal      f       0.800   
-25.500 guitar     muted       f       0.800   
-25.500 guitar     normal      p       0.800   
-25.500 guitar     normal      p       0.800   
-25.600 guitar     normal      mf      0.800   
-25.900 guitar     muted       p       0.800   
-25.900 guitar     muted       p       0.800   
-25.900 guitar     muted       p       0.800   
-25.900 guitar     overtone1   p       0.800   
-25.900 guitar     normal      p       0.800   
-25.900 guitar     muted       p       0.800   
-26.000 guitar     normal      f       0.800   
-26.000 guitar     normal      f       0.800   
-26.100 guitar     normal      p       0.800   
-26.100 guitar     normal      p       0.800   
-26.100 guitar     normal      p       0.800   
-26.100 guitar     overtone1   p       0.800   
-26.300 guitar     muted       f       0.800   
-26.300 guitar     normal      f       0.800   
-26.400 guitar     overtone1   mf      0.800   
-26.400 guitar     normal      mf      0.800   
-26.400 guitar     normal      mf      0.800   
-26.400 guitar     normal      p       0.800   
-26.400 guitar     normal      p       0.800   
-26.400 guitar     normal      p       0.800   
-26.700 guitar     normal      f       0.800   
-26.700 guitar     overtone1   f       0.800   
-26.700 guitar     muted       f       0.800   
-26.700 guitar     normal      f       0.800   
-26.700 guitar     normal      mf      0.800   
-26.900 guitar     muted       mf      0.800   
-26.900 guitar     normal      mf      0.800   
-26.900 guitar     normal      mf      0.800   
-27.000 guitar     muted       p       0.800   
-27.000 guitar     overtone1   p       0.800   
-27.000 guitar     normal      p       0.800   
-27.000 guitar     normal      p       0.800   
-27.200 guitar     muted       f       0.800   
-27.300 guitar     normal      f       0.800   
-27.300 guitar     normal      f       0.800   
-27.400 guitar     overtone1   p       0.800   
-27.400 guitar     normal      mf      0.800   
-27.400 guitar     overtone1   mf      0.800   
-27.400 guitar     normal      p       0.800   
-27.400 guitar     normal      f       0.800   
-27.600 guitar     muted       p       0.800   
-27.600 guitar     muted       p       0.800   
-27.600 guitar     overtone1   p       0.800   
-27.600 guitar     muted       p       0.800   
-27.600 guitar     normal      p       0.800   
-27.600 guitar     muted       mf      0.800   
-27.700 guitar     muted       f       0.800   
-28.000 guitar     normal      p       0.800   
-28.000 guitar     overtone1   p       0.800   
-28.000 guitar     muted       mf      0.800   
-28.000 guitar     normal      f       0.800   
-28.200 guitar     normal      p       0.800   
-28.200 guitar     muted       p       0.800   
-28.200 guitar     normal      p       0.800   
-28.500 guitar     muted       f       0.800   
-28.500 guitar     normal      f       0.800   
-28.500 guitar     normal      f       0.800   
-28.500 guitar     overtone1   f       0.800   
-28.500 guitar     muted       f       0.800   
-28.700 guitar     overtone1   mf      0.800   
-28.800 guitar     normal      p       0.800   
-28.800 guitar     normal      p       0.800   
-28.800 guitar     normal      p       0.800   
-28.900 guitar     muted       f       0.800   
-28.900 guitar     normal      f       0.800   
-28.900 guitar     muted       f       0.800   
-28.900 guitar     muted       mf      0.800   
-28.900 guitar     overtone1   p       0.800   
-28.900 guitar     overtone1   p       0.800   
-29.000 guitar     normal      mf      0.800   
-29.000 guitar     overtone1   mf      0.800   
-29.000 guitar     muted       mf      0.800   
-29.000 guitar     overtone1   mf      0.800   
-29.200 guitar     overtone1   f       0.800   
-29.200 guitar     overtone1   f       0.800   
-29.300 guitar     overtone1   f       0.800   
-29.300 guitar     normal      f       0.800   
-29.300 guitar     overtone1   f       0.800   
-29.300 guitar     overtone1   f       0.800   
-29.300 guitar     normal      f       0.800   
-29.300 guitar     normal      f       0.800   
-29.400 guitar     muted       p       0.800   
-29.400 guitar     overtone1   p       0.800   
-29.600 guitar     overtone1   mf      0.800   
-29.900 guitar     normal      p       0.800   
-29.900 guitar     overtone1   p       0.800   
-29.900 guitar     overtone1   p       0.800   
-30.000 guitar     muted       f       0.800   
-30.000 guitar     overtone1   f       0.800   
-30.000 guitar     normal      f       0.800   
-30.000 guitar     normal      f       0.800   
-30.200 guitar     overtone1   mf      0.800   
-30.200 guitar     normal      mf      0.800   
-30.200 guitar     muted       f       0.800   
-30.200 guitar     normal      p       0.800   
-30.200 guitar     normal      p       0.800   
-30.300 guitar     muted       mf      0.800   
-30.300 guitar     overtone1   mf      0.800   
-30.600 guitar     overtone1   f       0.800   
-30.600 guitar     muted       p       0.800   
-30.600 guitar     overtone1   p       0.800   
-30.700 guitar     muted       mf      0.800   
-30.700 guitar     overtone1   mf      0.800   
-30.700 guitar     muted       mf      0.800   
-30.700 guitar     muted       mf      0.800   
-30.700 guitar     muted       mf      0.800   
-30.900 guitar     muted       mf      0.800   
-31.000 guitar     normal      f       0.800   
-31.000 guitar     muted       f       0.800   
-31.000 guitar     normal      f       0.800   
-31.000 guitar     overtone1   f       0.800   
-31.300 guitar     normal      p       0.800   
-31.300 guitar     normal      p       0.800   
-31.300 guitar     muted       p       0.800   
-31.300 guitar     muted       p       0.800   
-31.300 guitar     overtone1   p       0.800   
-31.300 guitar     normal      p       0.800   
+0.000  0.200      0.800    guitar     normal      f      
+0.200  0.200      0.800    guitar     overtone1   p      
+0.200  0.200      0.800    guitar     muted       p      
+0.400  0.000      0.800    guitar     normal      mf     
+0.400  0.000      0.800    guitar     normal      mf     
+0.400  0.200      0.800    guitar     muted       mf     
+0.400  0.200      0.800    guitar     muted       mf     
+0.600  0.000      0.800    guitar     normal      p      
+0.600  0.000      0.800    guitar     normal      p      
+0.600  0.200      0.800    guitar     muted       f      
+0.800  0.000      0.800    guitar     normal      p      
+0.800  0.000      0.800    guitar     overtone1   p      
+0.800  0.000      0.800    guitar     normal      p      
+0.800  0.000      0.800    guitar     overtone1   f      
+0.800  0.300      0.800    guitar     normal      mf     
+1.100  0.000      0.800    guitar     muted       p      
+1.100  0.200      0.800    guitar     normal      mf     
+1.100  0.200      0.800    guitar     muted       mf     
+1.100  0.200      0.800    guitar     normal      mf     
+1.100  0.200      0.800    guitar     overtone1   mf     
+1.100  0.200      0.800    guitar     normal      mf     
+1.300  0.000      0.800    guitar     overtone1   f      
+1.300  0.000      0.800    guitar     normal      f      
+1.300  0.000      0.800    guitar     normal      f      
+1.300  0.100      0.800    guitar     normal      mf     
+1.300  0.100      0.800    guitar     muted       mf     
+1.300  0.100      0.800    guitar     muted       mf     
+1.400  0.000      0.800    guitar     overtone1   p      
+1.400  0.000      0.800    guitar     overtone1   f      
+1.400  0.000      0.800    guitar     muted       f      
+1.400  0.000      0.800    guitar     overtone1   f      
+1.400  0.200      0.800    guitar     normal      mf     
+1.600  0.300      0.800    guitar     muted       f      
+1.600  0.300      0.800    guitar     muted       f      
+1.600  0.300      0.800    guitar     muted       f      
+1.900  0.100      0.800    guitar     overtone1   p      
+1.900  0.100      0.800    guitar     overtone1   p      
+1.900  0.100      0.800    guitar     normal      p      
+1.900  0.100      0.800    guitar     overtone1   p      
+2.000  0.200      0.800    guitar     normal      f      
+2.000  0.200      0.800    guitar     normal      f      
+2.200  0.200      0.800    guitar     normal      p      
+2.400  0.200      0.800    guitar     normal      mf     
+2.600  0.000      0.800    guitar     normal      f      
+2.600  0.000      0.800    guitar     normal      f      
+2.600  0.000      0.800    guitar     muted       f      
+2.600  0.000      0.800    guitar     normal      f      
+2.600  0.200      0.800    guitar     normal      p      
+2.600  0.200      0.800    guitar     normal      p      
+2.800  0.200      0.800    guitar     muted       mf     
+2.800  0.200      0.800    guitar     overtone1   mf     
+2.800  0.200      0.800    guitar     normal      mf     
+2.800  0.200      0.800    guitar     normal      mf     
+2.800  0.200      0.800    guitar     muted       mf     
+3.000  0.300      0.800    guitar     muted       f      
+3.000  0.300      0.800    guitar     overtone1   f      
+3.000  0.300      0.800    guitar     overtone1   f      
+3.300  0.200      0.800    guitar     overtone1   p      
+3.300  0.200      0.800    guitar     muted       p      
+3.500  0.000      0.800    guitar     overtone1   mf     
+3.500  0.000      0.800    guitar     normal      mf     
+3.500  0.200      0.800    guitar     normal      mf     
+3.500  0.200      0.800    guitar     normal      mf     
+3.700  0.100      0.800    guitar     normal      f      
+3.700  0.100      0.800    guitar     muted       f      
+3.700  0.100      0.800    guitar     normal      f      
+3.700  0.100      0.800    guitar     muted       f      
+3.800  0.000      0.800    guitar     muted       p      
+3.800  0.000      0.800    guitar     normal      p      
+3.800  0.000      0.800    guitar     normal      p      
+3.800  0.000      0.800    guitar     muted       p      
+3.800  0.000      0.800    guitar     normal      p      
+3.800  0.200      0.800    guitar     muted       f      
+4.000  0.100      0.800    guitar     overtone1   mf     
+4.000  0.100      0.800    guitar     overtone1   mf     
+4.100  0.000      0.800    guitar     overtone1   p      
+4.100  0.000      0.800    guitar     overtone1   p      
+4.100  0.200      0.800    guitar     overtone1   f      
+4.300  0.000      0.800    guitar     normal      mf     
+4.300  0.000      0.800    guitar     muted       mf     
+4.300  0.000      0.800    guitar     normal      mf     
+4.300  0.200      0.800    guitar     muted       p      
+4.300  0.200      0.800    guitar     normal      p      
+4.500  0.300      0.800    guitar     muted       mf     
+4.800  0.200      0.800    guitar     normal      p      
+5.000  0.100      0.800    guitar     overtone1   f      
+5.000  0.100      0.800    guitar     muted       f      
+5.000  0.100      0.800    guitar     normal      f      
+5.000  0.100      0.800    guitar     normal      f      
+5.000  0.100      0.800    guitar     normal      f      
+5.100  0.000      0.800    guitar     normal      p      
+5.100  0.000      0.800    guitar     normal      p      
+5.100  0.000      0.800    guitar     overtone1   p      
+5.100  0.300      0.800    guitar     normal      mf     
+5.400  0.000      0.800    guitar     muted       f      
+5.400  0.000      0.800    guitar     overtone1   f      
+5.400  0.000      0.800    guitar     normal      f      
+5.400  0.000      0.800    guitar     muted       f      
+5.400  0.000      0.800    guitar     overtone1   f      
+5.400  0.200      0.800    guitar     overtone1   p      
+5.600  0.200      0.800    guitar     overtone1   mf     
+5.600  0.200      0.800    guitar     overtone1   mf     
+5.600  0.200      0.800    guitar     normal      mf     
+5.800  0.200      0.800    guitar     normal      f      
+5.800  0.200      0.800    guitar     normal      f      
+6.000  0.200      0.800    guitar     normal      f      
+6.000  0.200      0.800    guitar     overtone1   f      
+6.200  0.200      0.800    guitar     normal      p      
+6.400  0.100      0.800    guitar     muted       mf     
+6.400  0.100      0.800    guitar     normal      mf     
+6.400  0.100      0.800    guitar     normal      mf     
+6.400  0.100      0.800    guitar     muted       mf     
+6.400  0.100      0.800    guitar     normal      mf     
+6.400  0.100      0.800    guitar     overtone1   mf     
+6.500  0.000      0.800    guitar     normal      p      
+6.500  0.000      0.800    guitar     muted       p      
+6.500  0.000      0.800    guitar     normal      p      
+6.500  0.300      0.800    guitar     muted       f      
+6.500  0.300      0.800    guitar     normal      f      
+6.800  0.000      0.800    guitar     normal      mf     
+6.800  0.000      0.800    guitar     muted       mf     
+6.800  0.200      0.800    guitar     overtone1   f      
+7.000  0.000      0.800    guitar     normal      p      
+7.000  0.000      0.800    guitar     normal      p      
+7.000  0.000      0.800    guitar     muted       p      
+7.000  0.200      0.800    guitar     muted       mf     
+7.200  0.000      0.800    guitar     overtone1   mf     
+7.200  0.000      0.800    guitar     overtone1   mf     
+7.200  0.000      0.800    guitar     normal      f      
+7.200  0.000      0.800    guitar     overtone1   f      
+7.200  0.000      0.800    guitar     overtone1   f      
+7.200  0.200      0.800    guitar     muted       p      
+7.400  0.200      0.800    guitar     normal      p      
+7.400  0.200      0.800    guitar     muted       p      
+7.400  0.200      0.800    guitar     overtone1   p      
+7.600  0.200      0.800    guitar     normal      mf     
+7.800  0.000      0.800    guitar     normal      f      
+7.800  0.000      0.800    guitar     muted       f      
+7.800  0.100      0.800    guitar     muted       p      
+7.800  0.100      0.800    guitar     normal      p      
+7.800  0.100      0.800    guitar     overtone1   p      
+7.900  0.000      0.800    guitar     muted       f      
+7.900  0.000      0.800    guitar     muted       f      
+7.900  0.200      0.800    guitar     overtone1   mf     
+7.900  0.200      0.800    guitar     normal      mf     
+8.100  0.200      0.800    guitar     muted       f      
+8.100  0.200      0.800    guitar     normal      f      
+8.300  0.300      0.800    guitar     normal      mf     
+8.600  0.000      0.800    guitar     normal      p      
+8.600  0.000      0.800    guitar     normal      p      
+8.600  0.000      0.800    guitar     normal      p      
+8.600  0.000      0.800    guitar     muted       p      
+8.600  0.000      0.800    guitar     overtone1   mf     
+8.600  0.100      0.800    guitar     overtone1   f      
+8.700  0.000      0.800    guitar     normal      p      
+8.700  0.000      0.800    guitar     normal      p      
+8.700  0.200      0.800    guitar     normal      mf     
+8.900  0.000      0.800    guitar     muted       p      
+8.900  0.000      0.800    guitar     muted       p      
+8.900  0.000      0.800    guitar     normal      p      
+8.900  0.000      0.800    guitar     muted       f      
+8.900  0.300      0.800    guitar     normal      p      
+9.200  0.200      0.800    guitar     overtone1   f      
+9.200  0.200      0.800    guitar     overtone1   f      
+9.200  0.200      0.800    guitar     normal      f      
+9.200  0.200      0.800    guitar     muted       f      
+9.400  0.000      0.800    guitar     muted       mf     
+9.400  0.300      0.800    guitar     normal      f      
+9.700  0.200      0.800    guitar     muted       p      
+9.900  0.000      0.800    guitar     overtone1   mf     
+9.900  0.000      0.800    guitar     normal      mf     
+9.900  0.000      0.800    guitar     normal      mf     
+9.900  0.000      0.800    guitar     normal      mf     
+9.900  0.100      0.800    guitar     normal      mf     
+9.900  0.100      0.800    guitar     normal      mf     
+10.000 0.200      0.800    guitar     muted       p      
+10.000 0.200      0.800    guitar     normal      p      
+10.000 0.200      0.800    guitar     normal      p      
+10.200 0.100      0.800    guitar     normal      f      
+10.200 0.100      0.800    guitar     muted       f      
+10.200 0.100      0.800    guitar     normal      f      
+10.200 0.100      0.800    guitar     normal      f      
+10.200 0.100      0.800    guitar     normal      f      
+10.300 0.200      0.800    guitar     overtone1   mf     
+10.300 0.200      0.800    guitar     normal      mf     
+10.500 0.300      0.800    guitar     normal      f      
+10.500 0.300      0.800    guitar     overtone1   f      
+10.500 0.300      0.800    guitar     overtone1   f      
+10.500 0.300      0.800    guitar     normal      f      
+10.800 0.000      0.800    guitar     normal      p      
+10.800 0.200      0.800    guitar     muted       mf     
+10.800 0.200      0.800    guitar     normal      mf     
+11.000 0.200      0.800    guitar     muted       f      
+11.000 0.200      0.800    guitar     normal      f      
+11.000 0.200      0.800    guitar     normal      f      
+11.000 0.200      0.800    guitar     normal      f      
+11.200 0.300      0.800    guitar     muted       p      
+11.200 0.300      0.800    guitar     normal      p      
+11.500 0.000      0.800    guitar     normal      mf     
+11.500 0.000      0.800    guitar     muted       f      
+11.500 0.000      0.800    guitar     normal      p      
+11.500 0.000      0.800    guitar     muted       mf     
+11.500 0.200      0.800    guitar     overtone1   f      
+11.700 0.200      0.800    guitar     normal      p      
+11.900 0.000      0.800    guitar     normal      mf     
+11.900 0.000      0.800    guitar     normal      mf     
+11.900 0.000      0.800    guitar     overtone1   mf     
+11.900 0.000      0.800    guitar     muted       mf     
+11.900 0.000      0.800    guitar     normal      mf     
+11.900 0.200      0.800    guitar     muted       p      
+12.100 0.200      0.800    guitar     normal      f      
+12.300 0.000      0.800    guitar     overtone1   f      
+12.300 0.000      0.800    guitar     overtone1   f      
+12.300 0.000      0.800    guitar     overtone1   f      
+12.300 0.300      0.800    guitar     muted       p      
+12.300 0.300      0.800    guitar     normal      p      
+12.600 0.000      0.800    guitar     overtone1   mf     
+12.600 0.000      0.800    guitar     normal      mf     
+12.600 0.000      0.800    guitar     overtone1   mf     
+12.600 0.000      0.800    guitar     normal      mf     
+12.600 0.200      0.800    guitar     normal      f      
+12.600 0.200      0.800    guitar     normal      f      
+12.800 0.100      0.800    guitar     muted       p      
+12.800 0.100      0.800    guitar     overtone1   p      
+12.800 0.100      0.800    guitar     normal      p      
+12.800 0.100      0.800    guitar     muted       p      
+12.900 0.000      0.800    guitar     muted       p      
+12.900 0.000      0.800    guitar     muted       p      
+12.900 0.300      0.800    guitar     normal      f      
+13.200 0.000      0.800    guitar     muted       mf     
+13.200 0.300      0.800    guitar     overtone1   mf     
+13.500 0.200      0.800    guitar     overtone1   f      
+13.700 0.100      0.800    guitar     muted       p      
+13.700 0.100      0.800    guitar     normal      p      
+13.700 0.100      0.800    guitar     normal      p      
+13.800 0.200      0.800    guitar     overtone1   mf     
+13.800 0.200      0.800    guitar     normal      mf     
+13.800 0.200      0.800    guitar     normal      mf     
+13.800 0.200      0.800    guitar     overtone1   mf     
+13.800 0.200      0.800    guitar     normal      mf     
+13.800 0.200      0.800    guitar     normal      mf     
+14.000 0.200      0.800    guitar     normal      p      
+14.000 0.200      0.800    guitar     normal      p      
+14.200 0.300      0.800    guitar     normal      f      
+14.200 0.300      0.800    guitar     muted       f      
+14.200 0.300      0.800    guitar     muted       f      
+14.200 0.300      0.800    guitar     normal      f      
+14.200 0.300      0.800    guitar     normal      f      
+14.500 0.000      0.800    guitar     normal      mf     
+14.500 0.200      0.800    guitar     normal      p      
+14.500 0.200      0.800    guitar     muted       p      
+14.500 0.200      0.800    guitar     muted       p      
+14.700 0.000      0.800    guitar     muted       f      
+14.700 0.000      0.800    guitar     normal      f      
+14.700 0.100      0.800    guitar     normal      mf     
+14.700 0.100      0.800    guitar     normal      mf     
+14.700 0.100      0.800    guitar     overtone1   mf     
+14.700 0.100      0.800    guitar     normal      mf     
+14.800 0.200      0.800    guitar     overtone1   p      
+14.800 0.200      0.800    guitar     normal      p      
+14.800 0.200      0.800    guitar     normal      p      
+14.800 0.200      0.800    guitar     muted       p      
+15.000 0.300      0.800    guitar     normal      f      
+15.300 0.100      0.800    guitar     normal      f      
+15.300 0.100      0.800    guitar     normal      f      
+15.300 0.100      0.800    guitar     normal      f      
+15.400 0.200      0.800    guitar     normal      p      
+15.400 0.200      0.800    guitar     overtone1   p      
+15.600 0.200      0.800    guitar     overtone1   mf     
+15.600 0.200      0.800    guitar     normal      mf     
+15.600 0.200      0.800    guitar     overtone1   mf     
+15.600 0.200      0.800    guitar     overtone1   mf     
+15.600 0.200      0.800    guitar     normal      mf     
+15.800 0.100      0.800    guitar     normal      p      
+15.800 0.100      0.800    guitar     muted       p      
+15.800 0.100      0.800    guitar     overtone1   p      
+15.800 0.100      0.800    guitar     normal      p      
+15.900 0.000      0.800    guitar     normal      f      
+15.900 0.300      0.800    guitar     overtone1   mf     
+15.900 0.300      0.800    guitar     normal      mf     
+15.900 0.300      0.800    guitar     overtone1   mf     
+15.900 0.300      0.800    guitar     muted       mf     
+16.200 0.200      0.800    guitar     normal      p      
+16.200 0.200      0.800    guitar     normal      p      
+16.200 0.200      0.800    guitar     normal      p      
+16.400 0.000      0.800    guitar     muted       mf     
+16.400 0.000      0.800    guitar     normal      mf     
+16.400 0.000      0.800    guitar     muted       mf     
+16.400 0.300      0.800    guitar     normal      f      
+16.400 0.300      0.800    guitar     overtone1   f      
+16.400 0.300      0.800    guitar     muted       f      
+16.700 0.000      0.800    guitar     overtone1   p      
+16.700 0.200      0.800    guitar     normal      mf     
+16.900 0.200      0.800    guitar     muted       f      
+17.100 0.000      0.800    guitar     normal      f      
+17.100 0.100      0.800    guitar     overtone1   p      
+17.100 0.100      0.800    guitar     overtone1   p      
+17.100 0.100      0.800    guitar     overtone1   p      
+17.200 0.000      0.800    guitar     overtone1   mf     
+17.200 0.200      0.800    guitar     normal      f      
+17.200 0.200      0.800    guitar     overtone1   f      
+17.400 0.200      0.800    guitar     overtone1   mf     
+17.400 0.200      0.800    guitar     normal      mf     
+17.600 0.200      0.800    guitar     overtone1   p      
+17.800 0.200      0.800    guitar     muted       f      
+17.800 0.200      0.800    guitar     muted       f      
+17.800 0.200      0.800    guitar     muted       f      
+17.800 0.200      0.800    guitar     overtone1   f      
+17.800 0.200      0.800    guitar     normal      f      
+18.000 0.000      0.800    guitar     normal      mf     
+18.000 0.000      0.800    guitar     muted       mf     
+18.000 0.000      0.800    guitar     overtone1   p      
+18.000 0.200      0.800    guitar     muted       f      
+18.000 0.200      0.800    guitar     overtone1   f      
+18.000 0.200      0.800    guitar     muted       f      
+18.200 0.000      0.800    guitar     muted       p      
+18.200 0.300      0.800    guitar     normal      mf     
+18.200 0.300      0.800    guitar     normal      mf     
+18.200 0.300      0.800    guitar     normal      mf     
+18.500 0.200      0.800    guitar     normal      f      
+18.500 0.200      0.800    guitar     normal      f      
+18.700 0.200      0.800    guitar     normal      mf     
+18.900 0.100      0.800    guitar     normal      p      
+18.900 0.100      0.800    guitar     overtone1   p      
+18.900 0.100      0.800    guitar     normal      p      
+18.900 0.100      0.800    guitar     muted       p      
+18.900 0.100      0.800    guitar     overtone1   p      
+18.900 0.100      0.800    guitar     normal      p      
+19.000 0.200      0.800    guitar     overtone1   f      
+19.000 0.200      0.800    guitar     muted       f      
+19.000 0.200      0.800    guitar     overtone1   f      
+19.200 0.200      0.800    guitar     normal      p      
+19.200 0.200      0.800    guitar     muted       p      
+19.200 0.200      0.800    guitar     normal      p      
+19.200 0.200      0.800    guitar     muted       p      
+19.200 0.200      0.800    guitar     overtone1   p      
+19.400 0.000      0.800    guitar     muted       mf     
+19.400 0.100      0.800    guitar     overtone1   mf     
+19.400 0.100      0.800    guitar     overtone1   mf     
+19.400 0.100      0.800    guitar     overtone1   mf     
+19.400 0.100      0.800    guitar     normal      mf     
+19.500 0.300      0.800    guitar     normal      p      
+19.500 0.300      0.800    guitar     muted       p      
+19.800 0.000      0.800    guitar     overtone1   f      
+19.800 0.000      0.800    guitar     muted       f      
+19.800 0.200      0.800    guitar     muted       f      
+20.000 0.300      0.800    guitar     overtone1   p      
+20.300 0.000      0.800    guitar     normal      mf     
+20.300 0.000      0.800    guitar     normal      mf     
+20.300 0.000      0.800    guitar     normal      mf     
+20.300 0.000      0.800    guitar     normal      mf     
+20.300 0.000      0.800    guitar     normal      mf     
+20.300 0.200      0.800    guitar     normal      p      
+20.500 0.200      0.800    guitar     muted       mf     
+20.500 0.200      0.800    guitar     muted       mf     
+20.500 0.200      0.800    guitar     normal      mf     
+20.500 0.200      0.800    guitar     muted       mf     
+20.700 0.000      0.800    guitar     overtone1   f      
+20.700 0.000      0.800    guitar     normal      f      
+20.700 0.000      0.800    guitar     normal      f      
+20.700 0.200      0.800    guitar     muted       p      
+20.900 0.200      0.800    guitar     normal      f      
+21.100 0.200      0.800    guitar     muted       mf     
+21.100 0.200      0.800    guitar     normal      mf     
+21.100 0.200      0.800    guitar     muted       mf     
+21.300 0.300      0.800    guitar     normal      p      
+21.300 0.300      0.800    guitar     overtone1   p      
+21.300 0.300      0.800    guitar     normal      p      
+21.300 0.300      0.800    guitar     normal      p      
+21.300 0.300      0.800    guitar     normal      p      
+21.300 0.300      0.800    guitar     muted       p      
+21.600 0.200      0.800    guitar     muted       f      
+21.600 0.200      0.800    guitar     normal      f      
+21.800 0.200      0.800    guitar     overtone1   mf     
+21.800 0.200      0.800    guitar     muted       mf     
+21.800 0.200      0.800    guitar     muted       mf     
+21.800 0.200      0.800    guitar     overtone1   mf     
+21.800 0.200      0.800    guitar     muted       mf     
+22.000 0.100      0.800    guitar     normal      p      
+22.000 0.100      0.800    guitar     muted       p      
+22.100 0.000      0.800    guitar     muted       mf     
+22.100 0.000      0.800    guitar     muted       f      
+22.100 0.200      0.800    guitar     overtone1   mf     
+22.300 0.100      0.800    guitar     muted       f      
+22.300 0.100      0.800    guitar     normal      f      
+22.300 0.100      0.800    guitar     normal      f      
+22.300 0.100      0.800    guitar     normal      f      
+22.400 0.200      0.800    guitar     muted       p      
+22.600 0.000      0.800    guitar     overtone1   p      
+22.600 0.000      0.800    guitar     normal      p      
+22.600 0.000      0.800    guitar     overtone1   p      
+22.600 0.000      0.800    guitar     overtone1   mf     
+22.600 0.100      0.800    guitar     overtone1   f      
+22.700 0.000      0.800    guitar     overtone1   p      
+22.700 0.000      0.800    guitar     normal      p      
+22.700 0.000      0.800    guitar     normal      mf     
+22.700 0.000      0.800    guitar     normal      mf     
+22.700 0.000      0.800    guitar     normal      mf     
+22.700 0.300      0.800    guitar     normal      f      
+23.000 0.000      0.800    guitar     muted       f      
+23.000 0.000      0.800    guitar     overtone1   p      
+23.000 0.000      0.800    guitar     overtone1   p      
+23.000 0.200      0.800    guitar     overtone1   mf     
+23.000 0.200      0.800    guitar     overtone1   mf     
+23.200 0.300      0.800    guitar     normal      f      
+23.200 0.300      0.800    guitar     muted       f      
+23.500 0.000      0.800    guitar     muted       p      
+23.500 0.000      0.800    guitar     muted       p      
+23.500 0.200      0.800    guitar     overtone1   mf     
+23.500 0.200      0.800    guitar     normal      mf     
+23.700 0.000      0.800    guitar     muted       mf     
+23.700 0.000      0.800    guitar     normal      mf     
+23.700 0.100      0.800    guitar     normal      f      
+23.800 0.300      0.800    guitar     muted       p      
+24.100 0.000      0.800    guitar     muted       mf     
+24.100 0.000      0.800    guitar     overtone1   mf     
+24.100 0.000      0.800    guitar     normal      mf     
+24.100 0.200      0.800    guitar     normal      p      
+24.100 0.200      0.800    guitar     normal      p      
+24.100 0.200      0.800    guitar     overtone1   p      
+24.300 0.300      0.800    guitar     muted       f      
+24.600 0.200      0.800    guitar     overtone1   p      
+24.600 0.200      0.800    guitar     muted       p      
+24.600 0.200      0.800    guitar     muted       p      
+24.800 0.200      0.800    guitar     normal      f      
+24.800 0.200      0.800    guitar     normal      f      
+24.800 0.200      0.800    guitar     normal      f      
+24.800 0.200      0.800    guitar     normal      f      
+24.800 0.200      0.800    guitar     normal      f      
+24.800 0.200      0.800    guitar     normal      f      
+25.000 0.100      0.800    guitar     overtone1   mf     
+25.000 0.100      0.800    guitar     overtone1   mf     
+25.000 0.100      0.800    guitar     normal      mf     
+25.000 0.100      0.800    guitar     overtone1   mf     
+25.000 0.100      0.800    guitar     overtone1   mf     
+25.100 0.200      0.800    guitar     muted       mf     
+25.100 0.200      0.800    guitar     overtone1   mf     
+25.300 0.200      0.800    guitar     overtone1   p      
+25.300 0.200      0.800    guitar     muted       p      
+25.300 0.200      0.800    guitar     normal      p      
+25.300 0.200      0.800    guitar     normal      p      
+25.500 0.200      0.800    guitar     normal      f      
+25.500 0.200      0.800    guitar     normal      f      
+25.500 0.200      0.800    guitar     normal      f      
+25.500 0.200      0.800    guitar     overtone1   f      
+25.500 0.200      0.800    guitar     muted       f      
+25.700 0.000      0.800    guitar     normal      mf     
+25.700 0.000      0.800    guitar     normal      mf     
+25.700 0.300      0.800    guitar     normal      p      
+25.700 0.300      0.800    guitar     muted       p      
+26.000 0.100      0.800    guitar     normal      f      
+26.000 0.100      0.800    guitar     normal      f      
+26.000 0.100      0.800    guitar     overtone1   f      
+26.100 0.000      0.800    guitar     normal      f      
+26.100 0.000      0.800    guitar     overtone1   mf     
+26.100 0.000      0.800    guitar     normal      mf     
+26.100 0.000      0.800    guitar     muted       mf     
+26.100 0.000      0.800    guitar     muted       mf     
+26.100 0.200      0.800    guitar     muted       p      
+26.300 0.300      0.800    guitar     normal      p      
+26.600 0.100      0.800    guitar     normal      f      
+26.600 0.100      0.800    guitar     normal      f      
+26.700 0.100      0.800    guitar     overtone1   mf     
+26.800 0.000      0.800    guitar     muted       p      
+26.800 0.000      0.800    guitar     normal      p      
+26.800 0.000      0.800    guitar     muted       p      
+26.800 0.300      0.800    guitar     muted       mf     
+26.800 0.300      0.800    guitar     normal      mf     
+26.800 0.300      0.800    guitar     normal      mf     
+27.100 0.000      0.800    guitar     normal      f      
+27.100 0.000      0.800    guitar     muted       f      
+27.100 0.000      0.800    guitar     overtone1   f      
+27.100 0.000      0.800    guitar     overtone1   f      
+27.100 0.200      0.800    guitar     normal      p      
+27.300 0.100      0.800    guitar     muted       mf     
+27.300 0.100      0.800    guitar     overtone1   mf     
+27.400 0.000      0.800    guitar     normal      f      
+27.400 0.200      0.800    guitar     normal      f      
+27.400 0.200      0.800    guitar     normal      f      
+27.400 0.200      0.800    guitar     normal      f      
+27.600 0.000      0.800    guitar     overtone1   p      
+27.600 0.200      0.800    guitar     normal      mf     
+27.600 0.200      0.800    guitar     normal      mf     
+27.800 0.300      0.800    guitar     normal      f      
+28.100 0.000      0.800    guitar     muted       mf     
+28.100 0.000      0.800    guitar     normal      mf     
+28.100 0.000      0.800    guitar     overtone1   mf     
+28.100 0.200      0.800    guitar     normal      p      
+28.300 0.200      0.800    guitar     normal      f      
+28.300 0.200      0.800    guitar     normal      f      
+28.300 0.200      0.800    guitar     normal      f      
+28.500 0.000      0.800    guitar     normal      mf     
+28.500 0.200      0.800    guitar     overtone1   p      
+28.500 0.200      0.800    guitar     muted       p      
+28.500 0.200      0.800    guitar     muted       p      
+28.500 0.200      0.800    guitar     normal      p      
+28.500 0.200      0.800    guitar     normal      p      
+28.700 0.000      0.800    guitar     overtone1   f      
+28.700 0.000      0.800    guitar     normal      f      
+28.700 0.000      0.800    guitar     normal      f      
+28.700 0.000      0.800    guitar     normal      f      
+28.700 0.100      0.800    guitar     normal      mf     
+28.800 0.200      0.800    guitar     overtone1   p      
+28.800 0.200      0.800    guitar     overtone1   p      
+29.000 0.200      0.800    guitar     normal      p      
+29.000 0.200      0.800    guitar     overtone1   p      
+29.000 0.200      0.800    guitar     muted       p      
+29.200 0.100      0.800    guitar     muted       f      
+29.200 0.100      0.800    guitar     normal      f      
+29.200 0.100      0.800    guitar     normal      f      
+29.200 0.100      0.800    guitar     normal      f      
+29.300 0.300      0.800    guitar     normal      mf     
+29.600 0.200      0.800    guitar     muted       p      
+29.600 0.200      0.800    guitar     muted       p      
+29.800 0.000      0.800    guitar     overtone1   mf     
+29.800 0.000      0.800    guitar     muted       mf     
+29.800 0.000      0.800    guitar     muted       mf     
+29.800 0.000      0.800    guitar     muted       mf     
+29.800 0.000      0.800    guitar     overtone1   mf     
+29.800 0.200      0.800    guitar     muted       f      
+30.000 0.100      0.800    guitar     overtone1   p      
+30.000 0.100      0.800    guitar     overtone1   p      
+30.000 0.100      0.800    guitar     normal      p      
+30.000 0.100      0.800    guitar     normal      p      
+30.000 0.100      0.800    guitar     normal      p      

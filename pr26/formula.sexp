@@ -5,13 +5,19 @@
 
   (seed 1) ;; random seed; same seed + same formula always produces the same score
   (variant-duration 30.0)
-  (octave-division 12)
+  (octave-division 12) ;; ignored for the moment
 
   (dynamics (ppp pp p mf f ff fff))
 
   ;; master list of every performance mode used by any instrument below;
   ;; each instrument's own (performance (...)) must be a subset of this
   (performance (normal muted overtone1 pizzicato bowing))
+
+;; Note that we are using the direct names of the list above
+  (performance-table
+    (normal normal muted overtone1 pizzicato bowing)
+    (normal muted overtone1)
+    (normal bowing))
 
   (instruments
     (instrument guitar
@@ -46,13 +52,6 @@
     (0 1 2 3)
     (0)
     (2 3))
-
-;; Note that we are using the direct names of the 
-  (performance-table
-    (normal normal muted overtone1 pizzicato bowing)
-    (normal muted overtone1)
-    (normal bowing))
-
 
   (entrydelays (0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8))
 
@@ -112,7 +111,9 @@
     (entrydelay
       (ensemble series)
       (sample
-        (ratio ((0 3) (0.2 2) (2 1) (0.4 2) (4 1) (0.6 1) (6 1) (0.8 1)))))
+        ;; 0   1   2   3   4   5   6   7
+        ;;(0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8)
+        (ratio ((0 1) (1 3) (2 1) (3 5) (4 2) (5 1) (6 1) (7 1)))))
     ;; performance is per-tone here: within a multi-note chord, each tone
     ;; gets its own independently-drawn performance mode (MOD-PERF = 1)
     (performance

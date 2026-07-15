@@ -6,6 +6,7 @@ open Tools
 (* A resolved tone-within-a-chord: fully-specified, no options. *)
 type note = {
   time : float;
+  entrydelay : float;
   instrument : instr;
   performance : Performance.t;
   dynamic : Dynamic.t;
@@ -18,6 +19,7 @@ type note = {
    case each [note] already carries its own independently-resolved value). *)
 type entry = {
   time : float;
+  entrydelay : float;
   instrument : instr;
   notes : note list;
   performance : Performance.t option;
@@ -447,7 +449,7 @@ let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
 
 (* ---- Step 2: turn resolved protos into the final score (entries + notes) ---- *)
 
-let notes_of_proto time proto =
+let notes_of_proto time entrydelay proto =
   let instr = match proto.instrument with Some (Instrument { instrument; _ }) -> instrument | None -> assert false in
   let n = Option.value proto.nr_of_tones ~default:1 in
   let perf = match proto.performance with Some tv -> tv | None -> assert false in
@@ -456,19 +458,21 @@ let notes_of_proto time proto =
   List.init n (fun i ->
       {
         time;
+        entrydelay;
         instrument = instr;
         performance = value_at perf i;
         dynamic = value_at dyn i;
         duration = value_at dur i;
       })
 
-let entry_of_proto time proto =
+let entry_of_proto time entrydelay proto =
   let instr = match proto.instrument with Some (Instrument { instrument; _ }) -> instrument | None -> assert false in
   let shared_only = function Some (Shared v) -> Some v | Some (PerTone _) | None -> None in
   {
     time;
+    entrydelay;
     instrument = instr;
-    notes = notes_of_proto time proto;
+    notes = notes_of_proto time entrydelay proto;
     performance = shared_only proto.performance;
     dynamic = shared_only proto.dynamic;
     duration = shared_only proto.duration;
@@ -481,7 +485,7 @@ let resolve_times (protos : proto list) : entry list =
     List.fold_left
       (fun (t, acc) proto ->
         let ed = match proto.entrydelay with Some (Entrydelay ed) -> ed | None -> 0.0 in
-        (t +. ed, entry_of_proto t proto :: acc))
+        (t +. ed, entry_of_proto t ed proto :: acc))
       (0.0, []) protos
   in
   List.rev entries
@@ -694,13 +698,14 @@ let note_cells (note : note) =
   let (Duration d) = note.duration in
   [
     Printf.sprintf "%.3f" note.time;
+    Printf.sprintf "%.3f" note.entrydelay;
+    Printf.sprintf "%.3f" d;
     name;
     Performance.to_string note.performance;
     Dynamic.to_string note.dynamic;
-    Printf.sprintf "%.3f" d;
   ]
 
-let note_header = [ "time"; "instrument"; "performance"; "dynamic"; "duration" ]
+let note_header = [ "time"; "entrydelay"; "duration"; "instrument"; "performance"; "dynamic" ]
 
 (* Flat view: one row per note (a multi-note chord produces several rows
    sharing the same time), ignoring entry grouping entirely. *)
@@ -740,14 +745,15 @@ let write_entries_score filename instrs layers =
     let (InstrumentName name) = e.instrument in
     [
       Printf.sprintf "%.3f" e.time;
+      Printf.sprintf "%.3f" e.entrydelay;
+      opt_to_string (fun (Duration d) -> Printf.sprintf "%.3f" d) e.duration;
       name;
       string_of_int (List.length e.notes);
       opt_to_string Performance.to_string e.performance;
       opt_to_string Dynamic.to_string e.dynamic;
-      opt_to_string (fun (Duration d) -> Printf.sprintf "%.3f" d) e.duration;
     ]
   in
-  let entry_header = [ "time"; "instrument"; "notes"; "performance"; "dynamic"; "duration" ] in
+  let entry_header = [ "time"; "entrydelay"; "duration"; "instrument"; "notes"; "performance"; "dynamic" ] in
   let all_entry_rows = entry_header :: (layers |> List.concat_map (List.map entry_cells)) in
   let entry_widths = Table.column_widths all_entry_rows in
   let all_note_rows = note_header :: (layers |> List.concat_map (List.concat_map (fun e -> e.notes)) |> List.map note_cells) in
@@ -777,8 +783,8 @@ let print_layers instrs layers =
   List.iteri
     (fun i entries ->
       Printf.printf "\n--- layer %d ---\n" i;
-      Printf.printf "%-8s %-14s %-5s %-12s %-8s %-8s %s\n" "time" "instrument"
-        "notes" "performance" "dynamic" "duration" "status";
+      Printf.printf "%-8s %-10s %-8s %-14s %-5s %-12s %-8s %s\n" "time" "entrydelay"
+        "duration" "instrument" "notes" "performance" "dynamic" "status";
       entries
       |> List.iter (fun (e : entry) ->
           let (InstrumentName name) = e.instrument in
@@ -793,11 +799,11 @@ let print_layers instrs layers =
                     "!! IMPOSSIBLE: " ^ String.concat ", " ps
               in
               let (Duration d) = note.duration in
-              Printf.printf "%-8.3f %-14s %-5d %-12s %-8s %-8.3f %s\n" note.time
-                name (List.length e.notes)
+              Printf.printf "%-8.3f %-10.3f %-8.3f %-14s %-5d %-12s %-8s %s\n" note.time
+                note.entrydelay d name (List.length e.notes)
                 (Performance.to_string note.performance)
                 (Dynamic.to_string note.dynamic)
-                d status)))
+                status)))
     layers;
   print_endline "";
   if !total_violations = 0 then
