@@ -105,25 +105,28 @@ let basic_test () =
                ~dynamics_table ~dyn_ensemble_group_selection:EnsembleGroupSeries
                ~entrydelay_combination:NoCombination ~instrument_principle:Alea
                ~entrydelay_principle:Series ~performance_principle:Alea
-               ~performance_combination:Combination
+               ~performance_combination:Combination ~performance_mode:PerChord
                ~dynamics_principle:(Tendency test_mask)
-               ~dynamics_combination:Combination ~union:NoUnion ~density:d
-               ~hierarchy:hier ~dur_list ~dur_table
+               ~dynamics_combination:Combination ~dynamics_mode:PerChord
+               ~union:NoUnion ~density:d ~hierarchy:hier ~dur_list ~dur_table
                ~duration_combination:NoCombination
                ~dur_ensemble_group_selection:EnsembleGroupSeries
-               ~duration_relation_mode:(DurIndependent ChordOneDuration)
+               ~duration_relation_mode:(DurIndependent PerChord)
+               ~duration_principle:Alea
              |> Result.map build_score)
           <$> mk_par_list mk_entrydelay
                 [ 0.1; 0.2; 0.3; 1.0; 2.0; 3.0; 2.0; 5.0 ]
           <+> mk_par_list mk_duration [ 0.25; 0.5; 1.0; 2.0; 4.0 ]
           <+> mk_autonomous ~low:1 ~high:3 ~selection_principle:Series
-          <+> mk_hierarchy [ Dyn; Ins; Per ])
+          <+> mk_hierarchy [ Dyn; Ins; Per; Dur; Ent ])
       in
       match result with
       | Error errors -> print_errors "instrument_entry_test" errors
       | Ok layers ->
           print_layers instrs layers;
-          write_score "score.projekt2" instrs layers;
-          print_endline "Score written to score.projekt2")
+          write_notes_score "score.projekt2" instrs layers;
+          write_entries_score "score_entries.projekt2" instrs layers;
+          print_endline
+            "Score written to score.projekt2 and score_entries.projekt2")
 
 let () = basic_test ()

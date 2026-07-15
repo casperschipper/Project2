@@ -30,11 +30,11 @@ type problem =
   | InvalidDurationRange of string
   | ParseError of string
   | RatioAllBlocked of string
+  | PerToneRequiresInsFirst of string
 
-type hierarchy_elem = Ins | Per | Dyn
+type hierarchy_elem = Ins | Per | Dyn | Dur | Ent
 
-(* | Dur
-  | Har
+(* | Har
   | Int
 *)
 type hierarchy = hierarchy_elem list
@@ -63,6 +63,7 @@ let display_problem p =
   | InvalidDurationRange msg -> msg
   | ParseError msg -> "parse error: " ^ msg
   | RatioAllBlocked msg -> msg
+  | PerToneRequiresInsFirst msg -> msg
 
 let entry_to_float (Entrydelay x) = x
 (* let value_to_float v = match v with Entry (Entrydelay x) -> x *)

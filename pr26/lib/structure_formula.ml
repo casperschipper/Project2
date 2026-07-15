@@ -19,12 +19,16 @@ type union =
   (* ensemble groups merged into a single unit, no layers *)
   | NoUnion
 
-type chord_duration = ChordOneDuration | ChordDurationPerNote
+(* MOD-DUR / MOD-DYN / MOD-PERF (EMR-3 7.3/7.5/7.6): one shared mechanism,
+   reused by duration, dynamics and performance alike - a parameter is
+   either selected once for the whole chord (all tones at one entry point
+   share it), or independently per tone. *)
+type tone_mode = PerChord | PerTone
 
 type duration_mode =
-  | DurIndependent of chord_duration (* mode 0 *)
-  | DurEqualsEntry (* mode 1, implies also ChordDurationPerNote *)
-  | DurShorterThanEntry of chord_duration
+  | DurIndependent of tone_mode (* mode 0 *)
+  | DurEqualsEntry (* mode 1, implies PerChord (MOD-DUR must be 0 per the manual) *)
+  | DurShorterThanEntry of tone_mode
 (* If DUR-ENTRY = 2, valid lists must be given and valid ensembles
 must be formed for both parameters. If ENTRY DELAY comes first, elements
 are rejected in the DURATION ensemble if they are greater than the sel-
@@ -50,6 +54,7 @@ type structure_formula = {
   dur_ensemble_group_selection : ensemble_group_selection;
   duration_combination : combination;
   duration_relation_mode : duration_mode;
+  duration_principle : selection_principle;
   perf_list : Performance.t parameter_list;
   performance_table : ptable;
   perf_ensemble_group_selection : ensemble_group_selection;
@@ -61,8 +66,10 @@ type structure_formula = {
   entrydelay_combination : combination;
   performance_principle : selection_principle;
   performance_combination : combination;
+  performance_mode : tone_mode;
   dynamics_principle : selection_principle;
   dynamics_combination : combination;
+  dynamics_mode : tone_mode;
   union : union;
   density : vertical_density;
   hierarchy : hierarchy;
@@ -96,9 +103,10 @@ let mk_structure_formula ~seed ~variant_duration ~instr_list ~instr_table
     ~performance_table ~perf_ensemble_group_selection ~dyn_list
     ~dynamics_table ~dyn_ensemble_group_selection ~entrydelay_combination
     ~instrument_principle ~entrydelay_principle ~performance_principle
-    ~performance_combination ~dynamics_principle ~dynamics_combination ~union
-    ~hierarchy ~density ~dur_list ~dur_table ~duration_combination
-    ~dur_ensemble_group_selection ~duration_relation_mode =
+    ~performance_combination ~performance_mode ~dynamics_principle
+    ~dynamics_combination ~dynamics_mode ~union ~hierarchy ~density ~dur_list
+    ~dur_table ~duration_combination ~dur_ensemble_group_selection
+    ~duration_relation_mode ~duration_principle =
   let hierarchy_errors =
     match (density, hierarchy) with
     | InstrumentDensity, first :: _ ->
@@ -131,6 +139,7 @@ let mk_structure_formula ~seed ~variant_duration ~instr_list ~instr_table
     @ check_ratio_coverage "entrydelay" ed_table entrydelay_principle
     @ check_ratio_coverage "performance" performance_table performance_principle
     @ check_ratio_coverage "dynamics" dynamics_table dynamics_principle
+    @ check_ratio_coverage "duration" dur_table duration_principle
     @
     match density with
     | Autonomous { low; high; selection_principle = Ratio _ as p } ->
@@ -140,9 +149,41 @@ let mk_structure_formula ~seed ~variant_duration ~instr_list ~instr_table
         check_ratio_coverage "density" dens_table p
     | _ -> []
   in
+  (* chordsize (number of tones) is only known once an instrument has been
+     picked, so a per-tone parameter needs Ins to have already run *)
+  let hierarchy_index elem =
+    hierarchy |> List.mapi (fun i e -> (i, e))
+    |> List.find_opt (fun (_, e) -> e = elem)
+    |> Option.map fst
+  in
+  let per_tone_ordering_errors =
+    let needs_ins_first label elem = function
+      | PerChord -> []
+      | PerTone -> (
+          match (hierarchy_index Ins, hierarchy_index elem) with
+          | Some ins_i, Some elem_i when elem_i < ins_i ->
+              [
+                PerToneRequiresInsFirst
+                  (Printf.sprintf
+                     "%s is per-tone: Ins must precede it in the hierarchy \
+                      (chord size isn't known until an instrument is picked)"
+                     label);
+              ]
+          | _ -> [])
+    in
+    let dur_tone_mode =
+      match duration_relation_mode with
+      | DurIndependent m | DurShorterThanEntry m -> m
+      | DurEqualsEntry -> PerChord
+    in
+    needs_ins_first "performance" Per performance_mode
+    @ needs_ins_first "dynamics" Dyn dynamics_mode
+    @ needs_ins_first "duration" Dur dur_tone_mode
+  in
   match
     hierarchy_errors @ combination_errors @ performance_membership_errors
     @ dynamics_membership_errors @ ratio_coverage_errors
+    @ per_tone_ordering_errors
   with
   | [] ->
       Ok
@@ -167,8 +208,10 @@ let mk_structure_formula ~seed ~variant_duration ~instr_list ~instr_table
           entrydelay_principle;
           performance_principle;
           performance_combination;
+          performance_mode;
           dynamics_principle;
           dynamics_combination;
+          dynamics_mode;
           union;
           density;
           hierarchy;
@@ -176,6 +219,7 @@ let mk_structure_formula ~seed ~variant_duration ~instr_list ~instr_table
           dur_table;
           dur_ensemble_group_selection;
           duration_relation_mode;
+          duration_principle;
           duration_combination;
         }
   | errs -> Error errs
@@ -311,23 +355,24 @@ module Parse = struct
     | [ Sexp.Atom "combination" ] -> Ok Combination
     | _ -> fail "expected 'none' or 'combination'"
 
-  let parse_chord_duration = function
-    | [ Sexp.Atom "one" ] -> Ok ChordOneDuration
-    | [ Sexp.Atom "per-note" ] -> Ok ChordDurationPerNote
-    | _ -> fail "chord duration expects 'one' or 'per-note'"
+  (* MOD-DUR / MOD-DYN / MOD-PERF's shared mode switch - see [tone_mode] *)
+  let parse_tone_mode = function
+    | [ Sexp.Atom "per-chord" ] -> Ok PerChord
+    | [ Sexp.Atom "per-tone" ] -> Ok PerTone
+    | _ -> fail "mode expects 'per-chord' or 'per-tone'"
 
   let parse_duration_mode = function
-    | [ Sexp.List (Sexp.Atom "independent" :: cd) ] ->
-        let* c = parse_chord_duration cd in
-        Ok (DurIndependent c)
+    | [ Sexp.List (Sexp.Atom "independent" :: m) ] ->
+        let* m = parse_tone_mode m in
+        Ok (DurIndependent m)
     | [ Sexp.Atom "equals-entry" ] -> Ok DurEqualsEntry
-    | [ Sexp.List (Sexp.Atom "shorter-than-entry" :: cd) ] ->
-        let* c = parse_chord_duration cd in
-        Ok (DurShorterThanEntry c)
+    | [ Sexp.List (Sexp.Atom "shorter-than-entry" :: m) ] ->
+        let* m = parse_tone_mode m in
+        Ok (DurShorterThanEntry m)
     | _ ->
         fail
-          "duration relation expects (independent one|per-note), equals-entry, \
-           or (shorter-than-entry one|per-note)"
+          "duration relation expects (independent per-chord|per-tone), \
+           equals-entry, or (shorter-than-entry per-chord|per-tone)"
 
   let parse_tendency_section = function
     | Sexp.List (Sexp.Atom "section" :: Sexp.Atom portion_s :: rest) -> (
@@ -524,6 +569,8 @@ module Parse = struct
     | "Ins" -> Ok Ins
     | "Per" -> Ok Per
     | "Dyn" -> Ok Dyn
+    | "Dur" -> Ok Dur
+    | "Ent" -> Ok Ent
     | s -> fail (Printf.sprintf "unknown hierarchy element %S" s)
 
   let of_sexp sexps =
@@ -626,6 +673,10 @@ module Parse = struct
       let (ParameterList ed_arr) = ed_list in
       ed_arr |> Array.to_list |> List.map entry_to_float
     in
+    let dur_floats =
+      let (ParameterList dur_arr) = dur_list in
+      dur_arr |> Array.to_list |> List.map (fun (Duration f) -> f)
+    in
     let* principles = require_field "principles" items in
     let parse_param_principles ?resolve_ratio_index name =
       let* args = require_field name principles in
@@ -634,6 +685,11 @@ module Parse = struct
       let* samp_args = require_field "sample" args in
       let* samp = parse_principle ?resolve_ratio_index samp_args in
       Ok (ens, samp)
+    in
+    let parse_principle_mode name =
+      let* args = require_field name principles in
+      let* margs = require_field "mode" args in
+      parse_tone_mode margs
     in
     let* instr_ensemble_group_selection, instrument_principle =
       parse_param_principles "instrument"
@@ -654,15 +710,19 @@ module Parse = struct
         ~resolve_ratio_index:
           (resolve_index_or_name (fun s -> UnknownPerformance s) perf_names)
     in
+    let* performance_mode = parse_principle_mode "performance" in
     let* dyn_ensemble_group_selection, dynamics_principle =
       parse_param_principles "dynamics"
         ~resolve_ratio_index:
           (resolve_index_or_name (fun s -> UnknownDynamic s) dyn_names)
     in
-    let* dur_ensemble_group_selection =
-      let* args = require_field "duration" principles in
-      let* ens_args = require_field "ensemble" args in
-      parse_ensemble_group_selection ens_args
+    let* dynamics_mode = parse_principle_mode "dynamics" in
+    let* dur_ensemble_group_selection, duration_principle =
+      parse_param_principles "duration"
+        ~resolve_ratio_index:
+          (resolve_index_or_float
+             (fun s -> ParseError (Printf.sprintf "unknown duration %S" s))
+             dur_floats)
     in
     let* combination = require_field "combination" items in
     let* entrydelay_combination =
@@ -713,9 +773,10 @@ module Parse = struct
       ~perf_ensemble_group_selection ~dyn_list ~dynamics_table
       ~dyn_ensemble_group_selection ~entrydelay_combination
       ~instrument_principle ~entrydelay_principle ~performance_principle
-      ~performance_combination ~dynamics_principle ~dynamics_combination ~union
-      ~density ~hierarchy ~dur_list ~dur_table ~duration_combination
-      ~dur_ensemble_group_selection ~duration_relation_mode
+      ~performance_combination ~performance_mode ~dynamics_principle
+      ~dynamics_combination ~dynamics_mode ~union ~density ~hierarchy ~dur_list
+      ~dur_table ~duration_combination ~dur_ensemble_group_selection
+      ~duration_relation_mode ~duration_principle
 
   let read_file path =
     let ic = open_in path in

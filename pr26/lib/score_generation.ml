@@ -3,37 +3,7 @@ open Structure_formula
 open Selection
 open Tools
 
-(* Proto event used during hierarchical score generation. Each field
-   starts empty and is filled in as the hierarchy is applied; entrydelay
-   is filled up front since it does not depend on hierarchy order, and
-   nr_of_tones is filled when the score is built. *)
-type proto_event =
-  | Proto of {
-      entrydelay : entrydelay option;
-      instrument : instrument option;
-      nr_of_tones : int option;
-      performance : Performance.t option;
-      dynamic : Dynamic.t option;
-    }
-
-let empty_proto =
-  Proto
-    {
-      entrydelay = None;
-      instrument = None;
-      nr_of_tones = None;
-      performance = None;
-      dynamic = None;
-    }
-
-type score_event = {
-  time : float;
-  instrument : instr;
-  chordsize : int;
-  performance : Performance.t;
-  dynamic : Dynamic.t;
-}
-
+(* A resolved tone-within-a-chord: fully-specified, no options. *)
 type note = {
   time : float;
   instrument : instr;
@@ -42,6 +12,10 @@ type note = {
   duration : duration;
 }
 
+(* One instrument's contribution at one timepoint. [performance]/[dynamic]/
+   [duration] are [Some] when that parameter was chord-wide (shared across
+   every note here), [None] when it was resolved per-tone instead (in which
+   case each [note] already carries its own independently-resolved value). *)
 type entry = {
   time : float;
   instrument : instr;
@@ -57,8 +31,7 @@ type entry = {
    position - see [sel_init]'s [Ratio] branch. *)
 let ensemble_values_union ensemble =
   match ensemble with
-  | Ensemble groups ->
-      groups |> List.map elements_from_indexed_ensemble |> Array.concat
+  | Ensemble groups -> groups |> List.map elements_from_indexed_ensemble |> Array.concat
   | SingleGroup elm -> elm |> elements_from_indexed_ensemble
 
 let ensemble_values_no_union ensemble =
@@ -66,7 +39,6 @@ let ensemble_values_no_union ensemble =
   | Ensemble groups -> groups |> List.map elements_from_indexed_ensemble
   | SingleGroup g -> [ g |> elements_from_indexed_ensemble ]
 
-(* do the combination case *)
 (* ---- Pure stateful selector ---- *)
 (* [sel_state] wraps the per-principle state. All draws are pure:
    [sel_draw st] returns [(value, next_st)] without any mutation.
@@ -187,8 +159,9 @@ let sel_advance_window : 'a sel_state -> 'a sel_state = function
 (* Same as [sel_draw_pred], but for [Tendency] this samples within the
    current window without moving it (mirrors how [sel_sample] relates to
    [sel_draw]). Used to draw several values within one timepoint (e.g. several
-   instruments for autonomous density) while only moving each tendency mask's
-   window once per timepoint, via a single later [sel_advance_window] call. *)
+   entries sharing an autonomous-density timepoint, or several tones within
+   one entry) while only moving each tendency mask's window once per
+   timepoint, via a single later [sel_advance_window] call. *)
 let sel_sample_pred (p : 'a -> bool) : 'a sel_state -> 'a * 'a sel_state =
   function
   | STendency (TendencyState { arr; lo; hi; _ } as s) ->
@@ -205,286 +178,363 @@ let calculate_number_of_events variant_duration entry_delay_principle
   let avg_ed = expected_value entry_delay_principle entry_delay_ensemble in
   int_of_float (floor (variant_duration /. avg_ed))
 
-(* ---- Hierarchical layer calculation ---- *)
+(* ---- Hierarchical entry resolution ---- *)
 
-(* States threaded through the hierarchy fold — one per parameter hierarchy controls.
-   [instr_arr] is kept here so the Per step can constrain itself to performances
-   achievable by at least one instrument in this group, even before Ins runs. *)
-type layer_states = {
-  instr_state : instrument sel_state;
-  perf_state : Performance.t sel_state;
-  dyn_state : Dynamic.t sel_state;
-  instr_arr : instrument array;
+(* A parameter that can be chord-wide or per-tone (MOD-DUR/MOD-DYN/MOD-PERF)
+   ends up either as one [Shared] value copied to every tone, or as one
+   independently-resolved value [PerTone] per tone. *)
+type 'a tone_value = Shared of 'a | PerTone of 'a list
+
+let value_at tone_values i =
+  match tone_values with Shared v -> v | PerTone vs -> List.nth vs i
+
+(* In-progress entry while the hierarchy fold runs: everything starts [None]
+   and gets filled in hierarchy order. [nr_of_tones] is filled as soon as
+   [Ins] runs (chordsize is a property of the picked instrument). *)
+type proto = {
+  entrydelay : entrydelay option;
+  instrument : instrument option;
+  nr_of_tones : int option;
+  performance : Performance.t tone_value option;
+  dynamic : Dynamic.t tone_value option;
+  duration : duration tone_value option;
 }
 
-(* One step of the hierarchy fold.
-   [protos] is the list being built up; [states] carries the selector states.
-   Returns updated [(protos, states)] with one more field filled per event.
+let empty_proto =
+  {
+    entrydelay = None;
+    instrument = None;
+    nr_of_tones = None;
+    performance = None;
+    dynamic = None;
+    duration = None;
+  }
 
-   Conditioning rules:
-   - Ins step: restrict to instruments whose modes include the already-chosen
-     performance (if Per ran) and whose dynamics include the already-chosen
-     dynamic (if Dyn ran).
-   - Per step: if Ins already ran (instrument is set), restrict to that
-     instrument's modes; if Ins has not run yet, restrict to performances
-     achievable by at least one instrument in this group, so that when Ins
-     runs next it can always find a compatible match.
-   - Dyn step: same as Per, but for the instrument's allowed dynamics. *)
-let apply_step (protos, states) (elem : hierarchy_elem) =
-  match elem with
-  | Ins ->
-      let instr_state', filled =
-        List.fold_left_map
-          (fun st (Proto pe) ->
-            let perf_pred =
-              match pe.performance with
-              | None -> Fun.const true
-              | Some perf ->
-                  fun (Instrument { performance = modes; _ }) ->
-                    Performance_modes.mem perf modes
-            in
-            let dyn_pred =
-              match pe.dynamic with
-              | None -> Fun.const true
-              | Some dyn ->
-                  fun (Instrument { dynamics = modes; _ }) ->
-                    Dynamic_modes.mem dyn modes
-            in
-            let pred i = perf_pred i && dyn_pred i in
-            let v, st' = sel_draw_pred pred st in
-            (st', Proto { pe with instrument = Some v }))
-          states.instr_state protos
-      in
-      (filled, { states with instr_state = instr_state' })
-  | Per ->
-      let perf_state', filled =
-        List.fold_left_map
-          (fun st (Proto pe) ->
-            let pred =
-              match pe.instrument with
-              | Some (Instrument { performance = modes; _ }) ->
-                  fun p -> Performance_modes.mem p modes
-              | None ->
-                  fun p ->
-                    Array.exists
-                      (fun (Instrument { performance = modes; _ }) ->
-                        Performance_modes.mem p modes)
-                      states.instr_arr
-            in
-            let v, st' = sel_draw_pred pred st in
-            (st', Proto { pe with performance = Some v }))
-          states.perf_state protos
-      in
-      (filled, { states with perf_state = perf_state' })
-  | Dyn ->
-      let dyn_state', filled =
-        List.fold_left_map
-          (fun st (Proto pe) ->
-            let pred =
-              match pe.instrument with
-              | Some (Instrument { dynamics = modes; _ }) ->
-                  fun d -> Dynamic_modes.mem d modes
-              | None ->
-                  fun d ->
-                    Array.exists
-                      (fun (Instrument { dynamics = modes; _ }) ->
-                        Dynamic_modes.mem d modes)
-                      states.instr_arr
-            in
-            let v, st' = sel_draw_pred pred st in
-            (st', Proto { pe with dynamic = Some v }))
-          states.dyn_state protos
-      in
-      (filled, { states with dyn_state = dyn_state' })
-
-(* Combine filled protos into score events. Entry delays accumulate
-   left-to-right to produce absolute times.
-   Pure: time is threaded as a fold accumulator, no refs. *)
-let protos_to_events (protos : proto_event list) : score_event list =
-  let _, events =
-    List.fold_left
-      (fun (t, acc) (Proto pe) ->
-        let ed =
-          match pe.entrydelay with Some (Entrydelay ed) -> ed | None -> 0.0
-        in
-        let event =
-          match (pe.instrument, pe.performance, pe.dynamic) with
-          | ( Some
-                (Instrument
-                   { instrument; chordsize = Chordsize { minsize; maxsize }; _ }),
-              Some performance,
-              Some dynamic ) ->
-              let chordsize =
-                match pe.nr_of_tones with
-                | Some n -> n
-                | None ->
-                    if minsize = maxsize then minsize
-                    else Random.int (maxsize - minsize + 1) + minsize
-              in
-              Some { time = t; instrument; chordsize; performance; dynamic }
-          | _ -> None
-        in
-        (t +. ed, match event with Some e -> e :: acc | None -> acc))
-      (0.0, []) protos
-  in
-  List.rev events
-
-(* Fill in performance/dynamic for one already-instrument-picked proto,
-   conditioned on that instrument, in the relative order [Per]/[Dyn] appear in
-   [per_dyn_order] (their order doesn't affect each other's outcome, only
-   which selector state advances first). Uses [sel_sample_pred] rather than
-   [sel_draw_pred] so a tendency mask's window is not moved yet — several of
-   these calls may happen within the same timepoint. *)
-let fill_conditioned_performance_dynamic per_dyn_order states instr proto =
-  List.fold_left
-    (fun (Proto pe, states) elem ->
-      match elem with
-      | Per ->
-          let (Instrument { performance = modes; _ }) = instr in
-          let pred p = Performance_modes.mem p modes in
-          let v, st' = sel_sample_pred pred states.perf_state in
-          ( Proto { pe with performance = Some v },
-            { states with perf_state = st' } )
-      | Dyn ->
-          let (Instrument { dynamics = modes; _ }) = instr in
-          let pred d = Dynamic_modes.mem d modes in
-          let v, st' = sel_sample_pred pred states.dyn_state in
-          (Proto { pe with dynamic = Some v }, { states with dyn_state = st' })
-      | Ins -> (Proto pe, states))
-    (proto, states) per_dyn_order
-
-(* Autonomous density keeps picking instruments (each with its own randomly
-   chosen chordsize, drawn from that instrument's own min/max) until the
-   sampled [target] density is reached or exceeded — overshooting on the last
-   pick is fine. Every instrument picked this way starts a full proto event
-   (with its own performance/dynamic, conditioned on it), all sharing the same
-   timepoint. Returns the protos for this timepoint (oldest first) and the
-   selector states advanced by one sample per pick. *)
-let fill_autonomous_timepoint per_dyn_order states target =
-  let rec loop states total acc =
-    let instr, instr_state' =
-      sel_sample_pred (Fun.const true) states.instr_state
-    in
-    let (Instrument { chordsize = Chordsize { minsize; maxsize }; _ }) =
-      instr
-    in
-    let chordsize =
-      if minsize = maxsize then minsize
-      else Random.int (maxsize - minsize + 1) + minsize
-    in
-    let states = { states with instr_state = instr_state' } in
-    let (Proto p) = empty_proto in
-    let base =
-      Proto { p with instrument = Some instr; nr_of_tones = Some chordsize }
-    in
-    let proto, states =
-      fill_conditioned_performance_dynamic per_dyn_order states instr base
-    in
-    let total' = total + chordsize in
-    let acc' = proto :: acc in
-    if total' >= target then (List.rev acc', states)
-    else loop states total' acc'
-  in
-  loop states 0 []
-
-(* All protos in a timepoint group share the same start time: only the last
-   one carries the entrydelay to the next timepoint, the rest carry a 0.0
-   entrydelay so [protos_to_events]'s running time doesn't move between them. *)
-let stamp_group_entrydelay group ed =
-  let n = List.length group in
-  List.mapi
-    (fun i (Proto pe) ->
-      let delay = if i = n - 1 then ed else 0.0 in
-      Proto { pe with entrydelay = Some (Entrydelay delay) })
-    group
+(* States threaded through the hierarchy fold — one per parameter hierarchy
+   controls. [instr_arr] is kept here so a step can constrain itself to
+   values achievable by at least one instrument in this group, even before
+   [Ins] has run. *)
+type layer_states = {
+  instr_state : instrument sel_state;
+  ed_state : entrydelay sel_state;
+  perf_state : Performance.t sel_state;
+  dyn_state : Dynamic.t sel_state;
+  dur_state : duration sel_state;
+  instr_arr : instrument array;
+}
 
 let advance_all_windows states =
   {
     states with
     instr_state = sel_advance_window states.instr_state;
+    ed_state = sel_advance_window states.ed_state;
     perf_state = sel_advance_window states.perf_state;
     dyn_state = sel_advance_window states.dyn_state;
+    dur_state = sel_advance_window states.dur_state;
   }
 
-(** Calculate one layer using the hierarchy list. Entry delays are always
-    computed first (independent of hierarchy order) and stored on each proto up
-    front. The hierarchy then specifies the order in which [Ins] and [Per] are
-    filled, where later steps can condition on earlier ones.
+(* Resolve one chord-wide-or-per-tone parameter at its hierarchy position:
+   [PerChord] draws once and shares it across every tone; [PerTone] draws
+   independently once per tone. [n_tones] must already be known (an
+   instrument, and hence chordsize, is required to precede any per-tone
+   parameter - enforced at formula-load time by
+   [Structure_formula.mk_structure_formula]'s per-tone-ordering check). *)
+let resolve_tone_param mode n_tones pred state =
+  match mode with
+  | PerChord ->
+      let v, state' = sel_sample_pred pred state in
+      (Shared v, state')
+  | PerTone ->
+      let n = Option.value n_tones ~default:1 in
+      let vs, state' =
+        List.init n (fun _ -> ())
+        |> List.fold_left
+             (fun (acc, st) () ->
+               let v, st' = sel_sample_pred pred st in
+               (v :: acc, st'))
+             ([], state)
+      in
+      (PerTone (List.rev vs), state')
 
-    With [InstrumentDensity], each timepoint is exactly one event and its
-    chordsize comes from the picked instrument's own range (as usual). With
-    [Autonomous], each timepoint samples a target density and keeps adding
-    instruments (see [fill_autonomous_timepoint]) until it is reached; all of
-    them start at the timepoint's shared time. *)
-let calculate_layer_hierarchical ~n_events ~hierarchy ~instr_arr
-    ~instr_principle ~ed_arr ~ed_principle ~perf_arr ~perf_principle ~dyn_arr
-    ~dyn_principle ~density =
-  let eds =
-    sel_draw_n n_events ed_principle ed_arr |> List.map entry_to_float
+let duration_range_ok (AllowedDurations { min; max }) (Duration d) =
+  min <= d && d <= max
+
+(* [Ins]'s predicate: an instrument must be compatible with whatever of
+   performance/dynamic/duration has already been resolved for this entry (if
+   any) - the same "constrain on what's already chosen" idea used
+   symmetrically by [Per]/[Dyn]/[Dur] below when [Ins] hasn't run yet. For a
+   per-tone value, *every* tone's value must fit the instrument (EMR-3
+   7.3: "if the durations in the chord are equal, instruments can only be
+   selected which can play the selected duration; if not the same, this
+   question is posed for each duration and instrument"). *)
+let ins_pred_from proto =
+  let from_perf (Instrument { performance = modes; _ }) =
+    match proto.performance with
+    | None -> true
+    | Some (Shared p) -> Performance_modes.mem p modes
+    | Some (PerTone ps) -> List.for_all (fun p -> Performance_modes.mem p modes) ps
   in
-  let init_states =
+  let from_dyn (Instrument { dynamics = modes; _ }) =
+    match proto.dynamic with
+    | None -> true
+    | Some (Shared d) -> Dynamic_modes.mem d modes
+    | Some (PerTone ds) -> List.for_all (fun d -> Dynamic_modes.mem d modes) ds
+  in
+  let from_dur (Instrument { durations; _ }) =
+    match proto.duration with
+    | None -> true
+    | Some (Shared d) -> duration_range_ok durations d
+    | Some (PerTone ds) -> List.for_all (duration_range_ok durations) ds
+  in
+  fun i -> from_perf i && from_dyn i && from_dur i
+
+(* [Per]/[Dyn]'s predicate: restrict to modes the (already- or not-yet-known)
+   instrument can play, exactly mirroring [Ins]'s own conditioning above. *)
+let mode_pred_from_instrument ~instr_arr ~mem proto_instrument instr_modes =
+  match proto_instrument with
+  | Some i -> fun v -> mem v (instr_modes i)
+  | None -> fun v -> Array.exists (fun i -> mem v (instr_modes i)) instr_arr
+
+(* Duration's own conditioning combines the instrument-range predicate above
+   with, when [Ent] has already resolved and DUR-ENTRY requires it, a
+   size-relation predicate against the already-known entry delay. *)
+let dur_pred_from ~instr_arr proto dur_relation =
+  let range_pred =
+    match proto.instrument with
+    | Some (Instrument { durations; _ }) -> duration_range_ok durations
+    | None ->
+        fun d ->
+          Array.exists
+            (fun (Instrument { durations; _ }) -> duration_range_ok durations d)
+            instr_arr
+  in
+  match (dur_relation, proto.entrydelay) with
+  | DurShorterThanEntry _, Some (Entrydelay ed) ->
+      fun (Duration d as dv) -> range_pred dv && d <= ed
+  | _ -> range_pred
+
+let duration_tone_mode = function
+  | DurIndependent m -> m
+  | DurEqualsEntry -> PerChord
+  | DurShorterThanEntry m -> m
+
+(* Entry delay's own conditioning: unconstrained, unless DUR-ENTRY requires
+   it to follow duration (which must then already be known). *)
+let ed_pred_from proto dur_relation =
+  match (dur_relation, proto.duration) with
+  | DurShorterThanEntry _, Some (Shared (Duration d)) ->
+      fun (Entrydelay ed) -> ed >= d
+  | DurShorterThanEntry _, Some (PerTone ds) ->
+      let max_d = ds |> List.map (fun (Duration d) -> d) |> List.fold_left Float.max 0.0 in
+      fun (Entrydelay ed) -> ed >= max_d
+  | _ -> Fun.const true
+
+(* One hierarchy element's worth of work for one entry. This is the single
+   place that knows how [Ins]/[Ent]/[Dur]/[Per]/[Dyn] each condition on, or
+   get conditioned by, one another - both density modes below just fold this
+   over the composer's [hierarchy] list once per entry. *)
+let resolve_step ~perf_mode ~dyn_mode ~dur_relation (states, proto) elem =
+  match elem with
+  | Ins ->
+      let v, instr_state' = sel_sample_pred (ins_pred_from proto) states.instr_state in
+      let (Instrument { chordsize = Chordsize { minsize; maxsize }; _ }) = v in
+      let n = if minsize = maxsize then minsize else Random.int (maxsize - minsize + 1) + minsize in
+      ( { states with instr_state = instr_state' },
+        { proto with instrument = Some v; nr_of_tones = Some n } )
+  | Ent -> (
+      match (dur_relation, proto.duration) with
+      | DurEqualsEntry, Some (Shared (Duration d)) ->
+          (states, { proto with entrydelay = Some (Entrydelay d) })
+      | _ ->
+          let pred = ed_pred_from proto dur_relation in
+          let v, ed_state' = sel_sample_pred pred states.ed_state in
+          ({ states with ed_state = ed_state' }, { proto with entrydelay = Some v }))
+  | Dur -> (
+      match (dur_relation, proto.entrydelay) with
+      | DurEqualsEntry, Some (Entrydelay ed) ->
+          let d =
+            match proto.instrument with
+            | Some (Instrument { durations = AllowedDurations { max; _ }; _ }) ->
+                Float.min ed max
+            | None -> ed
+          in
+          (states, { proto with duration = Some (Shared (Duration d)) })
+      | _ ->
+          let mode = duration_tone_mode dur_relation in
+          let pred = dur_pred_from ~instr_arr:states.instr_arr proto dur_relation in
+          let v, dur_state' = resolve_tone_param mode proto.nr_of_tones pred states.dur_state in
+          ({ states with dur_state = dur_state' }, { proto with duration = Some v }))
+  | Per ->
+      let pred =
+        mode_pred_from_instrument ~instr_arr:states.instr_arr ~mem:Performance_modes.mem
+          proto.instrument
+          (fun (Instrument { performance; _ }) -> performance)
+      in
+      let v, perf_state' = resolve_tone_param perf_mode proto.nr_of_tones pred states.perf_state in
+      ({ states with perf_state = perf_state' }, { proto with performance = Some v })
+  | Dyn ->
+      let pred =
+        mode_pred_from_instrument ~instr_arr:states.instr_arr ~mem:Dynamic_modes.mem
+          proto.instrument
+          (fun (Instrument { dynamics; _ }) -> dynamics)
+      in
+      let v, dyn_state' = resolve_tone_param dyn_mode proto.nr_of_tones pred states.dyn_state in
+      ({ states with dyn_state = dyn_state' }, { proto with dynamic = Some v })
+
+let resolve_entry ~hierarchy ~perf_mode ~dyn_mode ~dur_relation states =
+  List.fold_left (resolve_step ~perf_mode ~dyn_mode ~dur_relation) (states, empty_proto) hierarchy
+
+(* All entries in an autonomous-density timepoint group share one start
+   time: only the last one's drawn entry delay survives to advance the
+   running clock, earlier ones are stamped to 0 so step 2's summing fold
+   doesn't move between them. *)
+let stamp_group_entrydelay group =
+  let n = List.length group in
+  List.mapi
+    (fun i proto ->
+      if i = n - 1 then proto else { proto with entrydelay = Some (Entrydelay 0.0) })
+    group
+
+(** With [InstrumentDensity], every entry is its own timepoint. *)
+let resolve_layer_instrument_density ~n_events ~hierarchy ~perf_mode ~dyn_mode
+    ~dur_relation states0 =
+  let _, protos =
+    List.init n_events (fun _ -> ())
+    |> List.fold_left
+         (fun (states, acc) () ->
+           let states', proto = resolve_entry ~hierarchy ~perf_mode ~dyn_mode ~dur_relation states in
+           (advance_all_windows states', proto :: acc))
+         (states0, [])
+  in
+  List.rev protos
+
+(** With [Autonomous] density, each timepoint samples a target density and
+    keeps resolving entries (each independently picking its own instrument,
+    conditioned the same way as any other entry) until the target is
+    reached. If the last pick's chordsize would overshoot the target, its
+    extra voices are cut - [nr_of_tones] is capped down to however many are
+    still needed, so the group's total lands exactly on the target. (Any
+    per-tone performance/dynamic/duration values already drawn for the
+    trimmed voices are simply never read - [notes_of_proto] only builds as
+    many notes as [nr_of_tones] says.) *)
+let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
+    ~dur_relation ~low ~high ~selection_principle states0 =
+  let dens_arr = Array.init (high - low + 1) (fun i -> low + i) |> elements_of_array in
+  let fill_group states target =
+    let rec loop states total acc =
+      let states', proto = resolve_entry ~hierarchy ~perf_mode ~dyn_mode ~dur_relation states in
+      let n = Option.value proto.nr_of_tones ~default:1 in
+      let total' = total + n in
+      if total' >= target then
+        let proto' = { proto with nr_of_tones = Some (n - (total' - target)) } in
+        (List.rev (proto' :: acc), states')
+      else loop states' total' (proto :: acc)
+    in
+    loop states 0 []
+  in
+  let _, _, groups =
+    List.init n_events (fun _ -> ())
+    |> List.fold_left
+         (fun (states, dens_state, acc) () ->
+           let target, dens_state' = sel_sample dens_state in
+           let group, states' = fill_group states target in
+           ( advance_all_windows states',
+             sel_advance_window dens_state',
+             stamp_group_entrydelay group :: acc ))
+         (states0, sel_init selection_principle n_events dens_arr, [])
+  in
+  groups |> List.rev |> List.concat
+
+(* ---- Step 2: turn resolved protos into the final score (entries + notes) ---- *)
+
+let notes_of_proto time proto =
+  let instr = match proto.instrument with Some (Instrument { instrument; _ }) -> instrument | None -> assert false in
+  let n = Option.value proto.nr_of_tones ~default:1 in
+  let perf = match proto.performance with Some tv -> tv | None -> assert false in
+  let dyn = match proto.dynamic with Some tv -> tv | None -> assert false in
+  let dur = match proto.duration with Some tv -> tv | None -> assert false in
+  List.init n (fun i ->
+      {
+        time;
+        instrument = instr;
+        performance = value_at perf i;
+        dynamic = value_at dyn i;
+        duration = value_at dur i;
+      })
+
+let entry_of_proto time proto =
+  let instr = match proto.instrument with Some (Instrument { instrument; _ }) -> instrument | None -> assert false in
+  let shared_only = function Some (Shared v) -> Some v | Some (PerTone _) | None -> None in
+  {
+    time;
+    instrument = instr;
+    notes = notes_of_proto time proto;
+    performance = shared_only proto.performance;
+    dynamic = shared_only proto.dynamic;
+    duration = shared_only proto.duration;
+  }
+
+(* Pure fold: sums each proto's own entry delay into a running absolute
+   time, stamping that time onto the finished entry (and its notes). *)
+let resolve_times (protos : proto list) : entry list =
+  let _, entries =
+    List.fold_left
+      (fun (t, acc) proto ->
+        let ed = match proto.entrydelay with Some (Entrydelay ed) -> ed | None -> 0.0 in
+        (t +. ed, entry_of_proto t proto :: acc))
+      (0.0, []) protos
+  in
+  List.rev entries
+
+let calculate_layer_hierarchical ~n_events ~hierarchy ~instr_arr
+    ~instr_principle ~ed_arr ~ed_principle ~perf_arr ~perf_principle ~perf_mode
+    ~dyn_arr ~dyn_principle ~dyn_mode ~dur_arr ~dur_principle ~dur_relation
+    ~density =
+  let states0 =
     {
       instr_state = sel_init instr_principle n_events instr_arr;
+      ed_state = sel_init ed_principle n_events ed_arr;
       perf_state = sel_init perf_principle n_events perf_arr;
       dyn_state = sel_init dyn_principle n_events dyn_arr;
+      dur_state = sel_init dur_principle n_events dur_arr;
       instr_arr = Array.map value_from_element instr_arr;
     }
   in
-  match density with
-  | InstrumentDensity ->
-      let protos =
-        List.map
-          (fun ed ->
-            let (Proto p) = empty_proto in
-            Proto { p with entrydelay = Some (Entrydelay ed) })
-          eds
-      in
-      let filled, _ =
-        List.fold_left apply_step (protos, init_states) hierarchy
-      in
-      protos_to_events filled
-  | Autonomous { low; high; selection_principle } ->
-      (* synthetic range, never went through LIST/TABLE/ENSEMBLE, so its own
-         position already is its "list index" *)
-      let dens_arr =
-        Array.init (high - low + 1) (fun i -> low + i) |> elements_of_array
-      in
-      let per_dyn_order = hierarchy |> List.filter (fun e -> e <> Ins) in
-      let _, _, groups =
-        List.fold_left
-          (fun (states, dens_state, acc) ed ->
-            let target, dens_state' = sel_sample dens_state in
-            let group, states' =
-              fill_autonomous_timepoint per_dyn_order states target
-            in
-            ( advance_all_windows states',
-              sel_advance_window dens_state',
-              stamp_group_entrydelay group ed :: acc ))
-          (init_states, sel_init selection_principle n_events dens_arr, [])
-          eds
-      in
-      groups |> List.rev |> List.concat |> protos_to_events
+  let protos =
+    match density with
+    | InstrumentDensity ->
+        resolve_layer_instrument_density ~n_events ~hierarchy ~perf_mode ~dyn_mode ~dur_relation states0
+    | Autonomous { low; high; selection_principle } ->
+        resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode ~dur_relation ~low ~high
+          ~selection_principle states0
+  in
+  resolve_times protos
+
+let zip5 a b c d e =
+  List.map2 (fun (x, y) (z, (w, v)) -> (x, y, z, w, v)) (List.combine a b) (List.combine c (List.combine d e))
 
 let generate_score_hierarchical ~variant_duration ~instrument_ensemble
     ~instrument_principle ~entry_delay_ensemble ~entry_delay_principle
-    ~perf_ensemble ~perf_principle ~dyn_ensemble ~dyn_principle ~union
-    ~hierarchy ~density =
+    ~perf_ensemble ~perf_principle ~perf_mode ~dyn_ensemble ~dyn_principle
+    ~dyn_mode ~dur_ensemble ~dur_principle ~dur_relation ~union ~hierarchy
+    ~density =
   match union with
   | Union ->
       let entr_arr = ensemble_values_union entry_delay_ensemble in
       let instr_arr = ensemble_values_union instrument_ensemble in
       let perf_arr = ensemble_values_union perf_ensemble in
       let dyn_arr = ensemble_values_union dyn_ensemble in
+      let dur_arr = ensemble_values_union dur_ensemble in
       let n_events =
-        calculate_number_of_events variant_duration entry_delay_principle
-          entr_arr
+        calculate_number_of_events variant_duration entry_delay_principle entr_arr
       in
       let _ = Printf.printf "estimated events: %d\n" n_events in
       [
         calculate_layer_hierarchical ~n_events ~hierarchy ~instr_arr
           ~instr_principle:instrument_principle ~ed_arr:entr_arr
-          ~ed_principle:entry_delay_principle ~perf_arr ~perf_principle ~dyn_arr
-          ~dyn_principle ~density;
+          ~ed_principle:entry_delay_principle ~perf_arr ~perf_principle ~perf_mode
+          ~dyn_arr ~dyn_principle ~dyn_mode ~dur_arr ~dur_principle ~dur_relation
+          ~density;
       ]
   | NoUnion ->
       let instr_arrays = ensemble_values_no_union instrument_ensemble in
@@ -493,32 +543,27 @@ let generate_score_hierarchical ~variant_duration ~instrument_ensemble
         | [ single ] -> List.init (List.length instr_arrays) (fun _ -> single)
         | _ -> raw
       in
-      let entr_arrays =
-        broadcast (ensemble_values_no_union entry_delay_ensemble)
-      in
+      let entr_arrays = broadcast (ensemble_values_no_union entry_delay_ensemble) in
       let perf_arrays = broadcast (ensemble_values_no_union perf_ensemble) in
       let dyn_arrays = broadcast (ensemble_values_no_union dyn_ensemble) in
-      let zip4 a b c d =
-        List.map2
-          (fun (x, y) (z, w) -> (x, y, z, w))
-          (List.combine a b) (List.combine c d)
-      in
-      zip4 instr_arrays entr_arrays perf_arrays dyn_arrays
-      |> List.map (fun (instr_arr, entr_arr, perf_arr, dyn_arr) ->
+      let dur_arrays = broadcast (ensemble_values_no_union dur_ensemble) in
+      zip5 instr_arrays entr_arrays perf_arrays dyn_arrays dur_arrays
+      |> List.map (fun (instr_arr, entr_arr, perf_arr, dyn_arr, dur_arr) ->
           let n_events =
-            calculate_number_of_events variant_duration entry_delay_principle
-              entr_arr
+            calculate_number_of_events variant_duration entry_delay_principle entr_arr
           in
           let _ = Printf.printf "\nestimated events: %d " n_events in
           calculate_layer_hierarchical ~n_events ~hierarchy ~instr_arr
             ~instr_principle:instrument_principle ~ed_arr:entr_arr
-            ~ed_principle:entry_delay_principle ~perf_arr ~perf_principle
-            ~dyn_arr ~dyn_principle ~density)
+            ~ed_principle:entry_delay_principle ~perf_arr ~perf_principle ~perf_mode
+            ~dyn_arr ~dyn_principle ~dyn_mode ~dur_arr ~dur_principle ~dur_relation
+            ~density)
 
 let build_score cfg =
   Random.init cfg.seed;
   let instr_to_string (Instrument { instrument = InstrumentName n; _ }) = n in
   let ed_to_string (Entrydelay f) = Printf.sprintf "%.3f" f in
+  let dur_to_string (Duration f) = Printf.sprintf "%.3f" f in
   let instr_ensemble =
     construct_ensemble ~label:"instrument" ~to_string:instr_to_string
       cfg.instr_list cfg.instr_table EnsembleGroupSeries
@@ -555,31 +600,42 @@ let build_score cfg =
         construct_ensemble ~label:"dynamics" ~to_string:Dynamic.to_string
           dyn_list cfg.dynamics_table EnsembleGroupSeries 1
   in
+  let dur_ensemble =
+    match cfg.duration_combination with
+    | Combination ->
+        construct_ensemble_combination ~label:"duration" ~to_string:dur_to_string
+          cfg.dur_list cfg.dur_table instr_ensemble
+    | NoCombination ->
+        construct_ensemble ~label:"duration" ~to_string:dur_to_string cfg.dur_list
+          cfg.dur_table EnsembleGroupSeries 1
+  in
   generate_score_hierarchical ~variant_duration:cfg.variant_duration
     ~instrument_ensemble:instr_ensemble
     ~instrument_principle:cfg.instrument_principle
     ~entry_delay_ensemble:ed_ensemble
     ~entry_delay_principle:cfg.entrydelay_principle ~perf_ensemble
-    ~perf_principle:cfg.performance_principle ~dyn_ensemble
-    ~dyn_principle:cfg.dynamics_principle ~union:cfg.union
+    ~perf_principle:cfg.performance_principle ~perf_mode:cfg.performance_mode
+    ~dyn_ensemble ~dyn_principle:cfg.dynamics_principle
+    ~dyn_mode:cfg.dynamics_mode ~dur_ensemble
+    ~dur_principle:cfg.duration_principle
+    ~dur_relation:cfg.duration_relation_mode ~union:cfg.union
     ~hierarchy:cfg.hierarchy ~density:cfg.density
 
 let build_constraint_map instrs =
   List.map
-    (fun (Instrument { instrument; performance; dynamics; _ }) ->
-      (instrument, (performance, dynamics)))
+    (fun (Instrument { instrument; performance; dynamics; durations; _ }) ->
+      (instrument, (performance, dynamics, durations)))
     instrs
 
-(* Describe what, if anything, is wrong with an event's performance/dynamic
-   given the instrument's allowed modes. Empty list means the event is fine. *)
-let event_problems constraint_map event =
-  match List.assoc_opt event.instrument constraint_map with
+(* Describe what, if anything, is wrong with a note's performance/dynamic/
+   duration given the instrument's allowed modes and duration range. Empty
+   list means the note is fine. *)
+let note_problems constraint_map (note : note) =
+  match List.assoc_opt note.instrument constraint_map with
   | None -> [ "unknown instrument" ]
-  | Some (valid_perfs, valid_dyns) ->
-      let perf_ok = Performance_modes.mem event.performance valid_perfs in
-      let dyn_ok = Dynamic_modes.mem event.dynamic valid_dyns in
+  | Some (valid_perfs, valid_dyns, valid_durs) ->
       let perf_problem =
-        if perf_ok then []
+        if Performance_modes.mem note.performance valid_perfs then []
         else
           let valid_perfs_str =
             Performance_modes.elements valid_perfs
@@ -588,12 +644,12 @@ let event_problems constraint_map event =
           in
           [
             Printf.sprintf "performance '%s' (valid: %s)"
-              (Performance.to_string event.performance)
+              (Performance.to_string note.performance)
               valid_perfs_str;
           ]
       in
       let dyn_problem =
-        if dyn_ok then []
+        if Dynamic_modes.mem note.dynamic valid_dyns then []
         else
           let valid_dyns_str =
             Dynamic_modes.elements valid_dyns
@@ -601,11 +657,18 @@ let event_problems constraint_map event =
           in
           [
             Printf.sprintf "dynamic '%s' (valid: %s)"
-              (Dynamic.to_string event.dynamic)
+              (Dynamic.to_string note.dynamic)
               valid_dyns_str;
           ]
       in
-      perf_problem @ dyn_problem
+      let dur_problem =
+        let (Duration d) = note.duration in
+        if duration_range_ok valid_durs note.duration then []
+        else
+          let (AllowedDurations { min; max }) = valid_durs in
+          [ Printf.sprintf "duration %.3f (valid: %.3f-%.3f)" d min max ]
+      in
+      perf_problem @ dyn_problem @ dur_problem
 
 (* Aligns rows of already-stringified cells by padding each column to its
    widest value. Knows nothing about score events, so it can't drift out of
@@ -626,41 +689,84 @@ module Table = struct
     |> String.concat " "
 end
 
-let write_score filename instrs layers =
+let note_cells (note : note) =
+  let (InstrumentName name) = note.instrument in
+  let (Duration d) = note.duration in
+  [
+    Printf.sprintf "%.3f" note.time;
+    name;
+    Performance.to_string note.performance;
+    Dynamic.to_string note.dynamic;
+    Printf.sprintf "%.3f" d;
+  ]
+
+let note_header = [ "time"; "instrument"; "performance"; "dynamic"; "duration" ]
+
+(* Flat view: one row per note (a multi-note chord produces several rows
+   sharing the same time), ignoring entry grouping entirely. *)
+let write_notes_score filename instrs layers =
   let constraint_map = build_constraint_map instrs in
-  let cells_of
-      {
-        time;
-        instrument = InstrumentName name;
-        chordsize;
-        performance;
-        dynamic;
-      } =
-    [
-      Printf.sprintf "%.3f" time;
-      name;
-      string_of_int chordsize;
-      Performance.to_string performance;
-      Dynamic.to_string dynamic;
-    ]
+  let all_rows =
+    note_header
+    :: (layers
+       |> List.concat_map (fun entries ->
+           entries |> List.concat_map (fun e -> e.notes) |> List.map note_cells))
   in
-  let widths =
-    Table.column_widths (List.concat_map (List.map cells_of) layers)
-  in
+  let widths = Table.column_widths all_rows in
   let oc = open_out filename in
   List.iteri
-    (fun i events ->
+    (fun i entries ->
       Printf.fprintf oc "# layer %d\n" i;
-      List.iter
-        (fun event ->
-          Printf.fprintf oc "%s" (Table.render_row widths (cells_of event));
-          (match event_problems constraint_map event with
-          | [] -> ()
-          | problems ->
-              Printf.fprintf oc " # IMPOSSIBLE: %s"
-                (String.concat ", " problems));
-          Printf.fprintf oc "\n")
-        events)
+      entries
+      |> List.iter (fun e ->
+          e.notes
+          |> List.iter (fun note ->
+              Printf.fprintf oc "%s" (Table.render_row widths (note_cells note));
+              (match note_problems constraint_map note with
+              | [] -> ()
+              | problems ->
+                  Printf.fprintf oc " # IMPOSSIBLE: %s" (String.concat ", " problems));
+              Printf.fprintf oc "\n")))
+    layers;
+  close_out oc
+
+(* Hierarchical view: one header line per entry (time, instrument, note
+   count, and whichever of performance/dynamic/duration were chord-wide),
+   followed by its notes indented underneath. *)
+let write_entries_score filename instrs layers =
+  let constraint_map = build_constraint_map instrs in
+  let opt_to_string to_string = function Some v -> to_string v | None -> "-" in
+  let entry_cells (e : entry) =
+    let (InstrumentName name) = e.instrument in
+    [
+      Printf.sprintf "%.3f" e.time;
+      name;
+      string_of_int (List.length e.notes);
+      opt_to_string Performance.to_string e.performance;
+      opt_to_string Dynamic.to_string e.dynamic;
+      opt_to_string (fun (Duration d) -> Printf.sprintf "%.3f" d) e.duration;
+    ]
+  in
+  let entry_header = [ "time"; "instrument"; "notes"; "performance"; "dynamic"; "duration" ] in
+  let all_entry_rows = entry_header :: (layers |> List.concat_map (List.map entry_cells)) in
+  let entry_widths = Table.column_widths all_entry_rows in
+  let all_note_rows = note_header :: (layers |> List.concat_map (List.concat_map (fun e -> e.notes)) |> List.map note_cells) in
+  let note_widths = Table.column_widths all_note_rows in
+  let oc = open_out filename in
+  List.iteri
+    (fun i entries ->
+      Printf.fprintf oc "# layer %d\n" i;
+      entries
+      |> List.iter (fun e ->
+          Printf.fprintf oc "%s\n" (Table.render_row entry_widths (entry_cells e));
+          e.notes
+          |> List.iter (fun note ->
+              Printf.fprintf oc "    %s" (Table.render_row note_widths (note_cells note));
+              (match note_problems constraint_map note with
+              | [] -> ()
+              | problems ->
+                  Printf.fprintf oc " # IMPOSSIBLE: %s" (String.concat ", " problems));
+              Printf.fprintf oc "\n")))
     layers;
   close_out oc
 
@@ -669,36 +775,33 @@ let print_layers instrs layers =
   let total_violations = ref 0 in
   print_endline "\n=== instrument_entry_test ===";
   List.iteri
-    (fun i events ->
+    (fun i entries ->
       Printf.printf "\n--- layer %d ---\n" i;
-      Printf.printf "%-8s %-14s %-5s %-12s %-8s %s\n" "time" "instrument" "cs"
-        "performance" "dynamic" "status";
-      List.iter
-        (fun ({
-                time;
-                instrument = InstrumentName name;
-                chordsize;
-                performance;
-                dynamic;
-              } as event) ->
-          let problems = event_problems constraint_map event in
-          let status =
-            match problems with
-            | [] -> ""
-            | ps ->
-                incr total_violations;
-                "!! IMPOSSIBLE: " ^ String.concat ", " ps
-          in
-          Printf.printf "%-8.3f %-14s %-5d %-12s %-8s %s\n" time name chordsize
-            (Performance.to_string performance)
-            (Dynamic.to_string dynamic)
-            status)
-        events)
+      Printf.printf "%-8s %-14s %-5s %-12s %-8s %-8s %s\n" "time" "instrument"
+        "notes" "performance" "dynamic" "duration" "status";
+      entries
+      |> List.iter (fun (e : entry) ->
+          let (InstrumentName name) = e.instrument in
+          e.notes
+          |> List.iter (fun (note : note) ->
+              let problems = note_problems constraint_map note in
+              let status =
+                match problems with
+                | [] -> ""
+                | ps ->
+                    incr total_violations;
+                    "!! IMPOSSIBLE: " ^ String.concat ", " ps
+              in
+              let (Duration d) = note.duration in
+              Printf.printf "%-8.3f %-14s %-5d %-12s %-8s %-8.3f %s\n" note.time
+                name (List.length e.notes)
+                (Performance.to_string note.performance)
+                (Dynamic.to_string note.dynamic)
+                d status)))
     layers;
   print_endline "";
   if !total_violations = 0 then
-    print_endline
-      "OK: every performance and dynamic is valid for its instrument"
+    print_endline "OK: every performance, dynamic and duration is valid for its instrument"
   else
-    Printf.printf "VIOLATIONS: %d event(s) have invalid performance/dynamic\n"
+    Printf.printf "VIOLATIONS: %d note(s) have invalid performance/dynamic/duration\n"
       !total_violations

@@ -1,7 +1,6 @@
 ;;; structure formula
 ;;; evaluate this sexp with:
 ;;; dune exec bin/main_sexp.exe
-;;; duration is still a "dummy" parameter
 (structure-formula
 
   (seed 2) ;; random seed; same seed + same formula always produces the same score
@@ -20,28 +19,28 @@
       (performance (normal muted overtone1))
       (dynamics    (p mf f))
       (compass (1 01) (5 12))
-      (durations 0.25 4.0))
+      (durations 0.1 4.0))
 
     (instrument piano
       (chordsize 1 10)
       (performance (normal pizzicato))
       (dynamics    (ppp pp p mf f ff fff))
       (compass (1 01) (5 12))
-      (durations 0.25 4.0))
+      (durations 0.1 4.0))
 
     (instrument basedrum
       (chordsize 1 1)
       (performance (normal bowing))
       (dynamics    (ppp pp p mf f ff fff))
       (compass (1 01) (1 01))
-      (durations 0.25 4.0))
+      (durations 0.1 4.0))
 
     (instrument marimba
       (chordsize 1 4)
       (performance (normal bowing))
       (dynamics    (mf f ff fff))
       (compass (1 01) (5 12))
-      (durations 0.25 4.0)))
+      (durations 0.1 4.0)))
 
   (instrument-table
     (0 1 2 3)
@@ -63,7 +62,7 @@
     (3 4 5)
     (0 1 2 3 4 5 6 7))
 
-  (durations (0.25 0.5 1.0 2.0 4.0))
+  (durations (0.1 0.2 0.3 0.5 0.8))
 
   (duration-table
     (0 1 2)
@@ -114,11 +113,16 @@
       (ensemble series)
       (sample
         (ratio ((0 3) (0.2 2) (2 1) (0.4 2) (4 1) (0.6 1) (6 1) (0.8 1)))))
+    ;; performance is per-tone here: within a multi-note chord, each tone
+    ;; gets its own independently-drawn performance mode (MOD-PERF = 1)
     (performance
       (ensemble alea)
-      (sample alea))
-    (dynamics (ensemble series) (sample series))
-    (duration (ensemble series)))
+      (sample alea)
+      (mode per-tone))
+    ;; dynamics stays chord-wide: one dynamic shared by every tone in the
+    ;; chord (MOD-DYN = 0)
+    (dynamics (ensemble series) (sample series) (mode per-chord))
+    (duration (ensemble series) (sample series)))
 
   (combination
     (entrydelay  none)
@@ -126,7 +130,11 @@
     (dynamics    none)
     (duration    none))
 
-  (duration-relation (independent one))
+  ;; DUR-ENTRY = 2 (duration <= entry delay), MOD-DUR = per-tone: every tone
+  ;; in a chord gets its own duration, each independently constrained to be
+  ;; no longer than the entry's (already-resolved, see hierarchy below) entry
+  ;; delay
+  (duration-relation (shorter-than-entry per-tone))
 
 ;; none means a layer per instrument group!
   (union none)
@@ -135,6 +143,9 @@
 ;; If instrument is the density generator, it also becomes primary parameter in the hierarchy
   (density (autonomous (low 1) (high 2) (principle series)))
 
-  (hierarchy (Per Ins Dyn))
+;; Ins precedes Per (per-tone) and Dur (per-tone, shorter-than-entry) so
+;; chord size is known before either resolves; Ent precedes Dur so DUR-ENTRY
+;; has an entry delay to constrain duration against.
+  (hierarchy (Ins Per Dyn Ent Dur))
 
 )
