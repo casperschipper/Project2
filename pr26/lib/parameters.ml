@@ -608,7 +608,8 @@ let expected_value selection_principle (array : entrydelay element array) =
 
 let print_errors label errors =
   Printf.printf "%s failed:\n" label;
-  List.iter (fun e -> Printf.printf "  - %s\n" (display_problem e)) errors
+  List.iter (fun e -> Printf.printf "  - %s\n" (display_problem e)) errors;
+  flush stdout
 
 (* HARMONY *)
 

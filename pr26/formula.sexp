@@ -3,7 +3,7 @@
 ;;; dune exec bin/main_sexp.exe
 (structure-formula
 
-  (seed 2) ;; random seed; same seed + same formula always produces the same score
+  (seed 1) ;; random seed; same seed + same formula always produces the same score
   (variant-duration 30.0)
   (octave-division 12)
 
@@ -141,7 +141,7 @@
 
 ;; you can either have autonomous density, using a principle, or density defined by the instrument chord size.
 ;; If instrument is the density generator, it also becomes primary parameter in the hierarchy
-  (density (autonomous (low 1) (high 2) (principle series)))
+  (density (autonomous (low 1) (high 6) (principle series)))
 
 ;; Ins precedes Per (per-tone) and Dur (per-tone, shorter-than-entry) so
 ;; chord size is known before either resolves; Ent precedes Dur so DUR-ENTRY

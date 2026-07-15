@@ -9,4 +9,4 @@
  (name main_sexp)
  (flags
   (:standard -w -26))
- (libraries pr26 seq))
+ (libraries pr26 seq unix))
