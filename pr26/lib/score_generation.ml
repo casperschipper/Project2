@@ -34,13 +34,31 @@ type score_event = {
   dynamic : Dynamic.t;
 }
 
+type note = {
+  time : float;
+  instrument : instr;
+  performance : Performance.t;
+  dynamic : Dynamic.t;
+  duration : duration;
+}
+
+type entry = {
+  time : float;
+  instrument : instr;
+  notes : note list;
+  performance : Performance.t option;
+  dynamic : Dynamic.t option;
+  duration : duration option;
+}
+
 (* Extract all elements from any ensemble as a flat array. Each element
    keeps the LIST index it was resolved from (not just its value) so that
    RATIO can weight by original LIST index rather than by ensemble
    position - see [sel_init]'s [Ratio] branch. *)
 let ensemble_values_union ensemble =
   match ensemble with
-  | Ensemble groups -> groups |> List.map elements_from_indexed_ensemble |> Array.concat
+  | Ensemble groups ->
+      groups |> List.map elements_from_indexed_ensemble |> Array.concat
   | SingleGroup elm -> elm |> elements_from_indexed_ensemble
 
 let ensemble_values_no_union ensemble =
