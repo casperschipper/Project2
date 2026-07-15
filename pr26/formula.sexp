@@ -4,8 +4,15 @@
 ;;; duration is still a "dummy" parameter
 (structure-formula
 
+  (seed 2) ;; random seed; same seed + same formula always produces the same score
   (variant-duration 30.0)
   (octave-division 12)
+
+  (dynamics (ppp pp p mf f ff fff))
+
+  ;; master list of every performance mode used by any instrument below;
+  ;; each instrument's own (performance (...)) must be a subset of this
+  (performance (normal muted overtone1 pizzicato bowing))
 
   (instruments
     (instrument guitar
@@ -47,6 +54,7 @@
     (normal muted overtone1)
     (normal bowing))
 
+
   (entrydelays (0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8))
 
 
@@ -72,7 +80,15 @@
   ;;   alea
   ;;   series
   ;;   (sequence (0 1 2 3))
-  ;;   (ratio (0 3) (1 2) (2 1))            -- (index weight) pairs
+  ;;   (ratio ((0 3) (1 2) (2 1)))          -- (index-or-value weight) pairs;
+  ;;                                           the first slot is a LIST index
+  ;;                                           (position in this parameter's own
+  ;;                                           list, e.g. entrydelays/performance/
+  ;;                                           dynamics/instruments below) - or,
+  ;;                                           equivalently, the element's own
+  ;;                                           value/name (e.g. 0.2 or normal).
+  ;;                                           any list index not given a weight
+  ;;                                           defaults to 0 (blocked).
   ;;   (group (element    alea)             -- element selector: alea | series
   ;;          (repetition series)           -- repetition count selector: alea | series
   ;;          (repetitions 2 5))            -- min and max repetitions
@@ -89,7 +105,15 @@
 
   (principles
     (instrument (ensemble series) (sample series)) ;; two selection principles, one for the ensemble, one for the actual score constructions from the ensemble
-    (entrydelay (ensemble series) (sample (ratio ((0 3) (1 2) (2 1)))))
+    ;; entrydelay list is (0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8); ratio pairs may
+    ;; give either the list index or the actual value (mixed here to
+    ;; demonstrate both) - every index must get a nonzero weight in at
+    ;; least one of each entrydelay-table row's elements, or that row could
+    ;; never produce a value once selected
+    (entrydelay
+      (ensemble series)
+      (sample
+        (ratio ((0 3) (0.2 2) (2 1) (0.4 2) (4 1) (0.6 1) (6 1) (0.8 1)))))
     (performance
       (ensemble alea)
       (sample alea))
@@ -109,7 +133,7 @@
 
 ;; you can either have autonomous density, using a principle, or density defined by the instrument chord size.
 ;; If instrument is the density generator, it also becomes primary parameter in the hierarchy
-  (density (autonomous (low 1) (high 2) (tr 12) (principle series)))
+  (density (autonomous (low 1) (high 2) (principle series)))
 
   (hierarchy (Per Ins Dyn))
 

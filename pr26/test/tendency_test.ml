@@ -39,7 +39,7 @@ let test_tendency_mask () =
   in
   print_endline "Testing a mask of 100 values, showing the sections by 25";
   let positions = Array.init 1000 (fun i -> float_of_int i /. 1000.0) in
-  sel_draw_n 100 (Tendency test_mask) positions
+  sel_draw_n 100 (Tendency test_mask) (elements_of_array positions)
   |> List.to_seq |> chunk (Seq.repeat 25)
   |> Seq.zip labels
   |> Seq.iter (fun (label, vals) ->
@@ -52,7 +52,7 @@ let test_tendency_repeated_sampling () =
     | STendency (TendencyState { lo; hi; _ }) -> (lo, hi)
     | _ -> assert false
   in
-  let state0 = sel_init (Tendency test_mask) 4 positions in
+  let state0 = sel_init (Tendency test_mask) 4 (elements_of_array positions) in
   let v1, state1 = sel_sample state0 in
   let v2, state2 = sel_sample state1 in
   let v3, _ = sel_sample state2 in

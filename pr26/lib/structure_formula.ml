@@ -36,6 +36,7 @@ selected duration are rejected. If such "allowed" entry delays Chord duration al
 (* the number of layers is equal to the number of groups in the ensemble, the combined parameters also have same number of groups *)
 
 type structure_formula = {
+  seed : int;
   variant_duration : float;
   instr_list : instrument parameter_list;
   instr_table : ptable;
@@ -49,8 +50,10 @@ type structure_formula = {
   dur_ensemble_group_selection : ensemble_group_selection;
   duration_combination : combination;
   duration_relation_mode : duration_mode;
+  perf_list : Performance.t parameter_list;
   performance_table : ptable;
   perf_ensemble_group_selection : ensemble_group_selection;
+  dyn_list : Dynamic.t parameter_list;
   dynamics_table : ptable;
   dyn_ensemble_group_selection : ensemble_group_selection;
   instrument_principle : selection_principle;
@@ -87,15 +90,15 @@ let mk portion smin smax emin emax =
       end_max = uf emax;
     }
 
-let mk_structure_formula ~variant_duration ~instr_list ~instr_table
+let mk_structure_formula ~seed ~variant_duration ~instr_list ~instr_table
     ~instr_ensemble_group_selection ~ed_list ~ed_table
-    ~ent_ensemble_group_selection ~number_of_instrument_groups
-    ~performance_table ~perf_ensemble_group_selection ~dynamics_table
-    ~dyn_ensemble_group_selection ~entrydelay_combination ~instrument_principle
-    ~entrydelay_principle ~performance_principle ~performance_combination
-    ~dynamics_principle ~dynamics_combination ~union ~hierarchy ~density
-    ~dur_list ~dur_table ~duration_combination ~dur_ensemble_group_selection
-    ~duration_relation_mode =
+    ~ent_ensemble_group_selection ~number_of_instrument_groups ~perf_list
+    ~performance_table ~perf_ensemble_group_selection ~dyn_list
+    ~dynamics_table ~dyn_ensemble_group_selection ~entrydelay_combination
+    ~instrument_principle ~entrydelay_principle ~performance_principle
+    ~performance_combination ~dynamics_principle ~dynamics_combination ~union
+    ~hierarchy ~density ~dur_list ~dur_table ~duration_combination
+    ~dur_ensemble_group_selection ~duration_relation_mode =
   let hierarchy_errors =
     match (density, hierarchy) with
     | InstrumentDensity, first :: _ ->
@@ -110,10 +113,41 @@ let mk_structure_formula ~variant_duration ~instr_list ~instr_table
         dynamics_combination
     @ check_combination "duration" instr_table dur_table duration_combination
   in
-  match hierarchy_errors @ combination_errors with
+  let (ParameterList instr_arr) = instr_list in
+  let performance_membership_errors =
+    let (ParameterList perf_arr) = perf_list in
+    check_instrument_performances_known
+      (Performance_modes.of_list (Array.to_list perf_arr))
+      (Array.to_list instr_arr)
+  in
+  let dynamics_membership_errors =
+    let (ParameterList dyn_arr) = dyn_list in
+    check_instrument_dynamics_known
+      (Dynamic_modes.of_list (Array.to_list dyn_arr))
+      (Array.to_list instr_arr)
+  in
+  let ratio_coverage_errors =
+    check_ratio_coverage "instrument" instr_table instrument_principle
+    @ check_ratio_coverage "entrydelay" ed_table entrydelay_principle
+    @ check_ratio_coverage "performance" performance_table performance_principle
+    @ check_ratio_coverage "dynamics" dynamics_table dynamics_principle
+    @
+    match density with
+    | Autonomous { low; high; selection_principle = Ratio _ as p } ->
+        let dens_table =
+          Table [| Array.init (high - low + 1) (fun i -> i) |]
+        in
+        check_ratio_coverage "density" dens_table p
+    | _ -> []
+  in
+  match
+    hierarchy_errors @ combination_errors @ performance_membership_errors
+    @ dynamics_membership_errors @ ratio_coverage_errors
+  with
   | [] ->
       Ok
         {
+          seed;
           variant_duration;
           instr_list;
           instr_table;
@@ -122,8 +156,10 @@ let mk_structure_formula ~variant_duration ~instr_list ~instr_table
           ed_table;
           ent_ensemble_group_selection;
           number_of_instrument_groups;
+          perf_list;
           performance_table;
           perf_ensemble_group_selection;
+          dyn_list;
           dynamics_table;
           dyn_ensemble_group_selection;
           entrydelay_combination;
@@ -213,26 +249,57 @@ module Parse = struct
     let* rows = items |> List.map parse_row |> sequence in
     Ok (Table (Array.of_list rows))
 
+  (* Resolves a sexp cell to a LIST index, accepting either a raw index or
+     the element's own name, looked up in [names] (given in the same order
+     as the corresponding parameter list). Used for performance-table /
+     dynamics-table cells and, further down, for RATIO's (index-or-name
+     weight) pairs, so a composer never has to remember or recompute a
+     position by hand. *)
+  let resolve_index_or_name unknown names = function
+    | Sexp.Atom s -> (
+        match int_of_string_opt s with
+        | Some i -> Ok i
+        | None -> (
+            match
+              List.assoc_opt s (names |> List.mapi (fun i name -> (name, i)))
+            with
+            | Some i -> Ok i
+            | None -> lift (Error (unknown s))))
+    | Sexp.List _ -> fail "expected atom for index or name"
+
+  (* Same idea, but resolves against the element's own float value (for
+     entrydelay/duration RATIO pairs) instead of a name. *)
+  let resolve_index_or_float unknown floats = function
+    | Sexp.Atom s -> (
+        match int_of_string_opt s with
+        | Some i -> Ok i
+        | None -> (
+            match float_of_string_opt s with
+            | Some f -> (
+                match
+                  floats
+                  |> List.mapi (fun i v -> (i, v))
+                  |> List.find_opt (fun (_, v) -> Float.equal v f)
+                with
+                | Some (i, _) -> Ok i
+                | None -> lift (Error (unknown s)))
+            | None ->
+                fail (Printf.sprintf "expected int, float, or name, got %S" s)
+            ))
+    | Sexp.List _ -> fail "expected atom for index or value"
+
   (* performance-table / dynamics-table entries may either be raw indexes into
-     the mode list derived from the instruments (kept for backwards
-     compatibility), or the mode names themselves, resolved against [names]
-     (given in the same order as [extract_performances_from_instruments] /
-     [extract_dynamics_from_instruments]) *)
+     the mode list (kept for backwards compatibility), or the mode names
+     themselves, resolved against [names] (given in the same order as the
+     parsed [perf_list] for performance, or the parsed [dyn_list] for
+     dynamics) *)
   let parse_named_table unknown names items =
-    let index_of_name = names |> List.mapi (fun i name -> (name, i)) in
-    let resolve_cell = function
-      | Sexp.Atom s -> (
-          match int_of_string_opt s with
-          | Some i -> Ok i
-          | None -> (
-              match List.assoc_opt s index_of_name with
-              | Some i -> Ok i
-              | None -> lift (Error (unknown s))))
-      | Sexp.List _ -> fail "expected atom for table entry"
-    in
     let parse_row = function
       | Sexp.List row_items ->
-          let* ints = row_items |> List.map resolve_cell |> sequence in
+          let* ints =
+            row_items |> List.map (resolve_index_or_name unknown names)
+            |> sequence
+          in
           Ok (Array.of_list ints)
       | Sexp.Atom _ -> fail "expected list for table row, got atom"
     in
@@ -259,8 +326,8 @@ module Parse = struct
         Ok (DurShorterThanEntry c)
     | _ ->
         fail
-          "duration relation expects (independent one|per-note), \
-           equals-entry, or (shorter-than-entry one|per-note)"
+          "duration relation expects (independent one|per-note), equals-entry, \
+           or (shorter-than-entry one|per-note)"
 
   let parse_tendency_section = function
     | Sexp.List (Sexp.Atom "section" :: Sexp.Atom portion_s :: rest) -> (
@@ -314,7 +381,14 @@ module Parse = struct
           "ensemble group selection expects 'alea', 'series', or (sequence \
            (...))"
 
-  let parse_principle items =
+  (* [resolve_ratio_index] resolves the first slot of a (index-or-value
+     weight) pair; it defaults to plain-int parsing (e.g. for density, whose
+     range has no separate name/value form), but callers with an actual
+     parameter list (instrument/entrydelay/performance/dynamics) pass a
+     resolver built from that list, via [resolve_index_or_name] /
+     [resolve_index_or_float], so a composer can write either the LIST
+     index or the element's own name/value. *)
+  let parse_principle ?(resolve_ratio_index = require_int) items =
     match items with
     | [ Sexp.Atom "alea" ] -> Ok Alea
     | [ Sexp.Atom "series" ] -> Ok Series
@@ -323,11 +397,11 @@ module Parse = struct
         Ok (Sequence is)
     | [ Sexp.List (Sexp.Atom "ratio" :: [ Sexp.List pairs ]) ] ->
         let parse_pair = function
-          | Sexp.List [ Sexp.Atom a; Sexp.Atom b ] ->
-              let* i = require_int (Sexp.Atom a) in
-              let* w = require_int (Sexp.Atom b) in
+          | Sexp.List [ idx; Sexp.Atom w ] ->
+              let* i = resolve_ratio_index idx in
+              let* w = require_int (Sexp.Atom w) in
               Ok (i, w)
-          | _ -> fail "ratio pair expects (index weight)"
+          | _ -> fail "ratio pair expects (index-or-value weight)"
         in
         let* ps = pairs |> List.map parse_pair |> sequence in
         Ok (Ratio ps)
@@ -430,13 +504,11 @@ module Parse = struct
         in
         let* low_v = get_int "low" in
         let* high_v = get_int "high" in
-        let* tr_v = get_int "tr" in
         let* p =
           let* a = require_field "principle" args in
           parse_principle a
         in
-        lift
-          (mk_autonomous ~tr:tr_v ~low:low_v ~high:high_v ~selection_principle:p)
+        lift (mk_autonomous ~low:low_v ~high:high_v ~selection_principle:p)
     | [ Sexp.Atom "instrument-density" ] -> Ok InstrumentDensity
     | other ->
         fail
@@ -466,6 +538,7 @@ module Parse = struct
       | [ x ] -> parse x
       | _ -> fail (Printf.sprintf "field %S expects one value" name)
     in
+    let* seed = get1 "seed" require_int in
     let* variant_duration = get1 "variant-duration" require_float in
     let* number_of_instrument_groups =
       get1 "number-of-instrument-groups" require_int
@@ -511,45 +584,80 @@ module Parse = struct
       let* args = require_field "duration-table" items in
       parse_table args
     in
-    let (ParameterList instr_arr) = instr_list in
+    let* perf_list =
+      let* args = require_field "performance" items in
+      match args with
+      | [ Sexp.List inner ] ->
+          let* names = parse_atoms inner in
+          Ok
+            (ParameterList (Array.of_list (List.map Performance.of_string names)))
+      | _ -> fail "performance expects (performance (...))"
+    in
+    let perf_names =
+      let (ParameterList perf_arr) = perf_list in
+      perf_arr |> Array.to_list |> List.map Performance.to_string
+    in
     let* performance_table =
       let* args = require_field "performance-table" items in
-      let (ParameterList perf_arr) =
-        extract_performances_from_instruments (Array.to_list instr_arr)
-      in
-      let perf_names =
-        perf_arr |> Array.to_list |> List.map Performance.to_string
-      in
       parse_named_table (fun s -> UnknownPerformance s) perf_names args
+    in
+    let* dyn_list =
+      let* args = require_field "dynamics" items in
+      match args with
+      | [ Sexp.List inner ] ->
+          let* names = parse_atoms inner in
+          Ok (ParameterList (Array.of_list (List.map Dynamic.of_string names)))
+      | _ -> fail "dynamics expects (dynamics (...))"
+    in
+    let dyn_names =
+      let (ParameterList dyn_arr) = dyn_list in
+      dyn_arr |> Array.to_list |> List.map Dynamic.to_string
     in
     let* dynamics_table =
       let* args = require_field "dynamics-table" items in
-      let (ParameterList dyn_arr) =
-        extract_dynamics_from_instruments (Array.to_list instr_arr)
-      in
-      let dyn_names = dyn_arr |> Array.to_list |> List.map Dynamic.to_string in
       parse_named_table (fun s -> UnknownDynamic s) dyn_names args
     in
+    let instr_names =
+      let (ParameterList instr_arr) = instr_list in
+      instr_arr |> Array.to_list
+      |> List.map (fun (Instrument { instrument = InstrumentName n; _ }) -> n)
+    in
+    let ed_floats =
+      let (ParameterList ed_arr) = ed_list in
+      ed_arr |> Array.to_list |> List.map entry_to_float
+    in
     let* principles = require_field "principles" items in
-    let parse_param_principles name =
+    let parse_param_principles ?resolve_ratio_index name =
       let* args = require_field name principles in
       let* ens_args = require_field "ensemble" args in
       let* ens = parse_ensemble_group_selection ens_args in
       let* samp_args = require_field "sample" args in
-      let* samp = parse_principle samp_args in
+      let* samp = parse_principle ?resolve_ratio_index samp_args in
       Ok (ens, samp)
     in
     let* instr_ensemble_group_selection, instrument_principle =
       parse_param_principles "instrument"
+        ~resolve_ratio_index:
+          (resolve_index_or_name
+             (fun s -> ParseError (Printf.sprintf "unknown instrument %S" s))
+             instr_names)
     in
     let* ent_ensemble_group_selection, entrydelay_principle =
       parse_param_principles "entrydelay"
+        ~resolve_ratio_index:
+          (resolve_index_or_float
+             (fun s -> ParseError (Printf.sprintf "unknown entrydelay %S" s))
+             ed_floats)
     in
     let* perf_ensemble_group_selection, performance_principle =
       parse_param_principles "performance"
+        ~resolve_ratio_index:
+          (resolve_index_or_name (fun s -> UnknownPerformance s) perf_names)
     in
     let* dyn_ensemble_group_selection, dynamics_principle =
       parse_param_principles "dynamics"
+        ~resolve_ratio_index:
+          (resolve_index_or_name (fun s -> UnknownDynamic s) dyn_names)
     in
     let* dur_ensemble_group_selection =
       let* args = require_field "duration" principles in
@@ -599,10 +707,10 @@ module Parse = struct
       in
       lift (mk_hierarchy elems)
     in
-    mk_structure_formula ~variant_duration ~instr_list ~instr_table
+    mk_structure_formula ~seed ~variant_duration ~instr_list ~instr_table
       ~instr_ensemble_group_selection ~number_of_instrument_groups ~ed_list
-      ~ed_table ~ent_ensemble_group_selection ~performance_table
-      ~perf_ensemble_group_selection ~dynamics_table
+      ~ed_table ~ent_ensemble_group_selection ~perf_list ~performance_table
+      ~perf_ensemble_group_selection ~dyn_list ~dynamics_table
       ~dyn_ensemble_group_selection ~entrydelay_combination
       ~instrument_principle ~entrydelay_principle ~performance_principle
       ~performance_combination ~dynamics_principle ~dynamics_combination ~union

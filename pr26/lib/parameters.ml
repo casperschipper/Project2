@@ -29,6 +29,7 @@ type problem =
   | NegativeDuration of float
   | InvalidDurationRange of string
   | ParseError of string
+  | RatioAllBlocked of string
 
 type hierarchy_elem = Ins | Per | Dyn
 
@@ -61,6 +62,7 @@ let display_problem p =
       "duration is " ^ string_of_float x ^ ", but may not be negative"
   | InvalidDurationRange msg -> msg
   | ParseError msg -> "parse error: " ^ msg
+  | RatioAllBlocked msg -> msg
 
 let entry_to_float (Entrydelay x) = x
 (* let value_to_float v = match v with Entry (Entrydelay x) -> x *)
@@ -85,6 +87,12 @@ type 'a element = { index : int; value : 'a }
 let value_from_element { value; index } =
   ignore index;
   value
+
+(* wraps a plain array as elements whose index is simply their position -
+   for arrays that never went through a LIST -> TABLE -> ENSEMBLE stage (e.g.
+   the synthetic density range), so they can still be fed to functions that
+   expect indexed elements (e.g. RATIO's per-index weighting) *)
+let elements_of_array arr = Array.mapi (fun index value -> { index; value }) arr
 
 type 'a group = EnsembleGroup of 'a element Array.t
 
@@ -238,24 +246,25 @@ type instrument =
       pitchcompass : pitch_compass;
     }
 
-(* this function allows you to extract all possible performance modes from the instrument list
-in this way, performances do not have to be defined separately (it makes no sense to have a performance mode
-for which there is no instrument)
-*)
-let extract_performances_from_instruments lst =
-  List.fold_right
-    (fun (Instrument ins) acc -> Performance_modes.union ins.performance acc)
-    lst Performance_modes.empty
-  |> Performance_modes.to_list |> Array.of_list
-  |> fun arr -> ParameterList arr
+(* both performance and dynamics have an explicit master list (parsed from
+   the structure formula's top-level "performance" / "dynamics" fields);
+   every instrument's own (performance (...)) / (dynamics (...)) must be a
+   subset of the corresponding master list *)
+let check_instrument_performances_known known_performances instrs =
+  List.concat_map
+    (fun (Instrument { performance; _ }) ->
+      Performance_modes.diff performance known_performances
+      |> Performance_modes.to_list
+      |> List.map (fun p -> UnknownPerformance (Performance.to_string p)))
+    instrs
 
-(* same as extract_performances_from_instruments, but for the dynamics each instrument can play *)
-let extract_dynamics_from_instruments lst =
-  List.fold_right
-    (fun (Instrument ins) acc -> Dynamic_modes.union ins.dynamics acc)
-    lst Dynamic_modes.empty
-  |> Dynamic_modes.to_list |> Array.of_list
-  |> fun arr -> ParameterList arr
+let check_instrument_dynamics_known known_dynamics instrs =
+  List.concat_map
+    (fun (Instrument { dynamics; _ }) ->
+      Dynamic_modes.diff dynamics known_dynamics
+      |> Dynamic_modes.to_list
+      |> List.map (fun d -> UnknownDynamic (Dynamic.to_string d)))
+    instrs
 
 let print_instrument
     (Instrument
@@ -271,7 +280,7 @@ let print_instrument
                max = Absolute (Register max_oct, max_rel);
                forbidden;
              };
-        durations
+         durations;
        }) =
   let perfs =
     Performance_modes.elements performance
@@ -319,10 +328,8 @@ type vertical_density = Autonomous of autonomous_density | InstrumentDensity
 (* | ChordDensity *)
 (* not yet implemented*)
 
-let mk_autonomous ~tr ~low ~high ~selection_principle =
+let mk_autonomous ~low ~high ~selection_principle =
   if low < 1 then Error (InvalidDensity "too small")
-  else if high > tr then
-    Error (InvalidDensity "may not be larger than octave division")
   else if high < low then
     Error (InvalidDensity "max should not be higher than min")
   else Ok (Autonomous { low; high; selection_principle })
@@ -519,8 +526,40 @@ let ensemble_to_array_union ensemble =
           ignore index;
           value)
 
-let expected_value selection_principle array =
-  let ensemble = array |> Array.map entry_to_float in
+(* RATIO weights are declared per LIST index (EMR-3 4.3): [weighted] is the
+   composer's (index, weight) list from the sexp. This turns it into a
+   lookup, defaulting to weight 0 (blocked) for any list index the composer
+   didn't mention. *)
+let ratio_weight_of weighted =
+  let tbl = Hashtbl.create (List.length weighted) in
+  List.iter (fun (i, w) -> Hashtbl.replace tbl i w) weighted;
+  fun i -> Option.value (Hashtbl.find_opt tbl i) ~default:0
+
+(* [check_ratio_coverage] flags any table row all of whose LIST indices are
+   blocked (weight 0) under a Ratio principle - such a row would produce an
+   empty RATIO sampling pool (a crash) if the ensemble ever selected it. *)
+let check_ratio_coverage label (Table rows) principle =
+  match principle with
+  | Ratio weighted ->
+      let weight_of = ratio_weight_of weighted in
+      rows |> Array.to_list
+      |> List.mapi (fun row_i row -> (row_i, row))
+      |> List.filter_map (fun (row_i, row) ->
+          if Array.length row > 0 && Array.for_all (fun i -> weight_of i = 0) row
+          then
+            Some
+              (RatioAllBlocked
+                 (Printf.sprintf
+                    "%s: table row %d (%s) has every element blocked (ratio \
+                     weight 0); selecting it could never produce a value"
+                    label row_i
+                    (row |> Array.to_list |> List.map string_of_int
+                    |> String.concat " ")))
+          else None)
+  | _ -> []
+
+let expected_value selection_principle (array : entrydelay element array) =
+  let ensemble = array |> Array.map (fun e -> entry_to_float (value_from_element e)) in
   (* calculates the expected (average) value produced by the selection principle over the ensemble *)
   let array_average arr =
     let sum = Array.fold_left ( +. ) 0.0 arr in
@@ -529,17 +568,23 @@ let expected_value selection_principle array =
   match selection_principle with
   | Alea -> array_average ensemble
   | Series -> array_average ensemble
-  | Ratio ratios ->
-      (* ratios are weights parallel to ensemble elements *)
-      let pairs = ratios |> List.map (fun (i, w) -> (ensemble.(i), w)) in
-      let weights = ratios |> List.map (fun (_, w) -> w) in
+  | Ratio weighted ->
+      (* each ensemble occurrence of LIST index [i] contributes its own
+         weight_of i copies to the pool - so an index repeated across the
+         ensemble (e.g. via table groups) counts that many times over *)
+      let weight_of = ratio_weight_of weighted in
+      let pairs =
+        array |> Array.to_list
+        |> List.map (fun { index; value } -> (entry_to_float value, weight_of index))
+      in
       let weighted_sum =
         List.fold_left
           (fun acc (v, w) -> acc +. (v *. float_of_int w))
           0.0 pairs
       in
-      let total_weight = List.fold_left ( + ) 0 weights in
-      weighted_sum /. float_of_int total_weight
+      let total_weight = List.fold_left (fun acc (_, w) -> acc + w) 0 pairs in
+      if total_weight = 0 then array_average ensemble
+      else weighted_sum /. float_of_int total_weight
   | Group _group_spec ->
       (* element selection is uniform over the ensemble regardless of group/rep mode *)
       array_average ensemble

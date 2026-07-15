@@ -34,26 +34,19 @@ type score_event = {
   dynamic : Dynamic.t;
 }
 
-(* Extract all values from any ensemble as a flat array *)
+(* Extract all elements from any ensemble as a flat array. Each element
+   keeps the LIST index it was resolved from (not just its value) so that
+   RATIO can weight by original LIST index rather than by ensemble
+   position - see [sel_init]'s [Ratio] branch. *)
 let ensemble_values_union ensemble =
   match ensemble with
-  | Ensemble groups ->
-      groups
-      |> List.map elements_from_indexed_ensemble
-      |> Array.concat
-      |> Array.map value_from_element
-  | SingleGroup elm ->
-      elm |> elements_from_indexed_ensemble |> Array.map value_from_element
+  | Ensemble groups -> groups |> List.map elements_from_indexed_ensemble |> Array.concat
+  | SingleGroup elm -> elm |> elements_from_indexed_ensemble
 
 let ensemble_values_no_union ensemble =
   match ensemble with
-  | Ensemble groups ->
-      groups
-      |> List.map (fun x ->
-          x |> elements_from_indexed_ensemble |> Array.map value_from_element)
-  | SingleGroup g ->
-      g |> elements_from_indexed_ensemble |> Array.map value_from_element
-      |> fun x -> [ x ]
+  | Ensemble groups -> groups |> List.map elements_from_indexed_ensemble
+  | SingleGroup g -> [ g |> elements_from_indexed_ensemble ]
 
 (* do the combination case *)
 (* ---- Pure stateful selector ---- *)
@@ -68,17 +61,28 @@ type 'a sel_state =
   | STendency of 'a tendency_state
   | SSequence of 'a sequence_state
 
-let sel_init (principle : selection_principle) (n : int) (arr : 'a array) :
-    'a sel_state =
+(* [arr] carries each element's original LIST index alongside its value, so
+   that [Ratio]'s weights (declared per LIST index, see [ratio_weight_of])
+   can be applied to whatever actually made it into this ensemble - callers
+   with no LIST/ENSEMBLE stage of their own (e.g. the synthetic density
+   range) just wrap their plain array with [elements_of_array] first. *)
+let sel_init (principle : selection_principle) (n : int)
+    (arr : 'a element array) : 'a sel_state =
+  let values = Array.map value_from_element arr in
   match principle with
-  | Alea -> SAlea (alea_init arr)
-  | Series -> SSeries (series_init arr)
-  | Ratio rs ->
-      SRatio (ratio_init (List.map (fun (i, cnt) -> (arr.(i), cnt)) rs))
-  | Group gs -> SGroup (group_init arr gs)
-  | Tendency spec -> STendency (tendency_init ~count:n arr spec)
+  | Alea -> SAlea (alea_init values)
+  | Series -> SSeries (series_init values)
+  | Ratio weighted ->
+      let weight_of = ratio_weight_of weighted in
+      let pool =
+        arr |> Array.to_list
+        |> List.map (fun { index; value } -> (value, weight_of index))
+      in
+      SRatio (ratio_init pool)
+  | Group gs -> SGroup (group_init values gs)
+  | Tendency spec -> STendency (tendency_init ~count:n values spec)
   | Sequence indices ->
-      SSequence (sequence_init (List.map (fun i -> arr.(i)) indices))
+      SSequence (sequence_init (List.map (fun i -> values.(i)) indices))
 
 let sel_draw : 'a sel_state -> 'a * 'a sel_state = function
   | SAlea s ->
@@ -405,7 +409,7 @@ let calculate_layer_hierarchical ~n_events ~hierarchy ~instr_arr
       instr_state = sel_init instr_principle n_events instr_arr;
       perf_state = sel_init perf_principle n_events perf_arr;
       dyn_state = sel_init dyn_principle n_events dyn_arr;
-      instr_arr;
+      instr_arr = Array.map value_from_element instr_arr;
     }
   in
   match density with
@@ -422,7 +426,11 @@ let calculate_layer_hierarchical ~n_events ~hierarchy ~instr_arr
       in
       protos_to_events filled
   | Autonomous { low; high; selection_principle } ->
-      let dens_arr = Array.init (high - low + 1) (fun i -> low + i) in
+      (* synthetic range, never went through LIST/TABLE/ENSEMBLE, so its own
+         position already is its "list index" *)
+      let dens_arr =
+        Array.init (high - low + 1) (fun i -> low + i) |> elements_of_array
+      in
       let per_dyn_order = hierarchy |> List.filter (fun e -> e <> Ins) in
       let _, _, groups =
         List.fold_left
@@ -490,6 +498,7 @@ let generate_score_hierarchical ~variant_duration ~instrument_ensemble
             ~dyn_arr ~dyn_principle ~density)
 
 let build_score cfg =
+  Random.init cfg.seed;
   let instr_to_string (Instrument { instrument = InstrumentName n; _ }) = n in
   let ed_to_string (Entrydelay f) = Printf.sprintf "%.3f" f in
   let instr_ensemble =
@@ -506,11 +515,8 @@ let build_score cfg =
         construct_ensemble ~label:"entrydelay" ~to_string:ed_to_string
           cfg.ed_list cfg.ed_table EnsembleGroupSeries 1
   in
-  let (ParameterList instr_list) = cfg.instr_list in
-  let perf_list =
-    extract_performances_from_instruments (Array.to_list instr_list)
-  in
-  let dyn_list = extract_dynamics_from_instruments (Array.to_list instr_list) in
+  let perf_list = cfg.perf_list in
+  let dyn_list = cfg.dyn_list in
   let perf_ensemble =
     match cfg.performance_combination with
     | Combination ->

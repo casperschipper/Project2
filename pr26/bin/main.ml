@@ -82,15 +82,26 @@ let basic_test () =
           ]
       in
       let dur_table = of_nested_list [ [ 0; 1; 2 ]; [ 3; 4 ]; [ 0; 1; 2; 3; 4 ] ] in
+      let dyn_list =
+        ParameterList (Dynamic_modes.elements default_dynamics |> Array.of_list)
+      in
+      (* master performance list: every mode used by any instrument (sorted:
+         bowing=0, normal=1, plucking=2) *)
+      let perf_list =
+        ParameterList
+          (Performance_modes.elements
+             (Performance_modes.of_list [ normal; pluck; bow ])
+          |> Array.of_list)
+      in
       let result =
         Validated.join_v
           ((fun ed_list dur_list d hier ->
-             mk_structure_formula ~variant_duration:180.0 ~instr_list
+             mk_structure_formula ~seed:2 ~variant_duration:180.0 ~instr_list
                ~instr_table ~instr_ensemble_group_selection:EnsembleGroupSeries
                ~number_of_instrument_groups:3 ~ed_list ~ed_table
-               ~ent_ensemble_group_selection:EnsembleGroupSeries
+               ~ent_ensemble_group_selection:EnsembleGroupSeries ~perf_list
                ~performance_table
-               ~perf_ensemble_group_selection:EnsembleGroupSeries
+               ~perf_ensemble_group_selection:EnsembleGroupSeries ~dyn_list
                ~dynamics_table ~dyn_ensemble_group_selection:EnsembleGroupSeries
                ~entrydelay_combination:NoCombination ~instrument_principle:Alea
                ~entrydelay_principle:Series ~performance_principle:Alea
@@ -105,7 +116,7 @@ let basic_test () =
           <$> mk_par_list mk_entrydelay
                 [ 0.1; 0.2; 0.3; 1.0; 2.0; 3.0; 2.0; 5.0 ]
           <+> mk_par_list mk_duration [ 0.25; 0.5; 1.0; 2.0; 4.0 ]
-          <+> mk_autonomous ~tr:12 ~low:1 ~high:3 ~selection_principle:Series
+          <+> mk_autonomous ~low:1 ~high:3 ~selection_principle:Series
           <+> mk_hierarchy [ Dyn; Ins; Per ])
       in
       match result with
@@ -115,7 +126,4 @@ let basic_test () =
           write_score "score.projekt2" instrs layers;
           print_endline "Score written to score.projekt2")
 
-let () =
-  (* some seed *)
-  ignore (Random.init 2);
-  basic_test ()
+let () = basic_test ()
