@@ -682,7 +682,7 @@ module Parse = struct
       let* args = require_field name principles in
       let* ens_args = require_field "ensemble" args in
       let* ens = parse_ensemble_group_selection ens_args in
-      let* samp_args = require_field "sample" args in
+      let* samp_args = require_field "order" args in
       let* samp = parse_principle ?resolve_ratio_index samp_args in
       Ok (ens, samp)
     in
@@ -721,7 +721,7 @@ module Parse = struct
       let* args = require_field "duration" principles in
       let* ens_args = require_field "ensemble" args in
       let* ens = parse_ensemble_group_selection ens_args in
-      let* samp_args = require_field "sample" args in
+      let* samp_args = require_field "order" args in
       let* samp =
         parse_principle
           ~resolve_ratio_index:

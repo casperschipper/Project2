@@ -105,7 +105,7 @@
 
 
   (principles
-    (instrument (ensemble series) (sample series)) ;; two selection principles, one for the ensemble, one for the actual score constructions from the ensemble
+    (instrument (ensemble series) (order series)) ;; two selection principles, one for the ensemble, one for the actual score constructions from the ensemble
     ;; entrydelay list is (0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8); ratio pairs may
     ;; give either the list index or the actual value (mixed here to
     ;; demonstrate both) - every index must get a nonzero weight in at
@@ -113,7 +113,7 @@
     ;; never produce a value once selected
     (entrydelay
       (ensemble series)
-      (sample
+      (order
         ;; 0   1   2   3   4   5   6   7
         ;;(0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8)
         (ratio ((0 1) (1 3) (2 1) (3 5) (4 2) (5 1) (6 1) (7 1)))))
@@ -121,16 +121,16 @@
     ;; gets its own independently-drawn performance mode (MOD-PERF = 1)
     (performance
       (ensemble alea)
-      (sample alea)
+      (order alea)
       (mode per-tone))
     ;; dynamics stays chord-wide: one dynamic shared by every tone in the
     ;; chord (MOD-DYN = 0)
-    (dynamics (ensemble series) (sample series) (mode per-chord))
+    (dynamics (ensemble series) (order series) (mode per-chord))
     ;; DUR-ENTRY = 0 (independent), MOD-DUR = per-tone: every tone in a
     ;; chord gets its own duration, unconstrained by the entry delay
     (duration
       (ensemble series)
-      (sample series)
+      (order series)
       (relation (independent per-tone))))
 
   (combination
