@@ -11,6 +11,9 @@ type note = {
   performance : Performance.t;
   dynamic : Dynamic.t;
   duration : duration;
+  (* [false] iff this duration was an [Impossible] fallback: no candidate
+     actually satisfied the duration/entry-delay relation. *)
+  duration_ok : bool;
 }
 
 (* One instrument's contribution at one timepoint. [performance]/[dynamic]/
@@ -96,35 +99,44 @@ let sel_draw : 'a sel_state -> 'a * 'a sel_state = function
       let v, s' = sequence_draw s in
       (get_value v, SSequence s')
 
-let sel_draw_pred (p : 'a -> bool) : 'a sel_state -> 'a * 'a sel_state =
-  function
+(* Tagged variant of a predicate-conditioned draw: callers that need to know
+   whether the hierarchy's constraint could actually be satisfied (e.g. to
+   flag an "impossible" duration in the score) can inspect the
+   [selection_result] tag; callers that don't care just [get_value] it. *)
+let sel_draw_pred_tagged (p : 'a -> bool) :
+    'a sel_state -> 'a selection_result * 'a sel_state = function
   | SAlea s ->
       let v, s' = alea_draw_predicate p s in
-      (get_value v, SAlea s')
+      (v, SAlea s')
   | SSeries s ->
       let v, s' = series_draw_predicate p s in
-      (get_value v, SSeries s')
+      (v, SSeries s')
   | SRatio s ->
       let v, s' = ratio_draw_predicate p s in
-      (get_value v, SRatio s')
+      (v, SRatio s')
   | SGroup s ->
       let v, s' = group_draw_predicate p s in
-      (get_value v, SGroup s')
+      (v, SGroup s')
   | STendency s ->
       (* Sample from the predicate-filtered array within the current window,
          then advance the state to the next window position. *)
       let (TendencyState { arr; lo; hi; _ }) = s in
       let filtered = arr |> Array.to_list |> List.filter p |> Array.of_list in
       let v =
-        if Array.length filtered = 0 then tendency_sample arr lo hi
-        else tendency_sample filtered lo hi
+        if Array.length filtered = 0 then Impossible (tendency_sample arr lo hi)
+        else Value (tendency_sample filtered lo hi)
       in
       let _, s' = tendency_draw s in
       (v, STendency s')
   | SSequence s ->
       (* Sequence has no predicate mechanism; advance freely. *)
       let v, s' = sequence_draw s in
-      (get_value v, SSequence s')
+      (v, SSequence s')
+
+let sel_draw_pred (p : 'a -> bool) : 'a sel_state -> 'a * 'a sel_state =
+ fun state ->
+  let v, state' = sel_draw_pred_tagged p state in
+  (get_value v, state')
 
 (** Draw [n] values from [arr] using [principle], threading a single state
     through all draws (so e.g. [Series]/[Sequence] exhaust their options before
@@ -164,16 +176,21 @@ let sel_advance_window : 'a sel_state -> 'a sel_state = function
    entries sharing an autonomous-density timepoint, or several tones within
    one entry) while only moving each tendency mask's window once per
    timepoint, via a single later [sel_advance_window] call. *)
-let sel_sample_pred (p : 'a -> bool) : 'a sel_state -> 'a * 'a sel_state =
-  function
+let sel_sample_pred_tagged (p : 'a -> bool) :
+    'a sel_state -> 'a selection_result * 'a sel_state = function
   | STendency (TendencyState { arr; lo; hi; _ } as s) ->
       let filtered = arr |> Array.to_list |> List.filter p |> Array.of_list in
       let v =
-        if Array.length filtered = 0 then tendency_sample arr lo hi
-        else tendency_sample filtered lo hi
+        if Array.length filtered = 0 then Impossible (tendency_sample arr lo hi)
+        else Value (tendency_sample filtered lo hi)
       in
       (v, STendency s)
-  | st -> sel_draw_pred p st
+  | st -> sel_draw_pred_tagged p st
+
+let sel_sample_pred (p : 'a -> bool) : 'a sel_state -> 'a * 'a sel_state =
+ fun state ->
+  let v, state' = sel_sample_pred_tagged p state in
+  (get_value v, state')
 
 let calculate_number_of_events variant_duration entry_delay_principle
     entry_delay_ensemble =
@@ -200,6 +217,9 @@ type proto = {
   performance : Performance.t tone_value option;
   dynamic : Dynamic.t tone_value option;
   duration : duration tone_value option;
+  (* [false] iff no candidate duration actually satisfied the duration/
+     entry-delay relation and this tone's value is an [Impossible] fallback. *)
+  duration_ok : bool tone_value option;
 }
 
 let empty_proto =
@@ -210,6 +230,7 @@ let empty_proto =
     performance = None;
     dynamic = None;
     duration = None;
+    duration_ok = None;
   }
 
 (* States threaded through the hierarchy fold — one per parameter hierarchy
@@ -241,22 +262,32 @@ let advance_all_windows states =
    instrument, and hence chordsize, is required to precede any per-tone
    parameter - enforced at formula-load time by
    [Structure_formula.mk_structure_formula]'s per-tone-ordering check). *)
-let resolve_tone_param mode n_tones pred state =
+(* Same as [resolve_tone_param], but also reports, per tone, whether its
+   value actually satisfied [pred] (vs. being an [Impossible] fallback) - so
+   a caller that cares (duration, re: the entry-delay relation) can flag it,
+   while one that doesn't (performance, dynamics) just ignores the flags. *)
+let resolve_tone_param_tagged mode n_tones pred state =
   match mode with
   | PerChord ->
-      let v, state' = sel_sample_pred pred state in
-      (Shared v, state')
+      let v, state' = sel_sample_pred_tagged pred state in
+      let ok = match v with Value _ -> true | Impossible _ -> false in
+      (Shared (get_value v), Shared ok, state')
   | PerTone ->
       let n = Option.value n_tones ~default:1 in
-      let vs, state' =
+      let vs, oks, state' =
         List.init n (fun _ -> ())
         |> List.fold_left
-             (fun (acc, st) () ->
-               let v, st' = sel_sample_pred pred st in
-               (v :: acc, st'))
-             ([], state)
+             (fun (acc, oks_acc, st) () ->
+               let v, st' = sel_sample_pred_tagged pred st in
+               let ok = match v with Value _ -> true | Impossible _ -> false in
+               (get_value v :: acc, ok :: oks_acc, st'))
+             ([], [], state)
       in
-      (PerTone (List.rev vs), state')
+      (PerTone (List.rev vs), PerTone (List.rev oks), state')
+
+let resolve_tone_param mode n_tones pred state =
+  let values, _oks, state' = resolve_tone_param_tagged mode n_tones pred state in
+  (values, state')
 
 let duration_range_ok (AllowedDurations { min; max }) (Duration d) =
   min <= d && d <= max
@@ -360,12 +391,17 @@ let resolve_step ~perf_mode ~dyn_mode ~dur_relation (states, proto) elem =
                 Float.min ed max
             | None -> ed
           in
-          (states, { proto with duration = Some (Shared (Duration d)) })
+          ( states,
+            { proto with duration = Some (Shared (Duration d)); duration_ok = Some (Shared true) }
+          )
       | _ ->
           let mode = duration_tone_mode dur_relation in
           let pred = dur_pred_from ~instr_arr:states.instr_arr proto dur_relation in
-          let v, dur_state' = resolve_tone_param mode proto.nr_of_tones pred states.dur_state in
-          ({ states with dur_state = dur_state' }, { proto with duration = Some v }))
+          let v, oks, dur_state' =
+            resolve_tone_param_tagged mode proto.nr_of_tones pred states.dur_state
+          in
+          ( { states with dur_state = dur_state' },
+            { proto with duration = Some v; duration_ok = Some oks } ))
   | Per ->
       let pred =
         mode_pred_from_instrument ~instr_arr:states.instr_arr ~mem:Performance_modes.mem
@@ -455,6 +491,7 @@ let notes_of_proto time entrydelay proto =
   let perf = match proto.performance with Some tv -> tv | None -> assert false in
   let dyn = match proto.dynamic with Some tv -> tv | None -> assert false in
   let dur = match proto.duration with Some tv -> tv | None -> assert false in
+  let dur_ok = match proto.duration_ok with Some tv -> tv | None -> assert false in
   List.init n (fun i ->
       {
         time;
@@ -463,6 +500,7 @@ let notes_of_proto time entrydelay proto =
         performance = value_at perf i;
         dynamic = value_at dyn i;
         duration = value_at dur i;
+        duration_ok = value_at dur_ok i;
       })
 
 let entry_of_proto time entrydelay proto =
@@ -672,7 +710,13 @@ let note_problems constraint_map (note : note) =
           let (AllowedDurations { min; max }) = valid_durs in
           [ Printf.sprintf "duration %.3f (valid: %.3f-%.3f)" d min max ]
       in
-      perf_problem @ dyn_problem @ dur_problem
+      let dur_relation_problem =
+        if note.duration_ok then []
+        else
+          let (Duration d) = note.duration in
+          [ Printf.sprintf "duration %.3f could not satisfy the entry-delay relation (no valid candidate existed)" d ]
+      in
+      perf_problem @ dyn_problem @ dur_problem @ dur_relation_problem
 
 (* Aligns rows of already-stringified cells by padding each column to its
    widest value. Knows nothing about score events, so it can't drift out of

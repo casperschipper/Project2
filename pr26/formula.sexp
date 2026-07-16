@@ -9,11 +9,10 @@
 
   (dynamics (ppp pp p mf f ff fff))
 
-  ;; master list of every performance mode used by any instrument below;
-  ;; each instrument's own (performance (...)) must be a subset of this
+  ;; master list of every performance mode
   (performance (normal muted overtone1 pizzicato bowing))
 
-;; Note that we are using the direct names of the list above
+;; Note that we can instead of indexes, just use the names (also in intstrument defs)
   (performance-table
     (normal normal muted overtone1 pizzicato bowing)
     (normal muted overtone1)
@@ -53,6 +52,7 @@
     (0)
     (2 3))
 
+;; list entry delays
   (entrydelays (0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8))
 
 
@@ -64,9 +64,9 @@
   (durations (0.1 0.2 0.3 0.5 0.8))
 
   (duration-table
-    (0 1 2)
-    (3 4)
-    (0 1 2 3 4))
+    (0 1 2 3 4)
+    (2 3 4)
+    (0 1 2))
 
 
   (dynamics-table
@@ -135,14 +135,14 @@
   ;; in a chord gets its own duration, each independently constrained to be
   ;; no longer than the entry's (already-resolved, see hierarchy below) entry
   ;; delay
-  (duration-relation (shorter-than-entry per-tone))
+  (duration-relation (independent per-tone))
 
 ;; none means a layer per instrument group!
   (union none)
 
 ;; you can either have autonomous density, using a principle, or density defined by the instrument chord size.
 ;; If instrument is the density generator, it also becomes primary parameter in the hierarchy
-  (density (autonomous (low 1) (high 6) (principle series)))
+  (density (autonomous (low 1) (high 6) (principle (group (element series) (repetition series) (repetitions 1 4)))))
 
 ;; Ins precedes Per (per-tone) and Dur (per-tone, shorter-than-entry) so
 ;; chord size is known before either resolves; Ent precedes Dur so DUR-ENTRY

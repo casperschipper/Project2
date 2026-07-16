@@ -87,8 +87,9 @@ let series_draw_predicate p (SeriesState { initial; options }) =
     (* we pick the first possible option *)
     match pick_first p (x :: xs) with
     | Some v, left -> (Value v, SeriesState { initial; options = left })
-    (* no possible options, pick the first value, mark as impossible *)
-    | None, left -> (Impossible x, SeriesState { initial; options = left })
+    (* no possible options: drop x so the state still advances, instead of
+       getting stuck offering the same head forever *)
+    | None, _ -> (Impossible x, SeriesState { initial; options = xs })
   in
   match options with
   | x :: xs -> pick x xs
@@ -147,8 +148,9 @@ let ratio_draw_predicate p (RatioState { initial; options }) =
     (* we pick the first possible option *)
     match pick_first p (x :: xs) with
     | Some v, left -> (Value v, RatioState { initial; options = left })
-    (* no possible options, pick the first value, mark impossible *)
-    | None, left -> (Impossible x, RatioState { initial; options = left })
+    (* no possible options: drop x so the state still advances, instead of
+       getting stuck offering the same head forever *)
+    | None, _ -> (Impossible x, RatioState { initial; options = xs })
   in
   match options with
   | x :: xs -> pick x xs

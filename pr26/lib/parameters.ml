@@ -15,6 +15,22 @@ type entrydelay =
 
 type duration = Duration of float (* duration fo the tone *)
 
+type hierarchy_elem = Ins | Per | Dyn | Dur | Ent
+
+(* | Har
+  | Int
+*)
+type hierarchy = hierarchy_elem list
+
+let all_hierarchy_elems = [ Ins; Per; Dyn; Dur; Ent ]
+
+let hierarchy_elem_to_string = function
+  | Ins -> "Ins"
+  | Per -> "Per"
+  | Dyn -> "Dyn"
+  | Dur -> "Dur"
+  | Ent -> "Ent"
+
 type problem =
   | NegativeEntry of float
   | InvalidInstrumentName
@@ -25,6 +41,7 @@ type problem =
   | UnknownDynamic of string
   | InvalidPitchCompass
   | DuplicateHierarchy
+  | IncompleteHierarchy of hierarchy_elem list
   | InstrumentDensityRequiresInsFirst
   | NegativeDuration of float
   | InvalidDurationRange of string
@@ -32,17 +49,16 @@ type problem =
   | RatioAllBlocked of string
   | PerToneRequiresInsFirst of string
 
-type hierarchy_elem = Ins | Per | Dyn | Dur | Ent
-
-(* | Har
-  | Int
-*)
-type hierarchy = hierarchy_elem list
-
+(* The hierarchy must be a permutation of [all_hierarchy_elems]: every
+   parameter controls exactly one resolution step, so a missing one would
+   leave that parameter unresolved (see e.g. [notes_of_proto]'s [assert
+   false] in score_generation.ml), and a repeated one is meaningless. *)
 let mk_hierarchy (lst : hierarchy_elem list) =
   let deduped = List.sort_uniq compare lst in
-  if List.length deduped = List.length lst then Ok lst
-  else Error DuplicateHierarchy
+  if List.length deduped <> List.length lst then Error DuplicateHierarchy
+  else
+    let missing = all_hierarchy_elems |> List.filter (fun e -> not (List.mem e lst)) in
+    match missing with [] -> Ok lst | _ -> Error (IncompleteHierarchy missing)
 
 let display_problem p =
   match p with
@@ -56,6 +72,9 @@ let display_problem p =
   | UnknownDynamic s -> "unknown dynamic mode: " ^ s
   | InvalidPitchCompass -> "pitch compass minimum must not exceed maximum"
   | DuplicateHierarchy -> "each hierarchy level may only appear once"
+  | IncompleteHierarchy missing ->
+      Printf.sprintf "hierarchy is missing: %s"
+        (missing |> List.map hierarchy_elem_to_string |> String.concat ", ")
   | InstrumentDensityRequiresInsFirst ->
       "InstrumentDensity requires Ins to be first in the hierarchy"
   | NegativeDuration x ->

@@ -27,7 +27,8 @@ type tone_mode = PerChord | PerTone
 
 type duration_mode =
   | DurIndependent of tone_mode (* mode 0 *)
-  | DurEqualsEntry (* mode 1, implies PerChord (MOD-DUR must be 0 per the manual) *)
+  | DurEqualsEntry
+    (* mode 1, implies PerChord (MOD-DUR must be 0 per the manual) *)
   | DurShorterThanEntry of tone_mode
 (* If DUR-ENTRY = 2, valid lists must be given and valid ensembles
 must be formed for both parameters. If ENTRY DELAY comes first, elements
@@ -100,13 +101,12 @@ let mk portion smin smax emin emax =
 let mk_structure_formula ~seed ~variant_duration ~instr_list ~instr_table
     ~instr_ensemble_group_selection ~ed_list ~ed_table
     ~ent_ensemble_group_selection ~number_of_instrument_groups ~perf_list
-    ~performance_table ~perf_ensemble_group_selection ~dyn_list
-    ~dynamics_table ~dyn_ensemble_group_selection ~entrydelay_combination
-    ~instrument_principle ~entrydelay_principle ~performance_principle
-    ~performance_combination ~performance_mode ~dynamics_principle
-    ~dynamics_combination ~dynamics_mode ~union ~hierarchy ~density ~dur_list
-    ~dur_table ~duration_combination ~dur_ensemble_group_selection
-    ~duration_relation_mode ~duration_principle =
+    ~performance_table ~perf_ensemble_group_selection ~dyn_list ~dynamics_table
+    ~dyn_ensemble_group_selection ~entrydelay_combination ~instrument_principle
+    ~entrydelay_principle ~performance_principle ~performance_combination
+    ~performance_mode ~dynamics_principle ~dynamics_combination ~dynamics_mode
+    ~union ~hierarchy ~density ~dur_list ~dur_table ~duration_combination
+    ~dur_ensemble_group_selection ~duration_relation_mode ~duration_principle =
   let hierarchy_errors =
     match (density, hierarchy) with
     | InstrumentDensity, first :: _ ->
@@ -143,16 +143,15 @@ let mk_structure_formula ~seed ~variant_duration ~instr_list ~instr_table
     @
     match density with
     | Autonomous { low; high; selection_principle = Ratio _ as p } ->
-        let dens_table =
-          Table [| Array.init (high - low + 1) (fun i -> i) |]
-        in
+        let dens_table = Table [| Array.init (high - low + 1) (fun i -> i) |] in
         check_ratio_coverage "density" dens_table p
     | _ -> []
   in
   (* chordsize (number of tones) is only known once an instrument has been
      picked, so a per-tone parameter needs Ins to have already run *)
   let hierarchy_index elem =
-    hierarchy |> List.mapi (fun i e -> (i, e))
+    hierarchy
+    |> List.mapi (fun i e -> (i, e))
     |> List.find_opt (fun (_, e) -> e = elem)
     |> Option.map fst
   in
@@ -328,8 +327,7 @@ module Parse = struct
                 | Some (i, _) -> Ok i
                 | None -> lift (Error (unknown s)))
             | None ->
-                fail (Printf.sprintf "expected int, float, or name, got %S" s)
-            ))
+                fail (Printf.sprintf "expected int, float, or name, got %S" s)))
     | Sexp.List _ -> fail "expected atom for index or value"
 
   (* performance-table / dynamics-table entries may either be raw indexes into
@@ -341,7 +339,8 @@ module Parse = struct
     let parse_row = function
       | Sexp.List row_items ->
           let* ints =
-            row_items |> List.map (resolve_index_or_name unknown names)
+            row_items
+            |> List.map (resolve_index_or_name unknown names)
             |> sequence
           in
           Ok (Array.of_list ints)
@@ -637,7 +636,8 @@ module Parse = struct
       | [ Sexp.List inner ] ->
           let* names = parse_atoms inner in
           Ok
-            (ParameterList (Array.of_list (List.map Performance.of_string names)))
+            (ParameterList
+               (Array.of_list (List.map Performance.of_string names)))
       | _ -> fail "performance expects (performance (...))"
     in
     let perf_names =
