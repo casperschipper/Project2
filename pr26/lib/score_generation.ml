@@ -3,7 +3,7 @@ open Structure_formula
 open Selection
 open Tools
 
-(* A resolved tone-within-a-chord: fully-specified, no options. *)
+(* A resolved note-within-a-chord: fully-specified, no options. *)
 type note = {
   time : float;
   entrydelay : float;
@@ -18,7 +18,7 @@ type note = {
 
 (* One instrument's contribution at one timepoint. [performance]/[dynamic]/
    [duration] are [Some] when that parameter was chord-wide (shared across
-   every note here), [None] when it was resolved per-tone instead (in which
+   every note here), [None] when it was resolved per-note instead (in which
    case each [note] already carries its own independently-resolved value). *)
 type entry = {
   time : float;
@@ -173,7 +173,7 @@ let sel_advance_window : 'a sel_state -> 'a sel_state = function
 (* Same as [sel_draw_pred], but for [Tendency] this samples within the
    current window without moving it (mirrors how [sel_sample] relates to
    [sel_draw]). Used to draw several values within one timepoint (e.g. several
-   entries sharing an autonomous-density timepoint, or several tones within
+   entries sharing an autonomous-density timepoint, or several notes within
    one entry) while only moving each tendency mask's window once per
    timepoint, via a single later [sel_advance_window] call. *)
 let sel_sample_pred_tagged (p : 'a -> bool) :
@@ -199,34 +199,34 @@ let calculate_number_of_events variant_duration entry_delay_principle
 
 (* ---- Hierarchical entry resolution ---- *)
 
-(* A parameter that can be chord-wide or per-tone (MOD-DUR/MOD-DYN/MOD-PERF)
-   ends up either as one [Shared] value copied to every tone, or as one
-   independently-resolved value [PerTone] per tone. *)
-type 'a tone_value = Shared of 'a | PerTone of 'a list
+(* A parameter that can be chord-wide or per-note (MOD-DUR/MOD-DYN/MOD-PERF)
+   ends up either as one [Shared] value copied to every note, or as one
+   independently-resolved value [PerNote] per note. *)
+type 'a note_value = Shared of 'a | PerNote of 'a list
 
-let value_at tone_values i =
-  match tone_values with Shared v -> v | PerTone vs -> List.nth vs i
+let value_at note_values i =
+  match note_values with Shared v -> v | PerNote vs -> List.nth vs i
 
 (* In-progress entry while the hierarchy fold runs: everything starts [None]
-   and gets filled in hierarchy order. [nr_of_tones] is filled as soon as
+   and gets filled in hierarchy order. [nr_of_notes] is filled as soon as
    [Ins] runs (chordsize is a property of the picked instrument). *)
 type proto = {
   entrydelay : entrydelay option;
   instrument : instrument option;
-  nr_of_tones : int option;
-  performance : Performance.t tone_value option;
-  dynamic : Dynamic.t tone_value option;
-  duration : duration tone_value option;
+  nr_of_notes : int option;
+  performance : Performance.t note_value option;
+  dynamic : Dynamic.t note_value option;
+  duration : duration note_value option;
   (* [false] iff no candidate duration actually satisfied the duration/
-     entry-delay relation and this tone's value is an [Impossible] fallback. *)
-  duration_ok : bool tone_value option;
+     entry-delay relation and this note's value is an [Impossible] fallback. *)
+  duration_ok : bool note_value option;
 }
 
 let empty_proto =
   {
     entrydelay = None;
     instrument = None;
-    nr_of_tones = None;
+    nr_of_notes = None;
     performance = None;
     dynamic = None;
     duration = None;
@@ -256,24 +256,24 @@ let advance_all_windows states =
     dur_state = sel_advance_window states.dur_state;
   }
 
-(* Resolve one chord-wide-or-per-tone parameter at its hierarchy position:
-   [PerChord] draws once and shares it across every tone; [PerTone] draws
-   independently once per tone. [n_tones] must already be known (an
-   instrument, and hence chordsize, is required to precede any per-tone
+(* Resolve one chord-wide-or-per-note parameter at its hierarchy position:
+   [PerChord] draws once and shares it across every note; [PerNote] draws
+   independently once per note. [n_notes] must already be known (an
+   instrument, and hence chordsize, is required to precede any per-note
    parameter - enforced at formula-load time by
-   [Structure_formula.mk_structure_formula]'s per-tone-ordering check). *)
-(* Same as [resolve_tone_param], but also reports, per tone, whether its
+   [Structure_formula.mk_structure_formula]'s per-note-ordering check). *)
+(* Same as [resolve_note_param], but also reports, per note, whether its
    value actually satisfied [pred] (vs. being an [Impossible] fallback) - so
    a caller that cares (duration, re: the entry-delay relation) can flag it,
    while one that doesn't (performance, dynamics) just ignores the flags. *)
-let resolve_tone_param_tagged mode n_tones pred state =
+let resolve_note_param_tagged mode n_notes pred state =
   match mode with
   | PerChord ->
       let v, state' = sel_sample_pred_tagged pred state in
       let ok = match v with Value _ -> true | Impossible _ -> false in
       (Shared (get_value v), Shared ok, state')
-  | PerTone ->
-      let n = Option.value n_tones ~default:1 in
+  | PerNote ->
+      let n = Option.value n_notes ~default:1 in
       let vs, oks, state' =
         List.init n (fun _ -> ())
         |> List.fold_left
@@ -283,10 +283,10 @@ let resolve_tone_param_tagged mode n_tones pred state =
                (get_value v :: acc, ok :: oks_acc, st'))
              ([], [], state)
       in
-      (PerTone (List.rev vs), PerTone (List.rev oks), state')
+      (PerNote (List.rev vs), PerNote (List.rev oks), state')
 
-let resolve_tone_param mode n_tones pred state =
-  let values, _oks, state' = resolve_tone_param_tagged mode n_tones pred state in
+let resolve_note_param mode n_notes pred state =
+  let values, _oks, state' = resolve_note_param_tagged mode n_notes pred state in
   (values, state')
 
 let duration_range_ok (AllowedDurations { min; max }) (Duration d) =
@@ -296,7 +296,7 @@ let duration_range_ok (AllowedDurations { min; max }) (Duration d) =
    performance/dynamic/duration has already been resolved for this entry (if
    any) - the same "constrain on what's already chosen" idea used
    symmetrically by [Per]/[Dyn]/[Dur] below when [Ins] hasn't run yet. For a
-   per-tone value, *every* tone's value must fit the instrument (EMR-3
+   per-note value, *every* note's value must fit the instrument (EMR-3
    7.3: "if the durations in the chord are equal, instruments can only be
    selected which can play the selected duration; if not the same, this
    question is posed for each duration and instrument"). *)
@@ -305,19 +305,19 @@ let ins_pred_from proto =
     match proto.performance with
     | None -> true
     | Some (Shared p) -> Performance_modes.mem p modes
-    | Some (PerTone ps) -> List.for_all (fun p -> Performance_modes.mem p modes) ps
+    | Some (PerNote ps) -> List.for_all (fun p -> Performance_modes.mem p modes) ps
   in
   let from_dyn (Instrument { dynamics = modes; _ }) =
     match proto.dynamic with
     | None -> true
     | Some (Shared d) -> Dynamic_modes.mem d modes
-    | Some (PerTone ds) -> List.for_all (fun d -> Dynamic_modes.mem d modes) ds
+    | Some (PerNote ds) -> List.for_all (fun d -> Dynamic_modes.mem d modes) ds
   in
   let from_dur (Instrument { durations; _ }) =
     match proto.duration with
     | None -> true
     | Some (Shared d) -> duration_range_ok durations d
-    | Some (PerTone ds) -> List.for_all (duration_range_ok durations) ds
+    | Some (PerNote ds) -> List.for_all (duration_range_ok durations) ds
   in
   fun i -> from_perf i && from_dyn i && from_dur i
 
@@ -346,7 +346,7 @@ let dur_pred_from ~instr_arr proto dur_relation =
       fun (Duration d as dv) -> range_pred dv && d <= ed
   | _ -> range_pred
 
-let duration_tone_mode = function
+let duration_note_mode = function
   | DurIndependent m -> m
   | DurEqualsEntry -> PerChord
   | DurShorterThanEntry m -> m
@@ -357,7 +357,7 @@ let ed_pred_from proto dur_relation =
   match (dur_relation, proto.duration) with
   | DurShorterThanEntry _, Some (Shared (Duration d)) ->
       fun (Entrydelay ed) -> ed >= d
-  | DurShorterThanEntry _, Some (PerTone ds) ->
+  | DurShorterThanEntry _, Some (PerNote ds) ->
       let max_d = ds |> List.map (fun (Duration d) -> d) |> List.fold_left Float.max 0.0 in
       fun (Entrydelay ed) -> ed >= max_d
   | _ -> Fun.const true
@@ -373,7 +373,7 @@ let resolve_step ~perf_mode ~dyn_mode ~dur_relation (states, proto) elem =
       let (Instrument { chordsize = Chordsize { minsize; maxsize }; _ }) = v in
       let n = if minsize = maxsize then minsize else Random.int (maxsize - minsize + 1) + minsize in
       ( { states with instr_state = instr_state' },
-        { proto with instrument = Some v; nr_of_tones = Some n } )
+        { proto with instrument = Some v; nr_of_notes = Some n } )
   | Ent -> (
       match (dur_relation, proto.duration) with
       | DurEqualsEntry, Some (Shared (Duration d)) ->
@@ -395,10 +395,10 @@ let resolve_step ~perf_mode ~dyn_mode ~dur_relation (states, proto) elem =
             { proto with duration = Some (Shared (Duration d)); duration_ok = Some (Shared true) }
           )
       | _ ->
-          let mode = duration_tone_mode dur_relation in
+          let mode = duration_note_mode dur_relation in
           let pred = dur_pred_from ~instr_arr:states.instr_arr proto dur_relation in
           let v, oks, dur_state' =
-            resolve_tone_param_tagged mode proto.nr_of_tones pred states.dur_state
+            resolve_note_param_tagged mode proto.nr_of_notes pred states.dur_state
           in
           ( { states with dur_state = dur_state' },
             { proto with duration = Some v; duration_ok = Some oks } ))
@@ -408,7 +408,7 @@ let resolve_step ~perf_mode ~dyn_mode ~dur_relation (states, proto) elem =
           proto.instrument
           (fun (Instrument { performance; _ }) -> performance)
       in
-      let v, perf_state' = resolve_tone_param perf_mode proto.nr_of_tones pred states.perf_state in
+      let v, perf_state' = resolve_note_param perf_mode proto.nr_of_notes pred states.perf_state in
       ({ states with perf_state = perf_state' }, { proto with performance = Some v })
   | Dyn ->
       let pred =
@@ -416,7 +416,7 @@ let resolve_step ~perf_mode ~dyn_mode ~dur_relation (states, proto) elem =
           proto.instrument
           (fun (Instrument { dynamics; _ }) -> dynamics)
       in
-      let v, dyn_state' = resolve_tone_param dyn_mode proto.nr_of_tones pred states.dyn_state in
+      let v, dyn_state' = resolve_note_param dyn_mode proto.nr_of_notes pred states.dyn_state in
       ({ states with dyn_state = dyn_state' }, { proto with dynamic = Some v })
 
 let resolve_entry ~hierarchy ~perf_mode ~dyn_mode ~dur_relation states =
@@ -450,21 +450,21 @@ let resolve_layer_instrument_density ~n_events ~hierarchy ~perf_mode ~dyn_mode
     keeps resolving entries (each independently picking its own instrument,
     conditioned the same way as any other entry) until the target is
     reached. If the last pick's chordsize would overshoot the target, its
-    extra voices are cut - [nr_of_tones] is capped down to however many are
+    extra voices are cut - [nr_of_notes] is capped down to however many are
     still needed, so the group's total lands exactly on the target. (Any
-    per-tone performance/dynamic/duration values already drawn for the
+    per-note performance/dynamic/duration values already drawn for the
     trimmed voices are simply never read - [notes_of_proto] only builds as
-    many notes as [nr_of_tones] says.) *)
+    many notes as [nr_of_notes] says.) *)
 let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
     ~dur_relation ~low ~high ~selection_principle states0 =
   let dens_arr = Array.init (high - low + 1) (fun i -> low + i) |> elements_of_array in
   let fill_group states target =
     let rec loop states total acc =
       let states', proto = resolve_entry ~hierarchy ~perf_mode ~dyn_mode ~dur_relation states in
-      let n = Option.value proto.nr_of_tones ~default:1 in
+      let n = Option.value proto.nr_of_notes ~default:1 in
       let total' = total + n in
       if total' >= target then
-        let proto' = { proto with nr_of_tones = Some (n - (total' - target)) } in
+        let proto' = { proto with nr_of_notes = Some (n - (total' - target)) } in
         (List.rev (proto' :: acc), states')
       else loop states' total' (proto :: acc)
     in
@@ -487,7 +487,7 @@ let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
 
 let notes_of_proto time entrydelay proto =
   let instr = match proto.instrument with Some (Instrument { instrument; _ }) -> instrument | None -> assert false in
-  let n = Option.value proto.nr_of_tones ~default:1 in
+  let n = Option.value proto.nr_of_notes ~default:1 in
   let perf = match proto.performance with Some tv -> tv | None -> assert false in
   let dyn = match proto.dynamic with Some tv -> tv | None -> assert false in
   let dur = match proto.duration with Some tv -> tv | None -> assert false in
@@ -505,7 +505,7 @@ let notes_of_proto time entrydelay proto =
 
 let entry_of_proto time entrydelay proto =
   let instr = match proto.instrument with Some (Instrument { instrument; _ }) -> instrument | None -> assert false in
-  let shared_only = function Some (Shared v) -> Some v | Some (PerTone _) | None -> None in
+  let shared_only = function Some (Shared v) -> Some v | Some (PerNote _) | None -> None in
   {
     time;
     entrydelay;

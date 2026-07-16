@@ -46,7 +46,7 @@ type problem =
   | InvalidDurationRange of string
   | ParseError of string
   | RatioAllBlocked of string
-  | PerToneRequiresInsFirst of string
+  | PerNoteRequiresInsFirst of string
 
 (* The hierarchy must be a permutation of [all_hierarchy_elems]: every
    parameter controls exactly one resolution step, so a missing one would
@@ -83,7 +83,7 @@ let display_problem p =
   | InvalidDurationRange msg -> msg
   | ParseError msg -> "parse error: " ^ msg
   | RatioAllBlocked msg -> msg
-  | PerToneRequiresInsFirst msg -> msg
+  | PerNoteRequiresInsFirst msg -> msg
 
 let entry_to_float (Entrydelay x) = x
 (* let value_to_float v = match v with Entry (Entrydelay x) -> x *)

@@ -117,23 +117,23 @@
         ;; 0   1   2   3   4   5   6   7
         ;;(0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8)
         (ratio ((0 1) (1 3) (2 1) (3 5) (4 2) (5 1) (6 1) (7 1)))))
-    ;; performance is per-tone here: within a multi-note chord, each tone
+    ;; performance is per-note here: within a multi-note chord, each note
     ;; gets its own independently-drawn performance mode (MOD-PERF = 1);
     ;; (ensemble combination) means performance reuses the instrument
     ;; ensemble's own groups instead of selecting its own
     (performance
       (ensemble combination)
       (order alea)
-      (mode per-tone))
-    ;; dynamics stays chord-wide: one dynamic shared by every tone in the
+      (mode per-note))
+    ;; dynamics stays chord-wide: one dynamic shared by every note in the
     ;; chord (MOD-DYN = 0)
     (dynamics (ensemble series) (order series) (mode per-chord))
-    ;; DUR-ENTRY = 0 (independent), MOD-DUR = per-tone: every tone in a
+    ;; DUR-ENTRY = 0 (independent), MOD-DUR = per-note: every note in a
     ;; chord gets its own duration, unconstrained by the entry delay
     (duration
       (ensemble series)
       (order series)
-      (relation (independent per-tone))))
+      (relation (independent per-note))))
 
 ;; none means a layer per instrument group!
   (union none)
@@ -142,7 +142,7 @@
 ;; If instrument is the density generator, it also becomes primary parameter in the hierarchy
   (density (autonomous (low 1) (high 6) (principle (group (element series) (repetition series) (repetitions 1 4)))))
 
-;; Ins precedes Per (per-tone) and Dur (per-tone, shorter-than-entry) so
+;; Ins precedes Per (per-note) and Dur (per-note, shorter-than-entry) so
 ;; chord size is known before either resolves; Ent precedes Dur so DUR-ENTRY
 ;; has an entry delay to constrain duration against.
   (hierarchy (Ins Per Dyn Ent Dur))
