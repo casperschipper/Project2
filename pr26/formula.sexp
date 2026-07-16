@@ -98,7 +98,10 @@
         ;;(section   1.0      (start 0.5 1.0)      (end 0.5 0.0)))
 
 
-  (number-of-instrument-groups 1) ;; this is a main parameter to handle the number of groups selected.
+  (number-of-instrument-groups 1) 
+  ;; this is a main parameter to handle the number of groups selected.
+  ;; only when other parameters are included in "combination", may they also get multiple groups.
+  ;; otherwise, the other parameters only use one group per layer in their ensemble
 
 
   (principles
@@ -123,19 +126,18 @@
     ;; dynamics stays chord-wide: one dynamic shared by every tone in the
     ;; chord (MOD-DYN = 0)
     (dynamics (ensemble series) (sample series) (mode per-chord))
-    (duration (ensemble series) (sample series)))
+    ;; DUR-ENTRY = 0 (independent), MOD-DUR = per-tone: every tone in a
+    ;; chord gets its own duration, unconstrained by the entry delay
+    (duration
+      (ensemble series)
+      (sample series)
+      (relation (independent per-tone))))
 
   (combination
     (entrydelay  none)
     (performance combination)
     (dynamics    none)
     (duration    none))
-
-  ;; DUR-ENTRY = 2 (duration <= entry delay), MOD-DUR = per-tone: every tone
-  ;; in a chord gets its own duration, each independently constrained to be
-  ;; no longer than the entry's (already-resolved, see hierarchy below) entry
-  ;; delay
-  (duration-relation (independent per-tone))
 
 ;; none means a layer per instrument group!
   (union none)

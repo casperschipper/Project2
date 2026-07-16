@@ -717,12 +717,22 @@ module Parse = struct
           (resolve_index_or_name (fun s -> UnknownDynamic s) dyn_names)
     in
     let* dynamics_mode = parse_principle_mode "dynamics" in
-    let* dur_ensemble_group_selection, duration_principle =
-      parse_param_principles "duration"
-        ~resolve_ratio_index:
-          (resolve_index_or_float
-             (fun s -> ParseError (Printf.sprintf "unknown duration %S" s))
-             dur_floats)
+    let* dur_ensemble_group_selection, duration_principle, duration_relation_mode =
+      let* args = require_field "duration" principles in
+      let* ens_args = require_field "ensemble" args in
+      let* ens = parse_ensemble_group_selection ens_args in
+      let* samp_args = require_field "sample" args in
+      let* samp =
+        parse_principle
+          ~resolve_ratio_index:
+            (resolve_index_or_float
+               (fun s -> ParseError (Printf.sprintf "unknown duration %S" s))
+               dur_floats)
+          samp_args
+      in
+      let* rel_args = require_field "relation" args in
+      let* rel = parse_duration_mode rel_args in
+      Ok (ens, samp, rel)
     in
     let* combination = require_field "combination" items in
     let* entrydelay_combination =
@@ -740,10 +750,6 @@ module Parse = struct
     let* duration_combination =
       let* args = require_field "duration" combination in
       parse_combination args
-    in
-    let* duration_relation_mode =
-      let* args = require_field "duration-relation" items in
-      parse_duration_mode args
     in
     let* union =
       let* args = require_field "union" items in

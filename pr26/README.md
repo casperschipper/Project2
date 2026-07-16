@@ -24,7 +24,6 @@ This uses the formula.sexp
 # Questions
 
 * Although not in the spec: would it be useful to have a "bypass hierarchy" option per parameter? So that apart from the "primary" parameter in the hierarchy, another can also be fully expressed? It may be helpful just to see what the selection principle would be like without the restrictions.
-* How do we implement the time point generation?
 * What is our policy on users having to provide dummy values? For example in harmony, where all "modes" need data, even if you always use only one mode, but also if entry=duration, then one of the users data is completely ignored. Apart from annoying, it may make it harder to read the structure formula. It also makes for "smelly" code when it is implemented like this.
 * Proposal for dur: entry delay values are required, if you choose entry=dur, then duration is skipped. Drawback is that values of dur cannot be easily used as entry delays (which might have been useful?)
 
