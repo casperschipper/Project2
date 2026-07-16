@@ -14,7 +14,6 @@ type entrydelay =
       float (* how much time passes from this event to the one that follows *)
 
 type duration = Duration of float (* duration fo the tone *)
-
 type hierarchy_elem = Ins | Per | Dyn | Dur | Ent
 
 (* | Har
@@ -57,7 +56,9 @@ let mk_hierarchy (lst : hierarchy_elem list) =
   let deduped = List.sort_uniq compare lst in
   if List.length deduped <> List.length lst then Error DuplicateHierarchy
   else
-    let missing = all_hierarchy_elems |> List.filter (fun e -> not (List.mem e lst)) in
+    let missing =
+      all_hierarchy_elems |> List.filter (fun e -> not (List.mem e lst))
+    in
     match missing with [] -> Ok lst | _ -> Error (IncompleteHierarchy missing)
 
 let display_problem p =
@@ -565,7 +566,8 @@ let check_ratio_coverage label (Table rows) principle =
       rows |> Array.to_list
       |> List.mapi (fun row_i row -> (row_i, row))
       |> List.filter_map (fun (row_i, row) ->
-          if Array.length row > 0 && Array.for_all (fun i -> weight_of i = 0) row
+          if
+            Array.length row > 0 && Array.for_all (fun i -> weight_of i = 0) row
           then
             Some
               (RatioAllBlocked
@@ -574,12 +576,14 @@ let check_ratio_coverage label (Table rows) principle =
                      weight 0); selecting it could never produce a value"
                     label row_i
                     (row |> Array.to_list |> List.map string_of_int
-                    |> String.concat " ")))
+                   |> String.concat " ")))
           else None)
   | _ -> []
 
 let expected_value selection_principle (array : entrydelay element array) =
-  let ensemble = array |> Array.map (fun e -> entry_to_float (value_from_element e)) in
+  let ensemble =
+    array |> Array.map (fun e -> entry_to_float (value_from_element e))
+  in
   (* calculates the expected (average) value produced by the selection principle over the ensemble *)
   let array_average arr =
     let sum = Array.fold_left ( +. ) 0.0 arr in
@@ -595,7 +599,8 @@ let expected_value selection_principle (array : entrydelay element array) =
       let weight_of = ratio_weight_of weighted in
       let pairs =
         array |> Array.to_list
-        |> List.map (fun { index; value } -> (entry_to_float value, weight_of index))
+        |> List.map (fun { index; value } ->
+            (entry_to_float value, weight_of index))
       in
       let weighted_sum =
         List.fold_left

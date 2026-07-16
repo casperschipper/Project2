@@ -616,9 +616,9 @@ let build_score cfg =
     | Combination ->
         construct_ensemble_combination ~label:"entrydelay"
           ~to_string:ed_to_string cfg.ed_list cfg.ed_table instr_ensemble
-    | NoCombination ->
+    | NoCombination sel ->
         construct_ensemble ~label:"entrydelay" ~to_string:ed_to_string
-          cfg.ed_list cfg.ed_table EnsembleGroupSeries 1
+          cfg.ed_list cfg.ed_table sel 1
   in
   let perf_list = cfg.perf_list in
   let dyn_list = cfg.dyn_list in
@@ -628,9 +628,9 @@ let build_score cfg =
         construct_ensemble_combination ~label:"performance"
           ~to_string:Performance.to_string perf_list cfg.performance_table
           instr_ensemble
-    | NoCombination ->
+    | NoCombination sel ->
         construct_ensemble ~label:"performance" ~to_string:Performance.to_string
-          perf_list cfg.performance_table EnsembleGroupSeries 1
+          perf_list cfg.performance_table sel 1
   in
   let dyn_ensemble =
     match cfg.dynamics_combination with
@@ -638,18 +638,18 @@ let build_score cfg =
         construct_ensemble_combination ~label:"dynamics"
           ~to_string:Dynamic.to_string dyn_list cfg.dynamics_table
           instr_ensemble
-    | NoCombination ->
+    | NoCombination sel ->
         construct_ensemble ~label:"dynamics" ~to_string:Dynamic.to_string
-          dyn_list cfg.dynamics_table EnsembleGroupSeries 1
+          dyn_list cfg.dynamics_table sel 1
   in
   let dur_ensemble =
     match cfg.duration_combination with
     | Combination ->
         construct_ensemble_combination ~label:"duration" ~to_string:dur_to_string
           cfg.dur_list cfg.dur_table instr_ensemble
-    | NoCombination ->
+    | NoCombination sel ->
         construct_ensemble ~label:"duration" ~to_string:dur_to_string cfg.dur_list
-          cfg.dur_table EnsembleGroupSeries 1
+          cfg.dur_table sel 1
   in
   generate_score_hierarchical ~variant_duration:cfg.variant_duration
     ~instrument_ensemble:instr_ensemble

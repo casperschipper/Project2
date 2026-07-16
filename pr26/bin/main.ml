@@ -98,19 +98,16 @@ let basic_test () =
           ((fun ed_list dur_list d hier ->
              mk_structure_formula ~seed:2 ~variant_duration:180.0 ~instr_list
                ~instr_table ~instr_ensemble_group_selection:EnsembleGroupSeries
-               ~number_of_instrument_groups:3 ~ed_list ~ed_table
-               ~ent_ensemble_group_selection:EnsembleGroupSeries ~perf_list
-               ~performance_table
-               ~perf_ensemble_group_selection:EnsembleGroupSeries ~dyn_list
-               ~dynamics_table ~dyn_ensemble_group_selection:EnsembleGroupSeries
-               ~entrydelay_combination:NoCombination ~instrument_principle:Alea
-               ~entrydelay_principle:Series ~performance_principle:Alea
-               ~performance_combination:Combination ~performance_mode:PerChord
+               ~number_of_instrument_groups:3 ~ed_list ~ed_table ~perf_list
+               ~performance_table ~dyn_list ~dynamics_table
+               ~entrydelay_combination:(NoCombination EnsembleGroupSeries)
+               ~instrument_principle:Alea ~entrydelay_principle:Series
+               ~performance_principle:Alea ~performance_combination:Combination
+               ~performance_mode:PerChord
                ~dynamics_principle:(Tendency test_mask)
                ~dynamics_combination:Combination ~dynamics_mode:PerChord
                ~union:NoUnion ~density:d ~hierarchy:hier ~dur_list ~dur_table
-               ~duration_combination:NoCombination
-               ~dur_ensemble_group_selection:EnsembleGroupSeries
+               ~duration_combination:(NoCombination EnsembleGroupSeries)
                ~duration_relation_mode:(DurIndependent PerChord)
                ~duration_principle:Alea
              |> Result.map build_score)

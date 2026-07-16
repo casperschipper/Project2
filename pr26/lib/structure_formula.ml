@@ -6,7 +6,7 @@ type combination =
   | Combination
   (* index of combined parameters is the same as instrument parameter 
   It can also be multiple groups within one ensemble, if there are multiple instrument groups*)
-  | NoCombination
+  | NoCombination of ensemble_group_selection
 (* 
 A parameter that is not combined means:
 - only one group is selected
@@ -49,19 +49,15 @@ type structure_formula = {
   instr_ensemble_group_selection : ensemble_group_selection;
   ed_list : entrydelay parameter_list;
   ed_table : ptable;
-  ent_ensemble_group_selection : ensemble_group_selection;
   dur_list : duration parameter_list;
   dur_table : ptable;
-  dur_ensemble_group_selection : ensemble_group_selection;
   duration_combination : combination;
   duration_relation_mode : duration_mode;
   duration_principle : selection_principle;
   perf_list : Performance.t parameter_list;
   performance_table : ptable;
-  perf_ensemble_group_selection : ensemble_group_selection;
   dyn_list : Dynamic.t parameter_list;
   dynamics_table : ptable;
-  dyn_ensemble_group_selection : ensemble_group_selection;
   instrument_principle : selection_principle;
   entrydelay_principle : selection_principle;
   entrydelay_combination : combination;
@@ -100,13 +96,12 @@ let mk portion smin smax emin emax =
 
 let mk_structure_formula ~seed ~variant_duration ~instr_list ~instr_table
     ~instr_ensemble_group_selection ~ed_list ~ed_table
-    ~ent_ensemble_group_selection ~number_of_instrument_groups ~perf_list
-    ~performance_table ~perf_ensemble_group_selection ~dyn_list ~dynamics_table
-    ~dyn_ensemble_group_selection ~entrydelay_combination ~instrument_principle
+    ~number_of_instrument_groups ~perf_list ~performance_table ~dyn_list
+    ~dynamics_table ~entrydelay_combination ~instrument_principle
     ~entrydelay_principle ~performance_principle ~performance_combination
     ~performance_mode ~dynamics_principle ~dynamics_combination ~dynamics_mode
     ~union ~hierarchy ~density ~dur_list ~dur_table ~duration_combination
-    ~dur_ensemble_group_selection ~duration_relation_mode ~duration_principle =
+    ~duration_relation_mode ~duration_principle =
   let hierarchy_errors =
     match (density, hierarchy) with
     | InstrumentDensity, first :: _ ->
@@ -194,14 +189,11 @@ let mk_structure_formula ~seed ~variant_duration ~instr_list ~instr_table
           instr_ensemble_group_selection;
           ed_list;
           ed_table;
-          ent_ensemble_group_selection;
           number_of_instrument_groups;
           perf_list;
           performance_table;
-          perf_ensemble_group_selection;
           dyn_list;
           dynamics_table;
-          dyn_ensemble_group_selection;
           entrydelay_combination;
           instrument_principle;
           entrydelay_principle;
@@ -216,7 +208,6 @@ let mk_structure_formula ~seed ~variant_duration ~instr_list ~instr_table
           hierarchy;
           dur_list;
           dur_table;
-          dur_ensemble_group_selection;
           duration_relation_mode;
           duration_principle;
           duration_combination;
@@ -349,11 +340,6 @@ module Parse = struct
     let* rows = items |> List.map parse_row |> sequence in
     Ok (Table (Array.of_list rows))
 
-  let parse_combination = function
-    | [ Sexp.Atom "none" ] -> Ok NoCombination
-    | [ Sexp.Atom "combination" ] -> Ok Combination
-    | _ -> fail "expected 'none' or 'combination'"
-
   (* MOD-DUR / MOD-DYN / MOD-PERF's shared mode switch - see [tone_mode] *)
   let parse_tone_mode = function
     | [ Sexp.Atom "per-chord" ] -> Ok PerChord
@@ -424,6 +410,16 @@ module Parse = struct
         fail
           "ensemble group selection expects 'alea', 'series', or (sequence \
            (...))"
+
+  (* A non-instrument parameter's own [ensemble] field doubles as its
+     combination setting: 'combination' means it has no group selection of
+     its own and instead reuses whichever groups the instrument ensemble
+     picked, anything else is a standalone [ensemble_group_selection]. *)
+  let parse_combination = function
+    | [ Sexp.Atom "combination" ] -> Ok Combination
+    | args ->
+        let* sel = parse_ensemble_group_selection args in
+        Ok (NoCombination sel)
 
   (* [resolve_ratio_index] resolves the first slot of a (index-or-value
      weight) pair; it defaults to plain-int parsing (e.g. for density, whose
@@ -678,10 +674,15 @@ module Parse = struct
       dur_arr |> Array.to_list |> List.map (fun (Duration f) -> f)
     in
     let* principles = require_field "principles" items in
+    (* Every non-instrument parameter's [ensemble] field doubles as its
+       combination setting (see [parse_combination]); instrument has no
+       combination concept of its own (there's nothing for it to reuse
+       groups from), so it's parsed separately below via
+       [parse_ensemble_group_selection] directly. *)
     let parse_param_principles ?resolve_ratio_index name =
       let* args = require_field name principles in
       let* ens_args = require_field "ensemble" args in
-      let* ens = parse_ensemble_group_selection ens_args in
+      let* ens = parse_combination ens_args in
       let* samp_args = require_field "order" args in
       let* samp = parse_principle ?resolve_ratio_index samp_args in
       Ok (ens, samp)
@@ -692,35 +693,43 @@ module Parse = struct
       parse_tone_mode margs
     in
     let* instr_ensemble_group_selection, instrument_principle =
-      parse_param_principles "instrument"
-        ~resolve_ratio_index:
-          (resolve_index_or_name
-             (fun s -> ParseError (Printf.sprintf "unknown instrument %S" s))
-             instr_names)
+      let* args = require_field "instrument" principles in
+      let* ens_args = require_field "ensemble" args in
+      let* ens = parse_ensemble_group_selection ens_args in
+      let* samp_args = require_field "order" args in
+      let* samp =
+        parse_principle
+          ~resolve_ratio_index:
+            (resolve_index_or_name
+               (fun s -> ParseError (Printf.sprintf "unknown instrument %S" s))
+               instr_names)
+          samp_args
+      in
+      Ok (ens, samp)
     in
-    let* ent_ensemble_group_selection, entrydelay_principle =
+    let* entrydelay_combination, entrydelay_principle =
       parse_param_principles "entrydelay"
         ~resolve_ratio_index:
           (resolve_index_or_float
              (fun s -> ParseError (Printf.sprintf "unknown entrydelay %S" s))
              ed_floats)
     in
-    let* perf_ensemble_group_selection, performance_principle =
+    let* performance_combination, performance_principle =
       parse_param_principles "performance"
         ~resolve_ratio_index:
           (resolve_index_or_name (fun s -> UnknownPerformance s) perf_names)
     in
     let* performance_mode = parse_principle_mode "performance" in
-    let* dyn_ensemble_group_selection, dynamics_principle =
+    let* dynamics_combination, dynamics_principle =
       parse_param_principles "dynamics"
         ~resolve_ratio_index:
           (resolve_index_or_name (fun s -> UnknownDynamic s) dyn_names)
     in
     let* dynamics_mode = parse_principle_mode "dynamics" in
-    let* dur_ensemble_group_selection, duration_principle, duration_relation_mode =
+    let* duration_combination, duration_principle, duration_relation_mode =
       let* args = require_field "duration" principles in
       let* ens_args = require_field "ensemble" args in
-      let* ens = parse_ensemble_group_selection ens_args in
+      let* ens = parse_combination ens_args in
       let* samp_args = require_field "order" args in
       let* samp =
         parse_principle
@@ -733,23 +742,6 @@ module Parse = struct
       let* rel_args = require_field "relation" args in
       let* rel = parse_duration_mode rel_args in
       Ok (ens, samp, rel)
-    in
-    let* combination = require_field "combination" items in
-    let* entrydelay_combination =
-      let* args = require_field "entrydelay" combination in
-      parse_combination args
-    in
-    let* performance_combination =
-      let* args = require_field "performance" combination in
-      parse_combination args
-    in
-    let* dynamics_combination =
-      let* args = require_field "dynamics" combination in
-      parse_combination args
-    in
-    let* duration_combination =
-      let* args = require_field "duration" combination in
-      parse_combination args
     in
     let* union =
       let* args = require_field "union" items in
@@ -775,13 +767,11 @@ module Parse = struct
     in
     mk_structure_formula ~seed ~variant_duration ~instr_list ~instr_table
       ~instr_ensemble_group_selection ~number_of_instrument_groups ~ed_list
-      ~ed_table ~ent_ensemble_group_selection ~perf_list ~performance_table
-      ~perf_ensemble_group_selection ~dyn_list ~dynamics_table
-      ~dyn_ensemble_group_selection ~entrydelay_combination
-      ~instrument_principle ~entrydelay_principle ~performance_principle
-      ~performance_combination ~performance_mode ~dynamics_principle
-      ~dynamics_combination ~dynamics_mode ~union ~density ~hierarchy ~dur_list
-      ~dur_table ~duration_combination ~dur_ensemble_group_selection
+      ~ed_table ~perf_list ~performance_table ~dyn_list ~dynamics_table
+      ~entrydelay_combination ~instrument_principle ~entrydelay_principle
+      ~performance_principle ~performance_combination ~performance_mode
+      ~dynamics_principle ~dynamics_combination ~dynamics_mode ~union ~density
+      ~hierarchy ~dur_list ~dur_table ~duration_combination
       ~duration_relation_mode ~duration_principle
 
   let read_file path =

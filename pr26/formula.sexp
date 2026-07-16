@@ -118,9 +118,11 @@
         ;;(0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8)
         (ratio ((0 1) (1 3) (2 1) (3 5) (4 2) (5 1) (6 1) (7 1)))))
     ;; performance is per-tone here: within a multi-note chord, each tone
-    ;; gets its own independently-drawn performance mode (MOD-PERF = 1)
+    ;; gets its own independently-drawn performance mode (MOD-PERF = 1);
+    ;; (ensemble combination) means performance reuses the instrument
+    ;; ensemble's own groups instead of selecting its own
     (performance
-      (ensemble alea)
+      (ensemble combination)
       (order alea)
       (mode per-tone))
     ;; dynamics stays chord-wide: one dynamic shared by every tone in the
@@ -132,12 +134,6 @@
       (ensemble series)
       (order series)
       (relation (independent per-tone))))
-
-  (combination
-    (entrydelay  none)
-    (performance combination)
-    (dynamics    none)
-    (duration    none))
 
 ;; none means a layer per instrument group!
   (union none)
