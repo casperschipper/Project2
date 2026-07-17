@@ -320,9 +320,12 @@ type 'a tendency_state =
 
 let tendency_sample arr lo hi =
   let l = Array.length arr in
-  arr.(lo +. Random.float (hi -. lo)
-       |> ( *. ) (float_of_int l)
-       |> floor |> int_of_float)
+  let i =
+    lo +. Random.float (hi -. lo) |> ( *. ) (float_of_int l) |> floor |> int_of_float
+  in
+  (* [lo]/[hi] are inclusive of 1.0 (see [UnitFloat]), so a window pinned at
+     the top (e.g. lo = hi = 1.0) maps to index [l], one past the end. *)
+  arr.(min i (l - 1))
 
 let tendency_mk_state arr spec count =
   match Seq.uncons (tendency_windows count spec) with

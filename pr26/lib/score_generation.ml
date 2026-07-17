@@ -390,6 +390,19 @@ let resolve_step ~perf_mode ~dyn_mode ~dur_relation (states, proto) elem =
       match (dur_relation, proto.duration) with
       | DurEqualsEntry, Some (Shared (Duration d)) ->
           (states, { proto with entrydelay = Some (Entrydelay d) })
+      | DurEqualsEntry, None ->
+          (* [Dur] hasn't resolved yet, so it will just copy this entry delay
+             through verbatim (below) - constrain the draw itself to what the
+             instrument can sustain as a duration, rather than drawing freely
+             and clamping afterwards, which would silently break the
+             "duration = entry delay" invariant this mode promises. *)
+          let pred (Entrydelay ed) =
+            dur_pred_from ~instr_arr:states.instr_arr proto dur_relation (Duration ed)
+          in
+          let v, ed_state' = sel_sample_pred_tagged pred states.ed_state in
+          let ok = match v with Value _ -> true | Impossible _ -> false in
+          ( { states with ed_state = ed_state' },
+            { proto with entrydelay = Some (get_value v); duration_ok = Some (Shared ok) } )
       | _ ->
           let pred = ed_pred_from proto dur_relation in
           let v, ed_state' = sel_sample_pred pred states.ed_state in
@@ -397,15 +410,16 @@ let resolve_step ~perf_mode ~dyn_mode ~dur_relation (states, proto) elem =
   | Dur -> (
       match (dur_relation, proto.entrydelay) with
       | DurEqualsEntry, Some (Entrydelay ed) ->
-          let d =
-            match proto.instrument with
-            | Some (Instrument { durations = AllowedDurations { max; _ }; _ }) ->
-                Float.min ed max
-            | None -> ed
-          in
+          (* [Ent] already constrained this draw to the instrument's duration
+             range (and tagged [duration_ok] accordingly) when it ran before
+             [Dur] - just copy it through so the equality this mode promises
+             actually holds, instead of re-clamping it here. *)
           ( states,
-            { proto with duration = Some (Shared (Duration d)); duration_ok = Some (Shared true) }
-          )
+            {
+              proto with
+              duration = Some (Shared (Duration ed));
+              duration_ok = Some (Option.value proto.duration_ok ~default:(Shared true));
+            } )
       | _ ->
           let mode = duration_note_mode dur_relation in
           let pred = dur_pred_from ~instr_arr:states.instr_arr proto dur_relation in

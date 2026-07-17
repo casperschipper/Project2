@@ -8,19 +8,20 @@
 [x] There should be either a "combination" or a "group selection principle" defined for parameters, not both. So both can be included in the "principles" stanza and parsed as such.
 [x] The duration extra "modes" should be included in the selector principles
 [x] I think autonomous density should be more restricted: it should not be able to pick the same instruments many times?
+[x] Fractions in time parameters (dur/entrydelay)
+[x] Tendency sampling goes out of bounds at the top of the range (crash)
 
 
 Still to do:
 
 
-[ ] Fractions in time parameters (dur/entrydelay)
 [ ] track, group, entry, layer, instrument (be able to sort by that kind of thing)
 
 Claude todo:
 
 I read through the whole pipeline — selection.ml, score_generation.ml, parameters.ml, structure_formula.ml — and ran the default formula. The architecture is sound (the hierarchy fold, the Impossible tagging mechanism, per-tone vs per-chord threading all hang together well). But I found a few genuine conceptual issues, ordered by severity.
 
-1. Tendency sampling goes out of bounds at the top of the range (crash)
+
 
 tendency_sample (selection.ml:321) maps a unit value to an array index with no upper clamp:
 
