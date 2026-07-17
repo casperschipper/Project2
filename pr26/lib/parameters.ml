@@ -668,7 +668,7 @@ type harmony_problem =
   | InvalidStep of { n : int; tr : int }
   | InvalidCallNumber of int
 
-let display_problem = function
+let display_harmony_problem = function
   | InvalidStep { n; tr } ->
       Printf.sprintf "relative pitch %d is out of range 1..%d" n tr
   | InvalidCallNumber n ->

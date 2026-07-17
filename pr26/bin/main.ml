@@ -110,6 +110,7 @@ let basic_test () =
                ~duration_combination:(NoCombination EnsembleGroupSeries)
                ~duration_relation_mode:(DurIndependent PerChord)
                ~duration_principle:Alea
+             |> Result.map_error (List.map (fun lp -> lp.problem))
              |> Result.map build_score)
           <$> mk_par_list mk_entrydelay
                 [ 0.1; 0.2; 0.3; 1.0; 2.0; 3.0; 2.0; 5.0 ]

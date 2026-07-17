@@ -4,7 +4,7 @@ open Pr26.Score_generation
 
 let render file =
   match Parse.read_file file with
-  | Error errors -> print_errors file errors
+  | Error errors -> print_located_errors file errors
   | Ok sf ->
       let instrs =
         match sf.instr_list with ParameterList arr -> Array.to_list arr

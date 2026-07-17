@@ -72,6 +72,48 @@ type structure_formula = {
   hierarchy : hierarchy;
 }
 
+(* Identifies which section of a structure_formula (and, one level down, of
+   the composer's sexp) a [problem] belongs to - one variant per logical
+   group of [structure_formula] fields. Every validator below picks the one
+   field a composer would actually go edit to fix the error (e.g. a
+   combination-size mismatch is reported against the *other* table, not
+   instrument's, since instrument-table is the fixed reference point), so a
+   future GUI can route each error straight to the right section/panel. *)
+type field =
+  | FGlobal
+  | FInstrument
+  | FEntrydelay
+  | FDuration
+  | FPerformance
+  | FDynamics
+  | FDensity
+  | FHierarchy
+  | FUnion
+
+let field_to_string = function
+  | FGlobal -> "global"
+  | FInstrument -> "instrument"
+  | FEntrydelay -> "entrydelay"
+  | FDuration -> "duration"
+  | FPerformance -> "performance"
+  | FDynamics -> "dynamics"
+  | FDensity -> "density"
+  | FHierarchy -> "hierarchy"
+  | FUnion -> "union"
+
+type located_problem = { field : field; problem : problem }
+
+let locate field problems =
+  problems |> List.map (fun problem -> { field; problem })
+
+let display_located_problem { field; problem } =
+  Printf.sprintf "[%s] %s" (field_to_string field) (display_problem problem)
+
+let print_located_errors label errors =
+  Printf.printf "%s failed:\n" label;
+  List.iter (fun e -> Printf.printf "  - %s\n" (display_located_problem e)) errors;
+  flush stdout
+
 let check_combination label instr_table other_table = function
   | Combination when not (combination_compatibility instr_table other_table) ->
       [
@@ -105,41 +147,57 @@ let mk_structure_formula ~seed ~variant_duration ~instr_list ~instr_table
   let hierarchy_errors =
     match (density, hierarchy) with
     | InstrumentDensity, first :: _ ->
-        if first == Ins then [] else [ InstrumentDensityRequiresInsFirst ]
+        if first == Ins then []
+        else locate FHierarchy [ InstrumentDensityRequiresInsFirst ]
     | _ -> []
   in
   let combination_errors =
-    check_combination "entrydelay" instr_table ed_table entrydelay_combination
-    @ check_combination "performance" instr_table performance_table
-        performance_combination
-    @ check_combination "dynamics" instr_table dynamics_table
-        dynamics_combination
-    @ check_combination "duration" instr_table dur_table duration_combination
+    locate FEntrydelay
+      (check_combination "entrydelay" instr_table ed_table entrydelay_combination)
+    @ locate FPerformance
+        (check_combination "performance" instr_table performance_table
+           performance_combination)
+    @ locate FDynamics
+        (check_combination "dynamics" instr_table dynamics_table
+           dynamics_combination)
+    @ locate FDuration
+        (check_combination "duration" instr_table dur_table duration_combination)
   in
   let (ParameterList instr_arr) = instr_list in
+  (* Membership errors are about the offending instrument's own
+     (performance ...)/(dynamics ...) field referencing a mode outside the
+     master list, not about the master list itself. *)
   let performance_membership_errors =
     let (ParameterList perf_arr) = perf_list in
-    check_instrument_performances_known
-      (Performance_modes.of_list (Array.to_list perf_arr))
-      (Array.to_list instr_arr)
+    locate FInstrument
+      (check_instrument_performances_known
+         (Performance_modes.of_list (Array.to_list perf_arr))
+         (Array.to_list instr_arr))
   in
   let dynamics_membership_errors =
     let (ParameterList dyn_arr) = dyn_list in
-    check_instrument_dynamics_known
-      (Dynamic_modes.of_list (Array.to_list dyn_arr))
-      (Array.to_list instr_arr)
+    locate FInstrument
+      (check_instrument_dynamics_known
+         (Dynamic_modes.of_list (Array.to_list dyn_arr))
+         (Array.to_list instr_arr))
   in
   let ratio_coverage_errors =
-    check_ratio_coverage "instrument" instr_table instrument_principle
-    @ check_ratio_coverage "entrydelay" ed_table entrydelay_principle
-    @ check_ratio_coverage "performance" performance_table performance_principle
-    @ check_ratio_coverage "dynamics" dynamics_table dynamics_principle
-    @ check_ratio_coverage "duration" dur_table duration_principle
+    locate FInstrument
+      (check_ratio_coverage "instrument" instr_table instrument_principle)
+    @ locate FEntrydelay
+        (check_ratio_coverage "entrydelay" ed_table entrydelay_principle)
+    @ locate FPerformance
+        (check_ratio_coverage "performance" performance_table
+           performance_principle)
+    @ locate FDynamics
+        (check_ratio_coverage "dynamics" dynamics_table dynamics_principle)
+    @ locate FDuration
+        (check_ratio_coverage "duration" dur_table duration_principle)
     @
     match density with
     | Autonomous { low; high; selection_principle = Ratio _ as p } ->
         let dens_table = Table [| Array.init (high - low + 1) (fun i -> i) |] in
-        check_ratio_coverage "density" dens_table p
+        locate FDensity (check_ratio_coverage "density" dens_table p)
     | _ -> []
   in
   (* chordsize (number of notes) is only known once an instrument has been
@@ -151,18 +209,20 @@ let mk_structure_formula ~seed ~variant_duration ~instr_list ~instr_table
     |> Option.map fst
   in
   let per_note_ordering_errors =
-    let needs_ins_first label elem = function
+    let needs_ins_first field elem = function
       | PerChord -> []
       | PerNote -> (
           match (hierarchy_index Ins, hierarchy_index elem) with
           | Some ins_i, Some elem_i when elem_i < ins_i ->
-              [
-                PerNoteRequiresInsFirst
-                  (Printf.sprintf
-                     "%s is per-note: Ins must precede it in the hierarchy \
-                      (chord size isn't known until an instrument is picked)"
-                     label);
-              ]
+              locate field
+                [
+                  PerNoteRequiresInsFirst
+                    (Printf.sprintf
+                       "%s is per-note: Ins must precede it in the hierarchy \
+                        (chord size isn't known until an instrument is \
+                        picked)"
+                       (field_to_string field));
+                ]
           | _ -> [])
     in
     let dur_note_mode =
@@ -170,9 +230,9 @@ let mk_structure_formula ~seed ~variant_duration ~instr_list ~instr_table
       | DurIndependent m | DurShorterThanEntry m -> m
       | DurEqualsEntry -> PerChord
     in
-    needs_ins_first "performance" Per performance_mode
-    @ needs_ins_first "dynamics" Dyn dynamics_mode
-    @ needs_ins_first "duration" Dur dur_note_mode
+    needs_ins_first FPerformance Per performance_mode
+    @ needs_ins_first FDynamics Dyn dynamics_mode
+    @ needs_ins_first FDuration Dur dur_note_mode
   in
   match
     hierarchy_errors @ combination_errors @ performance_membership_errors
@@ -220,6 +280,13 @@ module Parse = struct
   let ( let* ) = Result.bind
   let fail msg = Error [ ParseError msg ]
   let lift r = Result.map_error (fun e -> [ e ]) r
+
+  (* Tags every [problem] a sub-parse can fail with as belonging to [field] -
+     applied once per top-level sexp section below, so nested leaf failures
+     (a malformed table cell, an unknown mode name, ...) automatically
+     inherit the section they were found in without each leaf parser needing
+     to know its own context. *)
+  let in_field field r = Result.map_error (locate field) r
 
   let rec sexp_to_string = function
     | Sexp.Atom s -> s
@@ -570,9 +637,10 @@ module Parse = struct
 
   let of_sexp sexps =
     let* items =
-      match sexps with
-      | [ Sexp.List (Sexp.Atom "structure-formula" :: items) ] -> Ok items
-      | _ -> fail "expected top-level (structure-formula ...)"
+      in_field FGlobal
+        (match sexps with
+        | [ Sexp.List (Sexp.Atom "structure-formula" :: items) ] -> Ok items
+        | _ -> fail "expected top-level (structure-formula ...)")
     in
     let get1 name parse =
       let* args = require_field name items in
@@ -580,85 +648,98 @@ module Parse = struct
       | [ x ] -> parse x
       | _ -> fail (Printf.sprintf "field %S expects one value" name)
     in
-    let* seed = get1 "seed" require_int in
-    let* variant_duration = get1 "variant-duration" require_float in
+    let* seed = in_field FGlobal (get1 "seed" require_int) in
+    let* variant_duration =
+      in_field FGlobal (get1 "variant-duration" require_float)
+    in
     let* number_of_instrument_groups =
-      get1 "number-of-instrument-groups" require_int
+      in_field FInstrument (get1 "number-of-instrument-groups" require_int)
     in
     let* instr_list =
-      let* args = require_field "instruments" items in
-      let* instrs = args |> List.map parse_instrument |> sequence in
-      Ok (ParameterList (Array.of_list instrs))
+      in_field FInstrument
+        (let* args = require_field "instruments" items in
+         let* instrs = args |> List.map parse_instrument |> sequence in
+         Ok (ParameterList (Array.of_list instrs)))
     in
     let* instr_table =
-      let* args = require_field "instrument-table" items in
-      parse_table args
+      in_field FInstrument
+        (let* args = require_field "instrument-table" items in
+         parse_table args)
     in
     let* ed_list =
-      let* args = require_field "entrydelays" items in
-      let* floats =
-        match args with
-        | [ Sexp.List inner ] -> inner |> List.map require_float |> sequence
-        | _ -> fail "entrydelays expects (entrydelays (...))"
-      in
-      let* eds =
-        floats |> List.map (fun f -> lift (mk_entrydelay f)) |> sequence
-      in
-      Ok (ParameterList (Array.of_list eds))
+      in_field FEntrydelay
+        (let* args = require_field "entrydelays" items in
+         let* floats =
+           match args with
+           | [ Sexp.List inner ] -> inner |> List.map require_float |> sequence
+           | _ -> fail "entrydelays expects (entrydelays (...))"
+         in
+         let* eds =
+           floats |> List.map (fun f -> lift (mk_entrydelay f)) |> sequence
+         in
+         Ok (ParameterList (Array.of_list eds)))
     in
     let* ed_table =
-      let* args = require_field "entrydelay-table" items in
-      parse_table args
+      in_field FEntrydelay
+        (let* args = require_field "entrydelay-table" items in
+         parse_table args)
     in
     let* dur_list =
-      let* args = require_field "durations" items in
-      let* floats =
-        match args with
-        | [ Sexp.List inner ] -> inner |> List.map require_float |> sequence
-        | _ -> fail "durations expects (durations (...))"
-      in
-      let* durs =
-        floats |> List.map (fun f -> lift (mk_duration f)) |> sequence
-      in
-      Ok (ParameterList (Array.of_list durs))
+      in_field FDuration
+        (let* args = require_field "durations" items in
+         let* floats =
+           match args with
+           | [ Sexp.List inner ] -> inner |> List.map require_float |> sequence
+           | _ -> fail "durations expects (durations (...))"
+         in
+         let* durs =
+           floats |> List.map (fun f -> lift (mk_duration f)) |> sequence
+         in
+         Ok (ParameterList (Array.of_list durs)))
     in
     let* dur_table =
-      let* args = require_field "duration-table" items in
-      parse_table args
+      in_field FDuration
+        (let* args = require_field "duration-table" items in
+         parse_table args)
     in
     let* perf_list =
-      let* args = require_field "performance" items in
-      match args with
-      | [ Sexp.List inner ] ->
-          let* names = parse_atoms inner in
-          Ok
-            (ParameterList
-               (Array.of_list (List.map Performance.of_string names)))
-      | _ -> fail "performance expects (performance (...))"
+      in_field FPerformance
+        (let* args = require_field "performance" items in
+         match args with
+         | [ Sexp.List inner ] ->
+             let* names = parse_atoms inner in
+             Ok
+               (ParameterList
+                  (Array.of_list (List.map Performance.of_string names)))
+         | _ -> fail "performance expects (performance (...))")
     in
     let perf_names =
       let (ParameterList perf_arr) = perf_list in
       perf_arr |> Array.to_list |> List.map Performance.to_string
     in
     let* performance_table =
-      let* args = require_field "performance-table" items in
-      parse_named_table (fun s -> UnknownPerformance s) perf_names args
+      in_field FPerformance
+        (let* args = require_field "performance-table" items in
+         parse_named_table (fun s -> UnknownPerformance s) perf_names args)
     in
     let* dyn_list =
-      let* args = require_field "dynamics" items in
-      match args with
-      | [ Sexp.List inner ] ->
-          let* names = parse_atoms inner in
-          Ok (ParameterList (Array.of_list (List.map Dynamic.of_string names)))
-      | _ -> fail "dynamics expects (dynamics (...))"
+      in_field FDynamics
+        (let* args = require_field "dynamics" items in
+         match args with
+         | [ Sexp.List inner ] ->
+             let* names = parse_atoms inner in
+             Ok
+               (ParameterList (Array.of_list (List.map Dynamic.of_string names)))
+         | _ -> fail "dynamics expects (dynamics (...))")
     in
     let dyn_names =
       let (ParameterList dyn_arr) = dyn_list in
       dyn_arr |> Array.to_list |> List.map Dynamic.to_string
     in
     let* dynamics_table =
-      let* args = require_field "dynamics-table" items in
-      parse_named_table (fun s -> UnknownDynamic s) dyn_names args
+      in_field FDynamics
+        (let* args = require_field "dynamics-table" items in
+         parse_named_table (fun s -> UnknownDynamic s) dyn_names args)
     in
     let instr_names =
       let (ParameterList instr_arr) = instr_list in
@@ -673,7 +754,7 @@ module Parse = struct
       let (ParameterList dur_arr) = dur_list in
       dur_arr |> Array.to_list |> List.map (fun (Duration f) -> f)
     in
-    let* principles = require_field "principles" items in
+    let* principles = in_field FGlobal (require_field "principles" items) in
     (* Every non-instrument parameter's [ensemble] field doubles as its
        combination setting (see [parse_combination]); instrument has no
        combination concept of its own (there's nothing for it to reuse
@@ -693,77 +774,88 @@ module Parse = struct
       parse_note_mode margs
     in
     let* instr_ensemble_group_selection, instrument_principle =
-      let* args = require_field "instrument" principles in
-      let* ens_args = require_field "ensemble" args in
-      let* ens = parse_ensemble_group_selection ens_args in
-      let* samp_args = require_field "order" args in
-      let* samp =
-        parse_principle
-          ~resolve_ratio_index:
-            (resolve_index_or_name
-               (fun s -> ParseError (Printf.sprintf "unknown instrument %S" s))
-               instr_names)
-          samp_args
-      in
-      Ok (ens, samp)
+      in_field FInstrument
+        (let* args = require_field "instrument" principles in
+         let* ens_args = require_field "ensemble" args in
+         let* ens = parse_ensemble_group_selection ens_args in
+         let* samp_args = require_field "order" args in
+         let* samp =
+           parse_principle
+             ~resolve_ratio_index:
+               (resolve_index_or_name
+                  (fun s ->
+                    ParseError (Printf.sprintf "unknown instrument %S" s))
+                  instr_names)
+             samp_args
+         in
+         Ok (ens, samp))
     in
     let* entrydelay_combination, entrydelay_principle =
-      parse_param_principles "entrydelay"
-        ~resolve_ratio_index:
-          (resolve_index_or_float
-             (fun s -> ParseError (Printf.sprintf "unknown entrydelay %S" s))
-             ed_floats)
+      in_field FEntrydelay
+        (parse_param_principles "entrydelay"
+           ~resolve_ratio_index:
+             (resolve_index_or_float
+                (fun s -> ParseError (Printf.sprintf "unknown entrydelay %S" s))
+                ed_floats))
     in
     let* performance_combination, performance_principle =
-      parse_param_principles "performance"
-        ~resolve_ratio_index:
-          (resolve_index_or_name (fun s -> UnknownPerformance s) perf_names)
+      in_field FPerformance
+        (parse_param_principles "performance"
+           ~resolve_ratio_index:
+             (resolve_index_or_name (fun s -> UnknownPerformance s) perf_names))
     in
-    let* performance_mode = parse_principle_mode "performance" in
+    let* performance_mode =
+      in_field FPerformance (parse_principle_mode "performance")
+    in
     let* dynamics_combination, dynamics_principle =
-      parse_param_principles "dynamics"
-        ~resolve_ratio_index:
-          (resolve_index_or_name (fun s -> UnknownDynamic s) dyn_names)
+      in_field FDynamics
+        (parse_param_principles "dynamics"
+           ~resolve_ratio_index:
+             (resolve_index_or_name (fun s -> UnknownDynamic s) dyn_names))
     in
-    let* dynamics_mode = parse_principle_mode "dynamics" in
+    let* dynamics_mode = in_field FDynamics (parse_principle_mode "dynamics") in
     let* duration_combination, duration_principle, duration_relation_mode =
-      let* args = require_field "duration" principles in
-      let* ens_args = require_field "ensemble" args in
-      let* ens = parse_combination ens_args in
-      let* samp_args = require_field "order" args in
-      let* samp =
-        parse_principle
-          ~resolve_ratio_index:
-            (resolve_index_or_float
-               (fun s -> ParseError (Printf.sprintf "unknown duration %S" s))
-               dur_floats)
-          samp_args
-      in
-      let* rel_args = require_field "relation" args in
-      let* rel = parse_duration_mode rel_args in
-      Ok (ens, samp, rel)
+      in_field FDuration
+        (let* args = require_field "duration" principles in
+         let* ens_args = require_field "ensemble" args in
+         let* ens = parse_combination ens_args in
+         let* samp_args = require_field "order" args in
+         let* samp =
+           parse_principle
+             ~resolve_ratio_index:
+               (resolve_index_or_float
+                  (fun s -> ParseError (Printf.sprintf "unknown duration %S" s))
+                  dur_floats)
+             samp_args
+         in
+         let* rel_args = require_field "relation" args in
+         let* rel = parse_duration_mode rel_args in
+         Ok (ens, samp, rel))
     in
     let* union =
-      let* args = require_field "union" items in
-      match args with
-      | [ Sexp.Atom "none" ] -> Ok NoUnion
-      | [ Sexp.Atom "union" ] -> Ok Union
-      | _ -> fail "union expects 'none' or 'union'"
+      in_field FUnion
+        (let* args = require_field "union" items in
+         match args with
+         | [ Sexp.Atom "none" ] -> Ok NoUnion
+         | [ Sexp.Atom "union" ] -> Ok Union
+         | _ -> fail "union expects 'none' or 'union'")
     in
     let* density =
-      let* args = require_field "density" items in
-      parse_density args
+      in_field FDensity
+        (let* args = require_field "density" items in
+         parse_density args)
     in
     let* hierarchy =
-      let* args = require_field "hierarchy" items in
-      let* elems =
-        match args with
-        | [ Sexp.List inner ] ->
-            let* names = parse_atoms inner in
-            names |> List.map parse_hierarchy_elem |> sequence
-        | _ -> fail "hierarchy expects (hierarchy (...))"
-      in
-      lift (mk_hierarchy elems)
+      in_field FHierarchy
+        (let* args = require_field "hierarchy" items in
+         let* elems =
+           match args with
+           | [ Sexp.List inner ] ->
+               let* names = parse_atoms inner in
+               names |> List.map parse_hierarchy_elem |> sequence
+           | _ -> fail "hierarchy expects (hierarchy (...))"
+         in
+         lift (mk_hierarchy elems))
     in
     mk_structure_formula ~seed ~variant_duration ~instr_list ~instr_table
       ~instr_ensemble_group_selection ~number_of_instrument_groups ~ed_list
@@ -784,6 +876,6 @@ module Parse = struct
       Bytes.to_string s
     in
     match Sexp.of_string content with
-    | Error e -> Error [ ParseError e ]
+    | Error e -> Error [ { field = FGlobal; problem = ParseError e } ]
     | Ok sexps -> of_sexp sexps
 end
