@@ -14,6 +14,10 @@ type note = {
   (* [false] iff this duration was an [Impossible] fallback: no candidate
      actually satisfied the duration/entry-delay relation. *)
   duration_ok : bool;
+  (* [true] iff this note's instrument had already been picked earlier within
+     the same autonomous-density chord - i.e. there weren't enough distinct
+     instruments to "score" the chord without reusing one (EMR-3 8.16). *)
+  instrument_repeated : bool;
 }
 
 (* One instrument's contribution at one timepoint. [performance]/[dynamic]/
@@ -28,6 +32,8 @@ type entry = {
   performance : Performance.t option;
   dynamic : Dynamic.t option;
   duration : duration option;
+  (* see [note.instrument_repeated] - same value for every note in this entry. *)
+  instrument_repeated : bool;
 }
 
 (* Extract all elements from any ensemble as a flat array. Each element
@@ -220,6 +226,11 @@ type proto = {
   (* [false] iff no candidate duration actually satisfied the duration/
      entry-delay relation and this note's value is an [Impossible] fallback. *)
   duration_ok : bool note_value option;
+  (* [true] iff, within the current autonomous-density chord, this proto's
+     instrument had already been picked by an earlier entry in the same
+     chord - set by [resolve_layer_autonomous]'s [fill_group] once the whole
+     group is known; always [false] outside that density mode. *)
+  instrument_repeated : bool;
 }
 
 let empty_proto =
@@ -229,6 +240,7 @@ let empty_proto =
     nr_of_notes = None;
     performance = None;
     dynamic = None;
+    instrument_repeated = false;
     duration = None;
     duration_ok = None;
   }
@@ -459,16 +471,29 @@ let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
     ~dur_relation ~low ~high ~selection_principle states0 =
   let dens_arr = Array.init (high - low + 1) (fun i -> low + i) |> elements_of_array in
   let fill_group states target =
-    let rec loop states total acc =
+    (* [used] carries every instrument already picked earlier in this same
+       chord, so a later pick that lands on one of them - the orchestra
+       running out of distinct instruments before the target density is
+       reached - can be flagged (EMR-3 8.16: "the programme expects there to
+       be enough instruments ... If there are not enough instruments, each
+       repeated instrument is provided with a comment"). *)
+    let rec loop states total used acc =
       let states', proto = resolve_entry ~hierarchy ~perf_mode ~dyn_mode ~dur_relation states in
+      let picked =
+        match proto.instrument with
+        | Some (Instrument { instrument; _ }) -> instrument
+        | None -> assert false
+      in
+      let proto = { proto with instrument_repeated = List.mem picked used } in
       let n = Option.value proto.nr_of_notes ~default:1 in
       let total' = total + n in
+      let used' = picked :: used in
       if total' >= target then
         let proto' = { proto with nr_of_notes = Some (n - (total' - target)) } in
         (List.rev (proto' :: acc), states')
-      else loop states' total' (proto :: acc)
+      else loop states' total' used' (proto :: acc)
     in
-    loop states 0 []
+    loop states 0 [] []
   in
   let _, _, groups =
     List.init n_events (fun _ -> ())
@@ -501,6 +526,7 @@ let notes_of_proto time entrydelay proto =
         dynamic = value_at dyn i;
         duration = value_at dur i;
         duration_ok = value_at dur_ok i;
+        instrument_repeated = proto.instrument_repeated;
       })
 
 let entry_of_proto time entrydelay proto =
@@ -514,6 +540,7 @@ let entry_of_proto time entrydelay proto =
     performance = shared_only proto.performance;
     dynamic = shared_only proto.dynamic;
     duration = shared_only proto.duration;
+    instrument_repeated = proto.instrument_repeated;
   }
 
 (* Pure fold: sums each proto's own entry delay into a running absolute
@@ -672,7 +699,14 @@ let build_constraint_map instrs =
 (* Describe what, if anything, is wrong with a note's performance/dynamic/
    duration given the instrument's allowed modes and duration range. Empty
    list means the note is fine. *)
+let instrument_repeated_problem (note : note) =
+  if note.instrument_repeated then
+    [ "instrument reused within this chord (not enough distinct instruments to reach the vertical density)" ]
+  else []
+
 let note_problems constraint_map (note : note) =
+  instrument_repeated_problem note
+  @
   match List.assoc_opt note.instrument constraint_map with
   | None -> [ "unknown instrument" ]
   | Some (valid_perfs, valid_dyns, valid_durs) ->

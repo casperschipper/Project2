@@ -104,6 +104,11 @@
   ;; otherwise, the other parameters only use one group per layer in their ensemble
 
 
+;; Ins precedes Per (per-note) and Dur (per-note, shorter-than-entry) so
+;; chord size is known before either resolves; Ent precedes Dur so DUR-ENTRY
+;; has an entry delay to constrain duration against.
+  (hierarchy (Ins Per Dyn Ent Dur))
+  
   (principles
     (instrument (ensemble series) (order series)) ;; two selection principles, one for the ensemble, one for the actual score constructions from the ensemble
     ;; entrydelay list is (0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8); ratio pairs may
@@ -142,9 +147,6 @@
 ;; If instrument is the density generator, it also becomes primary parameter in the hierarchy
   (density (autonomous (low 1) (high 6) (principle (group (element series) (repetition series) (repetitions 1 4)))))
 
-;; Ins precedes Per (per-note) and Dur (per-note, shorter-than-entry) so
-;; chord size is known before either resolves; Ent precedes Dur so DUR-ENTRY
-;; has an entry delay to constrain duration against.
-  (hierarchy (Ins Per Dyn Ent Dur))
+
 
 )

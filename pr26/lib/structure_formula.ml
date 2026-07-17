@@ -293,11 +293,22 @@ module Parse = struct
     | Sexp.List items ->
         "(" ^ (items |> List.map sexp_to_string |> String.concat " ") ^ ")"
 
+  (* Accepts plain decimals ("0.5") as well as literal fractions ("1/2",
+     "5/3") - both are reduced to a float immediately, so every caller past
+     this point just sees a float and needn't know which spelling was used. *)
   let require_float = function
     | Sexp.Atom s -> (
         match float_of_string_opt s with
         | Some f -> Ok f
-        | None -> fail (Printf.sprintf "expected float, got %S" s))
+        | None -> (
+            match String.index_opt s '/' with
+            | Some i ->
+                let num_s = String.sub s 0 i in
+                let den_s = String.sub s (i + 1) (String.length s - i - 1) in
+                (match (float_of_string_opt num_s, float_of_string_opt den_s) with
+                | Some num, Some den when den <> 0.0 -> Ok (num /. den)
+                | _ -> fail (Printf.sprintf "expected float, got %S" s))
+            | None -> fail (Printf.sprintf "expected float, got %S" s)))
     | Sexp.List _ -> fail "expected float, got list"
 
   let require_int = function
