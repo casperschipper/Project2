@@ -3,10 +3,11 @@ open Structure_formula
 open Selection
 open Tools
 
-(* A resolved note-within-a-chord: fully-specified, no options. *)
+(* A resolved note-within-a-chord: fully-specified, no options. Entry delay
+   is deliberately absent - it is a property of the [entry] (the shared
+   timepoint/chord a note belongs to), never of an individual note. *)
 type note = {
   time : float;
-  entrydelay : float;
   instrument : instr;
   performance : Performance.t;
   dynamic : Dynamic.t;
@@ -20,19 +21,23 @@ type note = {
   instrument_repeated : bool;
 }
 
-(* One instrument's contribution at one timepoint. [performance]/[dynamic]/
-   [duration] are [Some] when that parameter was chord-wide (shared across
-   every note here), [None] when it was resolved per-note instead (in which
-   case each [note] already carries its own independently-resolved value). *)
+(* One timepoint: the entry delay is resolved exactly once here, for the
+   whole chord, never per note. Under [InstrumentDensity] a chord is always
+   one instrument's worth of notes; under [Autonomous] density it may be
+   "scored" from several instruments (EMR-3 8.16's "sub-chords... put
+   together"), so [notes] isn't restricted to a single instrument.
+   [instrument]/[performance]/[dynamic]/[duration] are [Some] only when every
+   note in the entry actually agrees on that value - not a resolution-time
+   tag, just a display convenience computed from the final [notes]. *)
 type entry = {
   time : float;
   entrydelay : float;
-  instrument : instr;
   notes : note list;
+  instrument : instr option;
   performance : Performance.t option;
   dynamic : Dynamic.t option;
   duration : duration option;
-  (* see [note.instrument_repeated] - same value for every note in this entry. *)
+  (* see [note.instrument_repeated] - true if any note in this entry is. *)
   instrument_repeated : bool;
 }
 
@@ -198,6 +203,8 @@ let sel_sample_pred (p : 'a -> bool) : 'a sel_state -> 'a * 'a sel_state =
   let v, state' = sel_sample_pred_tagged p state in
   (get_value v, state')
 
+let result_ok = function Value _ -> true | Impossible _ -> false
+
 let calculate_number_of_events variant_duration entry_delay_principle
     entry_delay_ensemble =
   let avg_ed = expected_value entry_delay_principle entry_delay_ensemble in
@@ -282,7 +289,7 @@ let resolve_note_param_tagged mode n_notes pred state =
   match mode with
   | PerChord ->
       let v, state' = sel_sample_pred_tagged pred state in
-      let ok = match v with Value _ -> true | Impossible _ -> false in
+      let ok = result_ok v in
       (Shared (get_value v), Shared ok, state')
   | PerNote ->
       let n = Option.value n_notes ~default:1 in
@@ -291,7 +298,7 @@ let resolve_note_param_tagged mode n_notes pred state =
         |> List.fold_left
              (fun (acc, oks_acc, st) () ->
                let v, st' = sel_sample_pred_tagged pred st in
-               let ok = match v with Value _ -> true | Impossible _ -> false in
+               let ok = result_ok v in
                (get_value v :: acc, ok :: oks_acc, st'))
              ([], [], state)
       in
@@ -400,7 +407,7 @@ let resolve_step ~perf_mode ~dyn_mode ~dur_relation (states, proto) elem =
             dur_pred_from ~instr_arr:states.instr_arr proto dur_relation (Duration ed)
           in
           let v, ed_state' = sel_sample_pred_tagged pred states.ed_state in
-          let ok = match v with Value _ -> true | Impossible _ -> false in
+          let ok = result_ok v in
           ( { states with ed_state = ed_state' },
             { proto with entrydelay = Some (get_value v); duration_ok = Some (Shared ok) } )
       | _ ->
@@ -445,86 +452,193 @@ let resolve_step ~perf_mode ~dyn_mode ~dur_relation (states, proto) elem =
       let v, dyn_state' = resolve_note_param dyn_mode proto.nr_of_notes pred states.dyn_state in
       ({ states with dyn_state = dyn_state' }, { proto with dynamic = Some v })
 
-let resolve_entry ~hierarchy ~perf_mode ~dyn_mode ~dur_relation states =
-  List.fold_left (resolve_step ~perf_mode ~dyn_mode ~dur_relation) (states, empty_proto) hierarchy
+let resolve_entry ?(start = empty_proto) ~hierarchy ~perf_mode ~dyn_mode ~dur_relation states =
+  List.fold_left (resolve_step ~perf_mode ~dyn_mode ~dur_relation) (states, start) hierarchy
 
-(* All entries in an autonomous-density timepoint group share one start
-   time: only the last one's drawn entry delay survives to advance the
-   running clock, earlier ones are stamped to 0 so step 2's summing fold
-   doesn't move between them. *)
-let stamp_group_entrydelay group =
-  let n = List.length group in
-  List.mapi
-    (fun i proto ->
-      if i = n - 1 then proto else { proto with entrydelay = Some (Entrydelay 0.0) })
-    group
-
-(** With [InstrumentDensity], every entry is its own timepoint. *)
+(** With [InstrumentDensity], every entry is its own timepoint - one
+    instrument, one already-resolved entry delay. Each is wrapped as a
+    singleton group so step 2 can treat both density modes uniformly. *)
 let resolve_layer_instrument_density ~n_events ~hierarchy ~perf_mode ~dyn_mode
     ~dur_relation states0 =
-  let _, protos =
+  let _, groups =
     List.init n_events (fun _ -> ())
     |> List.fold_left
          (fun (states, acc) () ->
            let states', proto = resolve_entry ~hierarchy ~perf_mode ~dyn_mode ~dur_relation states in
-           (advance_all_windows states', proto :: acc))
+           let ed = match proto.entrydelay with Some ed -> ed | None -> Entrydelay 0.0 in
+           (advance_all_windows states', (ed, [ proto ]) :: acc))
          (states0, [])
   in
-  List.rev protos
+  List.rev groups
 
 (** With [Autonomous] density, each timepoint samples a target density and
-    keeps resolving entries (each independently picking its own instrument,
-    conditioned the same way as any other entry) until the target is
-    reached. If the last pick's chordsize would overshoot the target, its
-    extra voices are cut - [nr_of_notes] is capped down to however many are
-    still needed, so the group's total lands exactly on the target. (Any
-    per-note performance/dynamic/duration values already drawn for the
-    trimmed voices are simply never read - [notes_of_proto] only builds as
-    many notes as [nr_of_notes] says.) *)
+    keeps resolving sub-picks (each independently picking its own instrument,
+    conditioned the same way as any other) until the target is reached. If
+    the last pick's chordsize would overshoot the target, its extra voices
+    are cut - [nr_of_notes] is capped down to however many are still needed,
+    so the group's total lands exactly on the target. (Any per-note
+    performance/dynamic/duration values already drawn for the trimmed voices
+    are simply never read.)
+
+    Unlike [InstrumentDensity], a timepoint here may need several sub-picks
+    to "score" the chord (EMR-3 8.16), and the whole chord shares exactly one
+    entry delay - so [Ent] is deliberately excluded from each sub-pick's own
+    hierarchy fold ([hierarchy_no_ent]) and resolved once per group instead,
+    positioned relative to the sub-pick loop by wherever the composer put
+    [Ent] relative to [Dur] in [hierarchy]. This preserves both possible
+    conditioning directions via the exact same predicates [resolve_step]
+    already uses for a single sub-pick ([dur_pred_from]/[ed_pred_from]) -
+    just fed a value that's fixed for the whole group instead of one proto:
+    - [Ent] before [Dur]: the group's entry delay is drawn once, up front,
+      and every sub-pick's [Dur] step conditions on it exactly as it would if
+      [Ent] had run first for that one sub-pick (seeded via [resolve_entry]'s
+      [~start], never drawn again).
+    - [Dur] before [Ent]: every sub-pick's [Dur] resolves unconstrained (no
+      entry delay exists yet), and the group's entry delay is drawn once
+      *after* the loop, either unconstrained ([DurIndependent]) or bounded by
+      the longest duration seen anywhere in the group ([DurShorterThanEntry]
+      - generalizing [ed_pred_from]'s own per-proto max-over-per-note-values
+      check to a max over the whole group). [DurEqualsEntry] is the one
+      relation where this ordering still settles the shared value mid-loop:
+      the first sub-pick's freely-drawn duration *becomes* the group's entry
+      delay, and every later sub-pick is then forced to copy it (mirroring
+      the original single-sub-pick "[Dur] before [Ent]" case, just decided
+      once for the whole chord instead of once per sub-pick). *)
 let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
     ~dur_relation ~low ~high ~selection_principle states0 =
   let dens_arr = Array.init (high - low + 1) (fun i -> low + i) |> elements_of_array in
-  let fill_group states target =
+  let hierarchy_no_ent = List.filter (fun e -> e <> Ent) hierarchy in
+  let ent_before_dur =
+    let index_of x =
+      let rec go i = function
+        | [] -> assert false (* hierarchy is always a permutation of all 5 elems - see mk_hierarchy *)
+        | y :: rest -> if y = x then i else go (i + 1) rest
+      in
+      go 0 hierarchy
+    in
+    index_of Ent < index_of Dur
+  in
+  let resolve_subpick ?seed_entrydelay states =
+    let start =
+      match seed_entrydelay with
+      | Some ed -> { empty_proto with entrydelay = Some ed }
+      | None -> empty_proto
+    in
+    resolve_entry ~start ~hierarchy:hierarchy_no_ent ~perf_mode ~dyn_mode ~dur_relation states
+  in
+  let max_duration_of proto =
+    match proto.duration with
+    | Some (Shared (Duration d)) -> d
+    | Some (PerNote ds) -> ds |> List.map (fun (Duration d) -> d) |> List.fold_left Float.max 0.0
+    | None -> 0.0
+  in
+  let force_not_ok = function Shared _ -> Shared false | PerNote xs -> PerNote (List.map (fun _ -> false) xs) in
+  (* Overrides [duration_ok] group-wide: used when the group's one shared
+     entry delay itself turned out [Impossible], a chord-level fact that
+     can't be pinned on any single sub-pick's own (otherwise-fine) draw. *)
+  let mark_group_ok ok proto =
+    if ok then proto else { proto with duration_ok = Option.map force_not_ok proto.duration_ok }
+  in
+  let stamp_ok ok proto = { proto with duration_ok = Some (Shared ok) } in
+  (* Resolves the sub-picks that fill one chord to [target]. [seed] is the
+     entry delay already fixed for the whole group (if any) before the first
+     sub-pick runs; [next_seed] derives what becomes fixed for the *next*
+     sub-pick from what's fixed so far and the sub-pick just resolved - used
+     only by [DurEqualsEntry]'s "settle from the first sub-pick" case below,
+     a no-op everywhere else. *)
+  let fill_subpicks states target ~seed ~next_seed =
     (* [used] carries every instrument already picked earlier in this same
        chord, so a later pick that lands on one of them - the orchestra
        running out of distinct instruments before the target density is
        reached - can be flagged (EMR-3 8.16: "the programme expects there to
        be enough instruments ... If there are not enough instruments, each
        repeated instrument is provided with a comment"). *)
-    let rec loop states total used acc =
-      let states', proto = resolve_entry ~hierarchy ~perf_mode ~dyn_mode ~dur_relation states in
+    let rec loop states total used acc settled =
+      let states', proto = resolve_subpick ?seed_entrydelay:settled states in
       let picked =
         match proto.instrument with
         | Some (Instrument { instrument; _ }) -> instrument
         | None -> assert false
       in
       let proto = { proto with instrument_repeated = List.mem picked used } in
+      let settled' = next_seed settled proto in
       let n = Option.value proto.nr_of_notes ~default:1 in
       let total' = total + n in
       let used' = picked :: used in
       if total' >= target then
         let proto' = { proto with nr_of_notes = Some (n - (total' - target)) } in
-        (List.rev (proto' :: acc), states')
-      else loop states' total' used' (proto :: acc)
+        (settled', List.rev (proto' :: acc), states')
+      else loop states' total' used' (proto :: acc) settled'
     in
-    loop states 0 [] []
+    loop states 0 [] [] seed
+  in
+  let keep_seed settled _ = settled in
+  let fill_group states target =
+    match (dur_relation, ent_before_dur) with
+    | DurEqualsEntry, true ->
+        (* the drawn value becomes every sub-pick's duration verbatim (below),
+           so - exactly like the single-sub-pick case this generalizes - it
+           must itself be achievable as *some* instrument's duration. *)
+        let pred (Entrydelay ed) = dur_pred_from ~instr_arr:states.instr_arr empty_proto dur_relation (Duration ed) in
+        let v, ed_state' = sel_sample_pred_tagged pred states.ed_state in
+        let ok = result_ok v in
+        let ed = get_value v in
+        let states = { states with ed_state = ed_state' } in
+        let _, group, states' = fill_subpicks states target ~seed:(Some ed) ~next_seed:keep_seed in
+        (ed, List.map (stamp_ok ok) group, states')
+    | DurEqualsEntry, false ->
+        let next_seed settled proto =
+          match settled with
+          | Some _ -> settled
+          | None -> ( match proto.duration with Some (Shared (Duration d)) -> Some (Entrydelay d) | _ -> None)
+        in
+        let settled, group, states' = fill_subpicks states target ~seed:None ~next_seed in
+        (* [duration_note_mode DurEqualsEntry] is always [PerChord], so the
+           first sub-pick always settles [settled] to [Some _] via [next_seed]
+           above - this can't stay [None]. *)
+        let ed = Option.get settled in
+        let ok =
+          match group with
+          | p :: _ -> ( match p.duration_ok with Some (Shared ok) -> ok | _ -> true)
+          | [] -> true
+        in
+        (ed, List.map (stamp_ok ok) group, states')
+    | (DurIndependent _ | DurShorterThanEntry _), true ->
+        let v, ed_state' = sel_sample_pred_tagged (Fun.const true) states.ed_state in
+        let ed = get_value v in
+        let states = { states with ed_state = ed_state' } in
+        let _, group, states' = fill_subpicks states target ~seed:(Some ed) ~next_seed:keep_seed in
+        (ed, group, states')
+    | (DurIndependent _ | DurShorterThanEntry _), false ->
+        let _, group, states' = fill_subpicks states target ~seed:None ~next_seed:keep_seed in
+        let max_dur = group |> List.fold_left (fun acc p -> Float.max acc (max_duration_of p)) 0.0 in
+        let pred =
+          match dur_relation with
+          | DurShorterThanEntry _ -> fun (Entrydelay ed) -> ed >= max_dur
+          | DurIndependent _ | DurEqualsEntry -> Fun.const true
+        in
+        let v, ed_state' = sel_sample_pred_tagged pred states'.ed_state in
+        let ok = result_ok v in
+        let ed = get_value v in
+        let group = List.map (mark_group_ok ok) group in
+        (ed, group, { states' with ed_state = ed_state' })
   in
   let _, _, groups =
     List.init n_events (fun _ -> ())
     |> List.fold_left
          (fun (states, dens_state, acc) () ->
            let target, dens_state' = sel_sample dens_state in
-           let group, states' = fill_group states target in
-           ( advance_all_windows states',
-             sel_advance_window dens_state',
-             stamp_group_entrydelay group :: acc ))
+           let ed, group, states' = fill_group states target in
+           (advance_all_windows states', sel_advance_window dens_state', (ed, group) :: acc))
          (states0, sel_init selection_principle n_events dens_arr, [])
   in
-  groups |> List.rev |> List.concat
+  List.rev groups
 
 (* ---- Step 2: turn resolved protos into the final score (entries + notes) ---- *)
 
-let notes_of_proto time entrydelay proto =
+(* One sub-pick's own notes - no entry delay or time here yet, both are a
+   property of the whole entry (see [entry_of_group]), not of one sub-pick. *)
+let notes_of_proto proto : note list =
   let instr = match proto.instrument with Some (Instrument { instrument; _ }) -> instrument | None -> assert false in
   let n = Option.value proto.nr_of_notes ~default:1 in
   let perf = match proto.performance with Some tv -> tv | None -> assert false in
@@ -533,8 +647,7 @@ let notes_of_proto time entrydelay proto =
   let dur_ok = match proto.duration_ok with Some tv -> tv | None -> assert false in
   List.init n (fun i ->
       {
-        time;
-        entrydelay;
+        time = 0.0;
         instrument = instr;
         performance = value_at perf i;
         dynamic = value_at dyn i;
@@ -543,29 +656,43 @@ let notes_of_proto time entrydelay proto =
         instrument_repeated = proto.instrument_repeated;
       })
 
-let entry_of_proto time entrydelay proto =
-  let instr = match proto.instrument with Some (Instrument { instrument; _ }) -> instrument | None -> assert false in
-  let shared_only = function Some (Shared v) -> Some v | Some (PerNote _) | None -> None in
+(* [Some v] iff every note in [notes] agrees on [v] - a display convenience
+   for the entry header line, not a resolution-time tag (a group may combine
+   several independently-resolved sub-picks, see [resolve_layer_autonomous]). *)
+let uniform_value get = function
+  | [] -> None
+  | n0 :: rest ->
+      let v0 = get n0 in
+      if List.for_all (fun n -> get n = v0) rest then Some v0 else None
+
+(* One group (one or more sub-picks sharing one timepoint - see
+   [resolve_layer_autonomous]) becomes one [entry]: its notes are every
+   sub-pick's notes concatenated, all stamped with the group's single [time];
+   [entrydelay] is likewise the group's, never any individual sub-pick's. *)
+let entry_of_group time (Entrydelay ed) (protos : proto list) : entry =
+  let notes =
+    protos |> List.concat_map notes_of_proto |> List.map (fun (n : note) -> { n with time })
+  in
   {
     time;
-    entrydelay;
-    instrument = instr;
-    notes = notes_of_proto time entrydelay proto;
-    performance = shared_only proto.performance;
-    dynamic = shared_only proto.dynamic;
-    duration = shared_only proto.duration;
-    instrument_repeated = proto.instrument_repeated;
+    entrydelay = ed;
+    notes;
+    instrument = uniform_value (fun (n : note) -> n.instrument) notes;
+    performance = uniform_value (fun (n : note) -> n.performance) notes;
+    dynamic = uniform_value (fun (n : note) -> n.dynamic) notes;
+    duration = uniform_value (fun (n : note) -> n.duration) notes;
+    instrument_repeated = List.exists (fun (n : note) -> n.instrument_repeated) notes;
   }
 
-(* Pure fold: sums each proto's own entry delay into a running absolute
-   time, stamping that time onto the finished entry (and its notes). *)
-let resolve_times (protos : proto list) : entry list =
+(* Pure fold: sums each group's own (single, shared) entry delay into a
+   running absolute time, stamping that time onto the finished entry. *)
+let resolve_times (groups : (entrydelay * proto list) list) : entry list =
   let _, entries =
     List.fold_left
-      (fun (t, acc) proto ->
-        let ed = match proto.entrydelay with Some (Entrydelay ed) -> ed | None -> 0.0 in
-        (t +. ed, entry_of_proto t ed proto :: acc))
-      (0.0, []) protos
+      (fun (t, acc) (ed, protos) ->
+        let (Entrydelay edf) = ed in
+        (t +. edf, entry_of_group t ed protos :: acc))
+      (0.0, []) groups
   in
   List.rev entries
 
@@ -583,7 +710,7 @@ let calculate_layer_hierarchical ~n_events ~hierarchy ~instr_arr
       instr_arr = Array.map value_from_element instr_arr;
     }
   in
-  let protos =
+  let groups =
     match density with
     | InstrumentDensity ->
         resolve_layer_instrument_density ~n_events ~hierarchy ~perf_mode ~dyn_mode ~dur_relation states0
@@ -591,7 +718,7 @@ let calculate_layer_hierarchical ~n_events ~hierarchy ~instr_arr
         resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode ~dur_relation ~low ~high
           ~selection_principle states0
   in
-  resolve_times protos
+  resolve_times groups
 
 let zip5 a b c d e =
   List.map2 (fun (x, y) (z, (w, v)) -> (x, y, z, w, v)) (List.combine a b) (List.combine c (List.combine d e))
@@ -785,12 +912,14 @@ module Table = struct
     |> String.concat " "
 end
 
-let note_cells (note : note) =
+(* [entrydelay] comes from the note's owning [entry] - a note itself doesn't
+   carry one (see [note]'s definition). *)
+let note_cells ~entrydelay (note : note) =
   let (InstrumentName name) = note.instrument in
   let (Duration d) = note.duration in
   [
     Printf.sprintf "%.3f" note.time;
-    Printf.sprintf "%.3f" note.entrydelay;
+    Printf.sprintf "%.3f" entrydelay;
     Printf.sprintf "%.3f" d;
     name;
     Performance.to_string note.performance;
@@ -801,24 +930,27 @@ let note_header = [ "time"; "entrydelay"; "duration"; "instrument"; "performance
 
 (* Flat view: one row per note (a multi-note chord produces several rows
    sharing the same time), ignoring entry grouping entirely. *)
-let write_notes_score filename instrs layers =
+let opt_to_string to_string = function Some v -> to_string v | None -> "-"
+
+let instrument_name_opt = opt_to_string (fun (InstrumentName n) -> n)
+
+let cells_for_entry_notes (e : entry) = List.map (fun (n : note) -> note_cells ~entrydelay:e.entrydelay n) e.notes
+
+let write_notes_score filename instrs (layers : entry list list) =
   let constraint_map = build_constraint_map instrs in
   let all_rows =
-    note_header
-    :: (layers
-       |> List.concat_map (fun entries ->
-           entries |> List.concat_map (fun e -> e.notes) |> List.map note_cells))
+    note_header :: (layers |> List.concat_map (List.concat_map cells_for_entry_notes))
   in
   let widths = Table.column_widths all_rows in
   let oc = open_out filename in
   List.iteri
-    (fun i entries ->
+    (fun i (entries : entry list) ->
       Printf.fprintf oc "# layer %d\n" i;
       entries
-      |> List.iter (fun e ->
+      |> List.iter (fun (e : entry) ->
           e.notes
           |> List.iter (fun note ->
-              Printf.fprintf oc "%s" (Table.render_row widths (note_cells note));
+              Printf.fprintf oc "%s" (Table.render_row widths (note_cells ~entrydelay:e.entrydelay note));
               (match note_problems constraint_map note with
               | [] -> ()
               | problems ->
@@ -829,17 +961,16 @@ let write_notes_score filename instrs layers =
 
 (* Hierarchical view: one header line per entry (time, instrument, note
    count, and whichever of performance/dynamic/duration were chord-wide),
-   followed by its notes indented underneath. *)
-let write_entries_score filename instrs layers =
+   followed by its notes indented underneath. [instrument] is "-" when an
+   entry's notes span more than one instrument (EMR-3 8.16 "scoring"). *)
+let write_entries_score filename instrs (layers : entry list list) =
   let constraint_map = build_constraint_map instrs in
-  let opt_to_string to_string = function Some v -> to_string v | None -> "-" in
   let entry_cells (e : entry) =
-    let (InstrumentName name) = e.instrument in
     [
       Printf.sprintf "%.3f" e.time;
       Printf.sprintf "%.3f" e.entrydelay;
       opt_to_string (fun (Duration d) -> Printf.sprintf "%.3f" d) e.duration;
-      name;
+      instrument_name_opt e.instrument;
       string_of_int (List.length e.notes);
       opt_to_string Performance.to_string e.performance;
       opt_to_string Dynamic.to_string e.dynamic;
@@ -848,18 +979,18 @@ let write_entries_score filename instrs layers =
   let entry_header = [ "time"; "entrydelay"; "duration"; "instrument"; "notes"; "performance"; "dynamic" ] in
   let all_entry_rows = entry_header :: (layers |> List.concat_map (List.map entry_cells)) in
   let entry_widths = Table.column_widths all_entry_rows in
-  let all_note_rows = note_header :: (layers |> List.concat_map (List.concat_map (fun e -> e.notes)) |> List.map note_cells) in
+  let all_note_rows = note_header :: (layers |> List.concat_map (List.concat_map cells_for_entry_notes)) in
   let note_widths = Table.column_widths all_note_rows in
   let oc = open_out filename in
   List.iteri
-    (fun i entries ->
+    (fun i (entries : entry list) ->
       Printf.fprintf oc "# layer %d\n" i;
       entries
-      |> List.iter (fun e ->
+      |> List.iter (fun (e : entry) ->
           Printf.fprintf oc "%s\n" (Table.render_row entry_widths (entry_cells e));
           e.notes
           |> List.iter (fun note ->
-              Printf.fprintf oc "    %s" (Table.render_row note_widths (note_cells note));
+              Printf.fprintf oc "    %s" (Table.render_row note_widths (note_cells ~entrydelay:e.entrydelay note));
               (match note_problems constraint_map note with
               | [] -> ()
               | problems ->
@@ -868,18 +999,17 @@ let write_entries_score filename instrs layers =
     layers;
   close_out oc
 
-let print_layers instrs layers =
+let print_layers instrs (layers : entry list list) =
   let constraint_map = build_constraint_map instrs in
   let total_violations = ref 0 in
   print_endline "\n=== instrument_entry_test ===";
   List.iteri
-    (fun i entries ->
+    (fun i (entries : entry list) ->
       Printf.printf "\n--- layer %d ---\n" i;
       Printf.printf "%-8s %-10s %-8s %-14s %-5s %-12s %-8s %s\n" "time" "entrydelay"
         "duration" "instrument" "notes" "performance" "dynamic" "status";
       entries
       |> List.iter (fun (e : entry) ->
-          let (InstrumentName name) = e.instrument in
           e.notes
           |> List.iter (fun (note : note) ->
               let problems = note_problems constraint_map note in
@@ -891,8 +1021,9 @@ let print_layers instrs layers =
                     "!! IMPOSSIBLE: " ^ String.concat ", " ps
               in
               let (Duration d) = note.duration in
+              let (InstrumentName name) = note.instrument in
               Printf.printf "%-8.3f %-10.3f %-8.3f %-14s %-5d %-12s %-8s %s\n" note.time
-                note.entrydelay d name (List.length e.notes)
+                e.entrydelay d name (List.length e.notes)
                 (Performance.to_string note.performance)
                 (Dynamic.to_string note.dynamic)
                 status)))
