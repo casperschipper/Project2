@@ -124,7 +124,9 @@ let basic_test () =
           print_layers instrs layers;
           write_notes_score "score.projekt2" instrs layers;
           write_entries_score "score_entries.projekt2" instrs ~density layers;
+          Pr26.Midi_export.write_layers_midi ~prefix:"score" layers;
           print_endline
-            "Score written to score.projekt2 and score_entries.projekt2")
+            "Score written to score.projekt2, score_entries.projekt2 and \
+             score_layer<N>.mid")
 
 let () = basic_test ()
