@@ -111,7 +111,7 @@ let basic_test () =
                ~duration_relation_mode:(DurIndependent PerChord)
                ~duration_principle:Alea
              |> Result.map_error (List.map (fun lp -> lp.problem))
-             |> Result.map build_score)
+             |> Result.map (fun sf -> (sf.density, build_score sf)))
           <$> mk_par_list mk_entrydelay
                 [ 0.1; 0.2; 0.3; 1.0; 2.0; 3.0; 2.0; 5.0 ]
           <+> mk_par_list mk_duration [ 0.25; 0.5; 1.0; 2.0; 4.0 ]
@@ -120,10 +120,10 @@ let basic_test () =
       in
       match result with
       | Error errors -> print_errors "instrument_entry_test" errors
-      | Ok layers ->
+      | Ok (density, layers) ->
           print_layers instrs layers;
           write_notes_score "score.projekt2" instrs layers;
-          write_entries_score "score_entries.projekt2" instrs layers;
+          write_entries_score "score_entries.projekt2" instrs ~density layers;
           print_endline
             "Score written to score.projekt2 and score_entries.projekt2")
 

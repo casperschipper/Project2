@@ -1059,11 +1059,26 @@ let write_notes_score filename instrs (layers : entry list list) =
     layers;
   close_out oc
 
+(* The autonomous-density target sampled for [e] - always exactly the number
+   of notes it ended up with, since [resolve_layer_autonomous]'s [fill_group]
+   fills each chord to precisely that count. Shown as "-" under
+   [InstrumentDensity], where note count is just the picked instrument's own
+   chordsize, not a density the composer's algorithm chose. *)
+let density_cell density (e : entry) =
+  match density with
+  | Autonomous _ -> string_of_int (List.length e.notes)
+  | InstrumentDensity -> "-"
+
+let density_header_comment = function
+  | Autonomous { low; high; _ } ->
+      Printf.sprintf "# density: autonomous (low %d, high %d)\n" low high
+  | InstrumentDensity -> "# density: instrument\n"
+
 (* Hierarchical view: one header line per entry (time, instrument, note
    count, and whichever of performance/dynamic/duration were chord-wide),
    followed by its notes indented underneath. [instrument] is "-" when an
    entry's notes span more than one instrument (EMR-3 8.16 "scoring"). *)
-let write_entries_score filename instrs (layers : entry list list) =
+let write_entries_score filename instrs ~density (layers : entry list list) =
   let constraint_map = build_constraint_map instrs in
   let entry_cells (e : entry) =
     [
@@ -1072,6 +1087,7 @@ let write_entries_score filename instrs (layers : entry list list) =
       opt_to_string (fun (Duration d) -> Printf.sprintf "%.3f" d) e.duration;
       instrument_name_opt e.instrument;
       string_of_int (List.length e.notes);
+      density_cell density e;
       opt_to_string Performance.to_string e.performance;
       opt_to_string Dynamic.to_string e.dynamic;
     ]
@@ -1083,6 +1099,7 @@ let write_entries_score filename instrs (layers : entry list list) =
       "duration";
       "instrument";
       "notes";
+      "density";
       "performance";
       "dynamic";
     ]
@@ -1097,6 +1114,7 @@ let write_entries_score filename instrs (layers : entry list list) =
   in
   let note_widths = Table.column_widths all_note_rows in
   let oc = open_out filename in
+  Printf.fprintf oc "%s" (density_header_comment density);
   List.iteri
     (fun i (entries : entry list) ->
       Printf.fprintf oc "# layer %d\n" i;
