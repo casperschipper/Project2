@@ -16,11 +16,18 @@
   (performance-table
     (normal normal muted overtone1 pizzicato bowing)
     (normal muted overtone1)
-    (normal bowing))
+    (normal))
 
   (instruments
-    (instrument guitar
-      (chordsize 1 6)
+    (instrument guitar1
+      (chordsize 6 6)
+      (performance (normal muted overtone1))
+      (dynamics    (p mf f))
+      (compass (1 01) (5 12))
+      (durations 0.1 4.0))
+
+    (instrument guitar2
+      (chordsize 6 6)
       (performance (normal muted overtone1))
       (dynamics    (p mf f))
       (compass (1 01) (5 12))
@@ -98,7 +105,7 @@
         ;;(section   1.0      (start 0.5 1.0)      (end 0.5 0.0)))
 
 
-  (number-of-instrument-groups 1) 
+  (number-of-instrument-groups 2) 
   ;; this is a main parameter to handle the number of groups selected.
   ;; only when other parameters are included in "combination", may they also get multiple groups.
   ;; otherwise, the other parameters only use one group per layer in their ensemble
@@ -108,7 +115,7 @@
 ;; chord size is known before either resolves; Ent precedes Dur so DUR-ENTRY
 ;; has an entry delay to constrain duration against.
   (hierarchy (Ins Per Dyn Ent Dur))
-  
+
   (principles
     (instrument (ensemble series) (order series)) ;; two selection principles, one for the ensemble, one for the actual score constructions from the ensemble
     ;; entrydelay list is (0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8); ratio pairs may
@@ -127,7 +134,7 @@
     ;; (ensemble combination) means performance reuses the instrument
     ;; ensemble's own groups instead of selecting its own
     (performance
-      (ensemble combination)
+      (ensemble (sequence 2))
       (order alea)
       (mode per-note))
     ;; dynamics stays chord-wide: one dynamic shared by every note in the
