@@ -402,7 +402,7 @@ let check_instrument_performances_known known_performances instrs : diagnostic l
       |> List.map (fun p ->
           {
             location = [ Key KInstrument; Index i; Key KPerformance ];
-            severity = Severity.Warning;
+            severity = Severity.Error;
             problem = UnknownPerformance (Performance.to_string p);
           }))
   |> List.concat
@@ -415,7 +415,7 @@ let check_instrument_dynamics_known known_dynamics instrs : diagnostic list =
       |> List.map (fun d ->
           {
             location = [ Key KInstrument; Index i; Key KDynamics ];
-            severity = Severity.Warning;
+            severity = Severity.Error;
             problem = UnknownDynamic (Dynamic.to_string d);
           }))
   |> List.concat

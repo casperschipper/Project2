@@ -3,7 +3,7 @@
 ;;; dune exec bin/main_sexp.exe
 (structure-formula
 
-  (seed 1) ;; random seed; same seed + same formula always produces the same score
+  (seed 3) ;; random seed; same seed + same formula always produces the same score
   (variant-duration 30.0)
   (octave-division 12) ;; ignored for the moment
 
@@ -22,14 +22,14 @@
     (instrument guitar1
       (chordsize 6 6)
       (performance (normal muted overtone1))
-      (dynamics    (p mf f))
+      (dynamics    (p mf f ppp))
       (compass (1 01) (5 12))
       (durations 0.1 4.0))
 
     (instrument guitar2
-      (chordsize 6 6)
+      (chordsize 1 6)
       (performance (normal muted overtone1))
-      (dynamics    (p mf f))
+      (dynamics    (p mf f ff))
       (compass (1 01) (5 12))
       (durations 0.1 4.0))
 
@@ -128,7 +128,7 @@
       (order
         ;; 0   1   2   3   4   5   6   7
         ;;(0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8)
-        (ratio ((0 1) (1 3) (2 1) (3 5) (4 2) (5 1) (6 1) (7 1)))))
+        (ratio ((0 1) (1 3) (2 1) (3 5) (4 2) (5 1) (6 1) (7 10)))))
     ;; performance is per-note here: within a multi-note chord, each note
     ;; gets its own independently-drawn performance mode (MOD-PERF = 1);
     ;; (ensemble combination) means performance reuses the instrument
@@ -152,7 +152,7 @@
 
 ;; you can either have autonomous density, using a principle, or density defined by the instrument chord size.
 ;; If instrument is the density generator, it also becomes primary parameter in the hierarchy
-  (density (autonomous (low 1) (high 6) (principle (group (element series) (repetition series) (repetitions 1 4)))))
+  (density (autonomous (low 1) (high 2) (principle (group (element series) (repetition series) (repetitions 1 4)))))
 
 
 
