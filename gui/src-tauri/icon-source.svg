@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!--
+    Source image for the application icon.
+
+    A grid of cells, some filled and some not: the table of indices that sits
+    at the centre of how Project Two is written. Regenerate the icon set with
+    `npx tauri icon src-tauri/icon-source.svg`.
+  -->
+  <rect width="1024" height="1024" rx="224" fill="#3d6b99"/>
+
+  <g fill="#ffffff">
+    <rect x="192" y="192" width="160" height="160" rx="24"/>
+    <rect x="432" y="192" width="160" height="160" rx="24"/>
+    <rect x="672" y="192" width="160" height="160" rx="24" opacity="0.32"/>
+
+    <rect x="192" y="432" width="160" height="160" rx="24"/>
+    <rect x="432" y="432" width="160" height="160" rx="24" opacity="0.32"/>
+    <rect x="672" y="432" width="160" height="160" rx="24"/>
+
+    <rect x="192" y="672" width="160" height="160" rx="24" opacity="0.32"/>
+    <rect x="432" y="672" width="160" height="160" rx="24"/>
+    <rect x="672" y="672" width="160" height="160" rx="24"/>
+  </g>
+</svg>

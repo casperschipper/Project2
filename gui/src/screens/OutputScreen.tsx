@@ -1,0 +1,117 @@
+import { useState } from "react";
+import { useStore } from "../state/store";
+import { DiagnosticList } from "../components/Field";
+import { dedupeForDisplay } from "../engine/diagnostics";
+
+/**
+ * The output screen.
+ *
+ * For now this shows what the engine produces as text. It is also the place
+ * to see the generated structure formula itself, which is worth having
+ * visible: the formula is the actual artefact the engine consumes, and being
+ * able to read it makes the relationship between the forms and the file
+ * concrete rather than hidden.
+ */
+
+type Tab = "score" | "entries" | "formula" | "log";
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: "score", label: "Score" },
+  { id: "entries", label: "Entries" },
+  { id: "formula", label: "Structure formula" },
+  { id: "log", label: "Engine log" },
+];
+
+export function OutputScreen() {
+  const { engineResult, sexp, running, blocked, guiDiagnostics } = useStore();
+  const [tab, setTab] = useState<Tab>("score");
+
+  const errors = guiDiagnostics.filter((d) => d.severity === "error");
+
+  const content = (): { text: string | undefined; empty: string } => {
+    switch (tab) {
+      case "score":
+        return {
+          text: engineResult?.score,
+          empty: "No score yet — the engine has not produced one for this formula.",
+        };
+      case "entries":
+        return {
+          text: engineResult?.entries,
+          empty: "No entry list yet.",
+        };
+      case "formula":
+        return { text: sexp, empty: "" };
+      case "log":
+        return {
+          text: engineResult?.log,
+          empty: "The engine produced no log output.",
+        };
+    }
+  };
+
+  const { text, empty } = content();
+
+  return (
+    <div className="screen" style={{ maxWidth: 1100 }}>
+      <h1 className="screen__title">Output</h1>
+      <p className="screen__intro">
+        What the engine generated from the current formula. More formats and ways of
+        displaying this will follow.
+      </p>
+
+      {blocked && (
+        <div style={{ marginBottom: 20 }}>
+          <div className="field__hint" style={{ marginBottom: 6 }}>
+            The engine has not been run because the formula is not yet consistent. These need
+            attention first:
+          </div>
+          <DiagnosticList diagnostics={dedupeForDisplay(errors).slice(0, 8)} />
+        </div>
+      )}
+
+      {engineResult?.engineError && (
+        <div style={{ marginBottom: 20 }}>
+          <div className="diagnostic diagnostic--error">
+            <span className="diagnostic__icon">!</span>
+            <span className="diagnostic__body">
+              <span className="diagnostic__message">{engineResult.engineError}</span>
+            </span>
+          </div>
+        </div>
+      )}
+
+      <div className="tabs">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            className={`tab${tab === t.id ? " tab--active" : ""}`}
+            onClick={() => setTab(t.id)}
+          >
+            {t.label}
+          </button>
+        ))}
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+          {text && (
+            <button
+              type="button"
+              className="btn btn--ghost btn--small"
+              onClick={() => navigator.clipboard?.writeText(text)}
+            >
+              Copy
+            </button>
+          )}
+        </div>
+      </div>
+
+      {running && <div className="faint" style={{ marginBottom: 10 }}>Running…</div>}
+
+      {text ? (
+        <pre className="output">{text}</pre>
+      ) : (
+        <div className="output output--empty">{empty}</div>
+      )}
+    </div>
+  );
+}
