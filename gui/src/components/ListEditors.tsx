@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import type React from "react";
 import { useStore } from "../state/store";
 import { HIERARCHY_LABELS } from "../schema/types";
 import type { HierarchyElem } from "../schema/types";
@@ -93,6 +94,17 @@ export function TokenListEditor({
  * what precedes what. The note beside each row states the consequence of its
  * current position so the effect of a drag is legible without leaving the
  * screen.
+ *
+ * This uses pointer events rather than the HTML5 drag-and-drop API. WebKitGTK
+ * implements HTML5 dragging poorly and under Wayland the `drop` event
+ * frequently never arrives, so the row lifts but cannot be released. Pointer
+ * events have none of that history and behave the same on every platform.
+ *
+ * Rows reorder live as the pointer passes them rather than on release, which
+ * removes the notion of a drop target altogether: there is nothing to miss.
+ * Keying each row by its element name is what makes this work - the dragged
+ * DOM node keeps its identity as the list reorders around it, so it retains
+ * the captured pointer.
  */
 export function HierarchyEditor({
   hierarchy,
@@ -102,7 +114,8 @@ export function HierarchyEditor({
   onChange: (h: HierarchyElem[]) => void;
 }) {
   const [dragging, setDragging] = useState<number | null>(null);
-  const [over, setOver] = useState<number | null>(null);
+  const dragIndex = useRef<number | null>(null);
+  const rowRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const move = (from: number, to: number) => {
     if (from === to) return;
@@ -112,32 +125,49 @@ export function HierarchyEditor({
     onChange(next);
   };
 
+  const beginDrag = (e: React.PointerEvent<HTMLDivElement>, index: number) => {
+    if (e.button !== 0) return;
+    // Stops the press turning into a text selection while dragging.
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dragIndex.current = index;
+    setDragging(index);
+  };
+
+  const onDragMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const from = dragIndex.current;
+    if (from === null) return;
+
+    const target = indexAt(rowRefs.current, e.clientY, hierarchy.length);
+    if (target !== null && target !== from) {
+      move(from, target);
+      dragIndex.current = target;
+      setDragging(target);
+    }
+  };
+
+  const endDrag = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (dragIndex.current === null) return;
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+    dragIndex.current = null;
+    setDragging(null);
+  };
+
   return (
     <div className="hierarchy">
       {hierarchy.map((elem, i) => (
         <div
           key={elem}
+          ref={(el) => (rowRefs.current[i] = el)}
           className={
-            "hierarchy__item" +
-            (dragging === i ? " hierarchy__item--dragging" : "") +
-            (over === i && dragging !== null && dragging !== i ? " hierarchy__item--over" : "")
+            "hierarchy__item" + (dragging === i ? " hierarchy__item--dragging" : "")
           }
-          draggable
-          onDragStart={() => setDragging(i)}
-          onDragEnd={() => {
-            setDragging(null);
-            setOver(null);
-          }}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setOver(i);
-          }}
-          onDrop={(e) => {
-            e.preventDefault();
-            if (dragging !== null) move(dragging, i);
-            setDragging(null);
-            setOver(null);
-          }}
+          onPointerDown={(e) => beginDrag(e, i)}
+          onPointerMove={onDragMove}
+          onPointerUp={endDrag}
+          onPointerCancel={endDrag}
         >
           <span className="hierarchy__rank">{i + 1}</span>
           <span className="hierarchy__grip" aria-hidden>
@@ -147,11 +177,13 @@ export function HierarchyEditor({
           <span className="hierarchy__note">{noteFor(elem, i, hierarchy)}</span>
 
           {/* Keyboard equivalent: dragging alone would make the ordering
-              unreachable without a mouse. */}
+              unreachable without a mouse. The pointer-down guard keeps a
+              click on these from being read as the start of a drag. */}
           <button
             type="button"
             className="btn btn--ghost btn--icon"
             disabled={i === 0}
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={() => move(i, i - 1)}
             title="Move earlier"
           >
@@ -161,6 +193,7 @@ export function HierarchyEditor({
             type="button"
             className="btn btn--ghost btn--icon"
             disabled={i === hierarchy.length - 1}
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={() => move(i, i + 1)}
             title="Move later"
           >
@@ -170,6 +203,34 @@ export function HierarchyEditor({
       ))}
     </div>
   );
+}
+
+/**
+ * Which row the pointer is currently over.
+ *
+ * Past either end the nearest row is used, so dragging beyond the list still
+ * moves the row to the top or bottom rather than stalling.
+ */
+function indexAt(
+  rows: (HTMLDivElement | null)[],
+  clientY: number,
+  count: number,
+): number | null {
+  let first: DOMRect | null = null;
+  let last: DOMRect | null = null;
+
+  for (let i = 0; i < count; i += 1) {
+    const el = rows[i];
+    if (!el) continue;
+    const rect = el.getBoundingClientRect();
+    if (first === null) first = rect;
+    last = rect;
+    if (clientY >= rect.top && clientY <= rect.bottom) return i;
+  }
+
+  if (first && clientY < first.top) return 0;
+  if (last && clientY > last.bottom) return count - 1;
+  return null;
 }
 
 /** A short statement of what this parameter's position currently implies. */

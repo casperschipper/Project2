@@ -815,20 +815,28 @@ select {
   border-radius: var(--radius-sm);
   background: var(--surface);
   cursor: grab;
-  transition: border-color 0.12s, box-shadow 0.12s, opacity 0.12s;
+  transition: border-color 0.12s, box-shadow 0.12s, background 0.12s;
+  /* Dragging is driven by pointer events, so the browser must not claim the
+     gesture for scrolling or turn the press into a text selection. */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .hierarchy__item:hover {
   border-color: var(--border-strong);
 }
 
+/* Rows reorder live under the pointer, so the dragged row stays fully
+   visible and is lifted rather than ghosted - it is the real thing being
+   moved, not a placeholder for it. */
 .hierarchy__item--dragging {
-  opacity: 0.4;
-}
-
-.hierarchy__item--over {
+  cursor: grabbing;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
+  background: var(--accent-soft);
+  box-shadow: var(--shadow);
+  position: relative;
+  z-index: 2;
 }
 
 .hierarchy__rank {
