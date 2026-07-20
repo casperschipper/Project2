@@ -319,17 +319,19 @@ function RatioEditor({
         return (
           <div className="table-editor__row" key={i}>
             <div className="table-editor__group-label">{i + offset}</div>
-            <div style={{ flex: 1, minWidth: 0 }}>{value}</div>
+            <div className="ratio-row__value" title={value}>
+              {value}
+            </div>
             <input
               type="number"
               className="input--tiny"
               min={0}
               value={weight}
               onChange={(e) => setWeight(i, Number(e.target.value))}
+              aria-label={`Weight for ${value}`}
             />
             <div
-              className="faint mono"
-              style={{ width: 76, textAlign: "right", fontSize: 11.5 }}
+              className={`ratio-row__share${weight <= 0 ? " ratio-row__share--blocked" : ""}`}
             >
               {weight <= 0 ? "blocked" : `${share.toFixed(1)}%`}
             </div>

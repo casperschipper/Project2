@@ -45,6 +45,12 @@
 
   --nav-width: 208px;
   --help-width: 400px;
+
+  /* Without this the browser draws native controls - number spinners,
+     scrollbars, focus rings - in its light theme regardless of the page,
+     which is why the spinners appeared as white blocks on the dark
+     background. */
+  color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -75,6 +81,8 @@
     --ok-soft: #1d2620;
 
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.25);
+
+    color-scheme: dark;
   }
 }
 
@@ -352,6 +360,15 @@ textarea {
 /* Inputs                                                               */
 /* ------------------------------------------------------------------ */
 
+/*
+ * Note the absence of `width: 100%` here.
+ *
+ * A type selector plus an attribute selector outranks a single class, so
+ * setting a width on `input[type="number"]` would silently defeat every
+ * `.input--tiny` / `.input--narrow` / `.input--medium` below and stretch each
+ * number field to fill its row. Widths belong to the utility classes alone;
+ * anything that genuinely wants to fill says so explicitly.
+ */
 input[type="text"],
 input[type="number"],
 select,
@@ -361,12 +378,14 @@ textarea {
   border-radius: var(--radius-sm);
   padding: 6px 9px;
   transition: border-color 0.12s, box-shadow 0.12s;
-  width: 100%;
   max-width: 100%;
 }
 
 input[type="number"] {
   font-variant-numeric: tabular-nums;
+  /* Clear the native spinner, which sits inside the box at the right edge -
+     with the shared 9px the digits run into the arrows. */
+  padding-right: 18px;
 }
 
 input:focus,
@@ -399,6 +418,7 @@ textarea {
   resize: vertical;
   min-height: 84px;
   line-height: 1.6;
+  width: 100%;
 }
 
 select {
@@ -691,19 +711,24 @@ select {
   color: var(--error);
 }
 
-.cell__input {
-  width: 42px;
+/* Written as `input.cell__input` so it outranks the shared
+   `input[type="number"]` rule, which would otherwise reimpose a border,
+   background and padding and draw a full input inside the chip. */
+input.cell__input {
+  width: 48px;
   border: none;
   background: none;
-  padding: 0;
+  /* Right padding is what separates the digit from the native spinner,
+     which WebKit lays inside the content box at the right edge. */
+  padding: 0 2px 0 3px;
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 600;
-  text-align: center;
+  text-align: left;
   font-variant-numeric: tabular-nums;
 }
 
-.cell__input:focus {
+input.cell__input:focus {
   outline: none;
   box-shadow: none;
 }
@@ -725,6 +750,33 @@ select {
 }
 
 .cell__remove:hover {
+  color: var(--error);
+}
+
+/* ------------------------------------------------------------------ */
+/* Ratio weights                                                        */
+/* ------------------------------------------------------------------ */
+
+/* One row per list element, including those weighted zero, so that the
+   engine's treatment of an unmentioned index as blocked stays visible. */
+.ratio-row__value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ratio-row__share {
+  width: 74px;
+  flex-shrink: 0;
+  text-align: right;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-faint);
+}
+
+.ratio-row__share--blocked {
   color: var(--error);
 }
 
@@ -762,16 +814,17 @@ select {
   font-variant-numeric: tabular-nums;
 }
 
-.token__input {
+/* Same specificity reasoning as input.cell__input above. */
+input.token__input {
   border: none;
   background: none;
-  padding: 0;
-  width: 54px;
+  padding: 0 2px;
+  width: 56px;
   font-family: var(--font-mono);
   font-size: 12.5px;
 }
 
-.token__input:focus {
+input.token__input:focus {
   outline: none;
   box-shadow: none;
 }
