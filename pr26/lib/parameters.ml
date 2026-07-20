@@ -67,7 +67,7 @@ let mk_hierarchy (lst : hierarchy_elem list) =
 let display_problem p =
   match p with
   | NegativeEntry x ->
-      "entry delay is" ^ string_of_float x ^ ", but may not be negative"
+      "entry delay is " ^ string_of_float x ^ ", but may not be negative"
   | InvalidInstrumentName -> "instrument name may not be empty"
   | InvalidChordSize -> "illegal chord size limit, cannot be zero"
   | TableSizeMismatch { instrument_rows; other_rows } ->
@@ -209,6 +209,112 @@ let print_diagnostics label diags =
   Printf.printf "%s:\n" label;
   List.iter (fun d -> Printf.printf "  - %s\n" (display_diagnostic d)) diags;
   flush stdout
+
+(* ------------------------------------------------------------------ *)
+(* Machine-readable diagnostics, for the GUI.                          *)
+(*                                                                     *)
+(* [problem_id] is the contract with the GUI: a stable kebab-case name  *)
+(* per [problem] constructor (per *reason* where a constructor carries  *)
+(* one, since the two InvalidDensity reasons are unrelated mistakes for *)
+(* the composer). The GUI keys its editable explanatory markdown on     *)
+(* these - help/errors/<id>.md - so they must stay stable even when     *)
+(* [display_problem]'s English is reworded. Adding a constructor        *)
+(* without adding an id here is a compile error, which is the point.    *)
+(* ------------------------------------------------------------------ *)
+let problem_id = function
+  | NegativeEntry _ -> "negative-entry"
+  | InvalidInstrumentName -> "invalid-instrument-name"
+  | InvalidChordSize -> "invalid-chord-size"
+  | TableSizeMismatch _ -> "table-size-mismatch"
+  | InvalidDensity DensityTooSmall -> "density-too-small"
+  | InvalidDensity DensityMaxBelowMin -> "density-max-below-min"
+  | UnknownPerformance _ -> "unknown-performance"
+  | UnknownDynamic _ -> "unknown-dynamic"
+  | InvalidPitchCompass -> "invalid-pitch-compass"
+  | DuplicateHierarchy -> "duplicate-hierarchy"
+  | IncompleteHierarchy _ -> "incomplete-hierarchy"
+  | InstrumentDensityRequiresInsFirst -> "instrument-density-requires-ins-first"
+  | NegativeDuration _ -> "negative-duration"
+  | InvalidDurationRange DurationRangeNegative -> "duration-range-negative"
+  | InvalidDurationRange DurationRangeMaxBelowMin -> "duration-range-max-below-min"
+  | ParseError _ -> "parse-error"
+  | RatioAllBlocked _ -> "ratio-all-blocked"
+  | PerNoteRequiresInsFirst -> "per-note-requires-ins-first"
+
+(* Minimal JSON writing. Only what the diagnostic shape needs - there is no
+   json library in this project's dependencies and pulling one in for three
+   value kinds isn't worth it. *)
+let json_escape s =
+  let buf = Buffer.create (String.length s + 8) in
+  String.iter
+    (fun c ->
+      match c with
+      | '"' -> Buffer.add_string buf "\\\""
+      | '\\' -> Buffer.add_string buf "\\\\"
+      | '\n' -> Buffer.add_string buf "\\n"
+      | '\r' -> Buffer.add_string buf "\\r"
+      | '\t' -> Buffer.add_string buf "\\t"
+      | c when Char.code c < 0x20 ->
+          Buffer.add_string buf (Printf.sprintf "\\u%04x" (Char.code c))
+      | c -> Buffer.add_char buf c)
+    s;
+  Buffer.contents buf
+
+let json_string s = "\"" ^ json_escape s ^ "\""
+let json_array items = "[" ^ String.concat "," items ^ "]"
+
+let json_obj fields =
+  "{" ^ String.concat "," (List.map (fun (k, v) -> json_string k ^ ":" ^ v) fields) ^ "}"
+
+(* The structured payload. The GUI uses these to fill placeholders in the
+   markdown (e.g. the offending name, the two mismatched row counts) so an
+   explanation can be specific without the GUI re-parsing English. *)
+let json_of_problem_data p =
+  match p with
+  | NegativeEntry x | NegativeDuration x ->
+      json_obj [ ("value", Printf.sprintf "%g" x) ]
+  | TableSizeMismatch { instrument_rows; other_rows } ->
+      json_obj
+        [ ("instrumentRows", string_of_int instrument_rows);
+          ("otherRows", string_of_int other_rows) ]
+  | UnknownPerformance s | UnknownDynamic s -> json_obj [ ("name", json_string s) ]
+  | IncompleteHierarchy missing ->
+      json_obj
+        [ ( "missing",
+            json_array
+              (List.map (fun e -> json_string (hierarchy_elem_to_string e)) missing) ) ]
+  | ParseError msg -> json_obj [ ("message", json_string msg) ]
+  | RatioAllBlocked { row } ->
+      json_obj [ ("row", json_array (List.map string_of_int row)) ]
+  | InvalidInstrumentName | InvalidChordSize | InvalidDensity _
+  | InvalidPitchCompass | DuplicateHierarchy | InstrumentDensityRequiresInsFirst
+  | InvalidDurationRange _ | PerNoteRequiresInsFirst ->
+      json_obj []
+
+(* [location] is emitted both as the structured segment list (which the GUI
+   walks to find the input field to attach the marker to) and as the flat
+   dotted string (for display and for coarse matching). *)
+let json_of_segment = function
+  | Key k -> json_obj [ ("key", json_string (key_to_string k)) ]
+  | Index i -> json_obj [ ("index", string_of_int i) ]
+
+let json_of_diagnostic { location; severity; problem } =
+  json_obj
+    [ ("id", json_string (problem_id problem));
+      ("severity", json_string (match severity with
+                                | Severity.Error -> "error"
+                                | Severity.Warning -> "warning"));
+      ("path", json_string (location_to_string location));
+      ("location", json_array (List.map json_of_segment location));
+      ("message", json_string (display_problem problem));
+      ("data", json_of_problem_data problem) ]
+
+let json_of_diagnostics ~ok ~errors ~warnings ~extra =
+  json_obj
+    ([ ("ok", if ok then "true" else "false");
+       ("errors", json_array (List.map json_of_diagnostic errors));
+       ("warnings", json_array (List.map json_of_diagnostic warnings)) ]
+    @ extra)
 
 let entry_to_float (Entrydelay x) = x
 (* let value_to_float v = match v with Entry (Entrydelay x) -> x *)
