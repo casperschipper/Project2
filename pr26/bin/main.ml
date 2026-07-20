@@ -110,8 +110,12 @@ let basic_test () =
                ~duration_combination:(NoCombination EnsembleGroupSeries)
                ~duration_relation_mode:(DurIndependent PerChord)
                ~duration_principle:Alea
-             |> Result.map_error (List.map (fun lp -> lp.problem))
-             |> Result.map (fun sf -> (sf.density, build_score sf)))
+             |> Result.map_error (fun (errors, _warnings) ->
+                    List.map (fun (d : diagnostic) -> d.problem) errors)
+             |> Result.map (fun (sf, warnings) ->
+                    if warnings <> [] then
+                      print_diagnostics "instrument_entry_test (warnings)" warnings;
+                    (sf.density, build_score sf)))
           <$> mk_par_list mk_entrydelay
                 [ 0.1; 0.2; 0.3; 1.0; 2.0; 3.0; 2.0; 5.0 ]
           <+> mk_par_list mk_duration [ 0.25; 0.5; 1.0; 2.0; 4.0 ]

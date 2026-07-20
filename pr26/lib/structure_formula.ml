@@ -72,56 +72,26 @@ type structure_formula = {
   hierarchy : hierarchy;
 }
 
-(* Identifies which section of a structure_formula (and, one level down, of
-   the composer's sexp) a [problem] belongs to - one variant per logical
-   group of [structure_formula] fields. Every validator below picks the one
-   field a composer would actually go edit to fix the error (e.g. a
-   combination-size mismatch is reported against the *other* table, not
-   instrument's, since instrument-table is the fixed reference point), so a
-   future GUI can route each error straight to the right section/panel. *)
-type field =
-  | FGlobal
-  | FInstrument
-  | FEntrydelay
-  | FDuration
-  | FPerformance
-  | FDynamics
-  | FDensity
-  | FHierarchy
-  | FUnion
-
-let field_to_string = function
-  | FGlobal -> "global"
-  | FInstrument -> "instrument"
-  | FEntrydelay -> "entrydelay"
-  | FDuration -> "duration"
-  | FPerformance -> "performance"
-  | FDynamics -> "dynamics"
-  | FDensity -> "density"
-  | FHierarchy -> "hierarchy"
-  | FUnion -> "union"
-
-type located_problem = { field : field; problem : problem }
-
-let locate field problems =
-  problems |> List.map (fun problem -> { field; problem })
-
-let display_located_problem { field; problem } =
-  Printf.sprintf "[%s] %s" (field_to_string field) (display_problem problem)
-
-let print_located_errors label errors =
-  Printf.printf "%s failed:\n" label;
-  List.iter (fun e -> Printf.printf "  - %s\n" (display_located_problem e)) errors;
-  flush stdout
-
-let check_combination label instr_table other_table = function
+(* When a combination is requested but the two tables' row counts don't
+   match, the composer needs to know both which decision to reconsider (the
+   combination setting) and which two tables actually disagree - so this
+   emits one warning at each of the three locations, all carrying the same
+   [TableSizeMismatch] problem. *)
+let check_combination ~combination_loc ~instr_table_loc ~other_table_loc
+    instr_table other_table combination : diagnostic list =
+  match combination with
   | Combination when not (combination_compatibility instr_table other_table) ->
-      [
+      let mismatch =
         TableSizeMismatch
-          (Printf.sprintf
-             "instrument (size %d) and %s table (size %d) are not of \
-              compatible size"
-             (count_rows instr_table) label (count_rows other_table));
+          {
+            instrument_rows = count_rows instr_table;
+            other_rows = count_rows other_table;
+          }
+      in
+      [
+        { location = combination_loc; severity = Severity.Warning; problem = mismatch };
+        { location = instr_table_loc; severity = Severity.Warning; problem = mismatch };
+        { location = other_table_loc; severity = Severity.Warning; problem = mismatch };
       ]
   | _ -> []
 
@@ -148,20 +118,33 @@ let mk_structure_formula ~seed ~variant_duration ~instr_list ~instr_table
     match (density, hierarchy) with
     | InstrumentDensity, first :: _ ->
         if first == Ins then []
-        else locate FHierarchy [ InstrumentDensityRequiresInsFirst ]
+        else
+          [
+            {
+              location = [ Key KHierarchy ];
+              severity = Severity.Error;
+              problem = InstrumentDensityRequiresInsFirst;
+            };
+          ]
     | _ -> []
   in
   let combination_errors =
-    locate FEntrydelay
-      (check_combination "entrydelay" instr_table ed_table entrydelay_combination)
-    @ locate FPerformance
-        (check_combination "performance" instr_table performance_table
-           performance_combination)
-    @ locate FDynamics
-        (check_combination "dynamics" instr_table dynamics_table
-           dynamics_combination)
-    @ locate FDuration
-        (check_combination "duration" instr_table dur_table duration_combination)
+    check_combination ~combination_loc:[ Key KEntrydelay; Key KCombination ]
+      ~instr_table_loc:[ Key KInstrument; Key KTable ]
+      ~other_table_loc:[ Key KEntrydelay; Key KTable ]
+      instr_table ed_table entrydelay_combination
+    @ check_combination ~combination_loc:[ Key KPerformance; Key KCombination ]
+        ~instr_table_loc:[ Key KInstrument; Key KTable ]
+        ~other_table_loc:[ Key KPerformance; Key KTable ]
+        instr_table performance_table performance_combination
+    @ check_combination ~combination_loc:[ Key KDynamics; Key KCombination ]
+        ~instr_table_loc:[ Key KInstrument; Key KTable ]
+        ~other_table_loc:[ Key KDynamics; Key KTable ]
+        instr_table dynamics_table dynamics_combination
+    @ check_combination ~combination_loc:[ Key KDuration; Key KCombination ]
+        ~instr_table_loc:[ Key KInstrument; Key KTable ]
+        ~other_table_loc:[ Key KDuration; Key KTable ]
+        instr_table dur_table duration_combination
   in
   let (ParameterList instr_arr) = instr_list in
   (* Membership errors are about the offending instrument's own
@@ -169,35 +152,32 @@ let mk_structure_formula ~seed ~variant_duration ~instr_list ~instr_table
      master list, not about the master list itself. *)
   let performance_membership_errors =
     let (ParameterList perf_arr) = perf_list in
-    locate FInstrument
-      (check_instrument_performances_known
-         (Performance_modes.of_list (Array.to_list perf_arr))
-         (Array.to_list instr_arr))
+    check_instrument_performances_known
+      (Performance_modes.of_list (Array.to_list perf_arr))
+      (Array.to_list instr_arr)
   in
   let dynamics_membership_errors =
     let (ParameterList dyn_arr) = dyn_list in
-    locate FInstrument
-      (check_instrument_dynamics_known
-         (Dynamic_modes.of_list (Array.to_list dyn_arr))
-         (Array.to_list instr_arr))
+    check_instrument_dynamics_known
+      (Dynamic_modes.of_list (Array.to_list dyn_arr))
+      (Array.to_list instr_arr)
   in
   let ratio_coverage_errors =
-    locate FInstrument
-      (check_ratio_coverage "instrument" instr_table instrument_principle)
-    @ locate FEntrydelay
-        (check_ratio_coverage "entrydelay" ed_table entrydelay_principle)
-    @ locate FPerformance
-        (check_ratio_coverage "performance" performance_table
-           performance_principle)
-    @ locate FDynamics
-        (check_ratio_coverage "dynamics" dynamics_table dynamics_principle)
-    @ locate FDuration
-        (check_ratio_coverage "duration" dur_table duration_principle)
+    check_ratio_coverage [ Key KInstrument; Key KTable ] instr_table
+      instrument_principle
+    @ check_ratio_coverage [ Key KEntrydelay; Key KTable ] ed_table
+        entrydelay_principle
+    @ check_ratio_coverage [ Key KPerformance; Key KTable ] performance_table
+        performance_principle
+    @ check_ratio_coverage [ Key KDynamics; Key KTable ] dynamics_table
+        dynamics_principle
+    @ check_ratio_coverage [ Key KDuration; Key KTable ] dur_table
+        duration_principle
     @
     match density with
     | Autonomous { low; high; selection_principle = Ratio _ as p } ->
         let dens_table = Table [| Array.init (high - low + 1) (fun i -> i) |] in
-        locate FDensity (check_ratio_coverage "density" dens_table p)
+        check_ratio_coverage [ Key KDensity ] dens_table p
     | _ -> []
   in
   (* chordsize (number of notes) is only known once an instrument has been
@@ -209,20 +189,18 @@ let mk_structure_formula ~seed ~variant_duration ~instr_list ~instr_table
     |> Option.map fst
   in
   let per_note_ordering_errors =
-    let needs_ins_first field elem = function
+    let needs_ins_first location elem = function
       | PerChord -> []
       | PerNote -> (
           match (hierarchy_index Ins, hierarchy_index elem) with
           | Some ins_i, Some elem_i when elem_i < ins_i ->
-              locate field
-                [
-                  PerNoteRequiresInsFirst
-                    (Printf.sprintf
-                       "%s is per-note: Ins must precede it in the hierarchy \
-                        (chord size isn't known until an instrument is \
-                        picked)"
-                       (field_to_string field));
-                ]
+              [
+                {
+                  location;
+                  severity = Severity.Error;
+                  problem = PerNoteRequiresInsFirst;
+                };
+              ]
           | _ -> [])
     in
     let dur_note_mode =
@@ -230,49 +208,53 @@ let mk_structure_formula ~seed ~variant_duration ~instr_list ~instr_table
       | DurIndependent m | DurShorterThanEntry m -> m
       | DurEqualsEntry -> PerChord
     in
-    needs_ins_first FPerformance Per performance_mode
-    @ needs_ins_first FDynamics Dyn dynamics_mode
-    @ needs_ins_first FDuration Dur dur_note_mode
+    needs_ins_first [ Key KPerformance; Key KMode ] Per performance_mode
+    @ needs_ins_first [ Key KDynamics; Key KMode ] Dyn dynamics_mode
+    @ needs_ins_first [ Key KDuration; Key KRelation ] Dur dur_note_mode
   in
-  match
+  let all_diags =
     hierarchy_errors @ combination_errors @ performance_membership_errors
     @ dynamics_membership_errors @ ratio_coverage_errors
     @ per_note_ordering_errors
+  in
+  match
+    List.partition (fun (d : diagnostic) -> d.severity = Severity.Error) all_diags
   with
-  | [] ->
+  | [], warnings ->
       Ok
-        {
-          seed;
-          variant_duration;
-          instr_list;
-          instr_table;
-          instr_ensemble_group_selection;
-          ed_list;
-          ed_table;
-          number_of_instrument_groups;
-          perf_list;
-          performance_table;
-          dyn_list;
-          dynamics_table;
-          entrydelay_combination;
-          instrument_principle;
-          entrydelay_principle;
-          performance_principle;
-          performance_combination;
-          performance_mode;
-          dynamics_principle;
-          dynamics_combination;
-          dynamics_mode;
-          union;
-          density;
-          hierarchy;
-          dur_list;
-          dur_table;
-          duration_relation_mode;
-          duration_principle;
-          duration_combination;
-        }
-  | errs -> Error errs
+        ( {
+            seed;
+            variant_duration;
+            instr_list;
+            instr_table;
+            instr_ensemble_group_selection;
+            ed_list;
+            ed_table;
+            number_of_instrument_groups;
+            perf_list;
+            performance_table;
+            dyn_list;
+            dynamics_table;
+            entrydelay_combination;
+            instrument_principle;
+            entrydelay_principle;
+            performance_principle;
+            performance_combination;
+            performance_mode;
+            dynamics_principle;
+            dynamics_combination;
+            dynamics_mode;
+            union;
+            density;
+            hierarchy;
+            dur_list;
+            dur_table;
+            duration_relation_mode;
+            duration_principle;
+            duration_combination;
+          },
+          warnings )
+  | errors, warnings -> Error (errors, warnings)
 
 (* structure formula AST parsers *)
 
@@ -281,12 +263,21 @@ module Parse = struct
   let fail msg = Error [ ParseError msg ]
   let lift r = Result.map_error (fun e -> [ e ]) r
 
-  (* Tags every [problem] a sub-parse can fail with as belonging to [field] -
-     applied once per top-level sexp section below, so nested leaf failures
-     (a malformed table cell, an unknown mode name, ...) automatically
-     inherit the section they were found in without each leaf parser needing
-     to know its own context. *)
-  let in_field field r = Result.map_error (locate field) r
+  (* Tags every [problem] a sub-parse can fail with as belonging to
+     [location] - applied at each individually-labeled sexp field below, so
+     nested leaf failures (a malformed table cell, an unknown mode name, ...)
+     automatically inherit the field they were found in without each leaf
+     parser needing to know its own context. Every parse-time failure is
+     unconditionally [Severity.Error]; the [[]] is "no warnings collected
+     yet" - honest, since nothing has been validated at parse time. *)
+  let in_loc location r =
+    Result.map_error
+      (fun problems ->
+        ( List.map
+            (fun problem -> { location; severity = Severity.Error; problem })
+            problems,
+          [] ))
+      r
 
   let rec sexp_to_string = function
     | Sexp.Atom s -> s
@@ -564,52 +555,61 @@ module Parse = struct
              Pitch_set.empty)
     | _ -> fail "compass expects (register pitch) (register pitch)"
 
-  let parse_instrument = function
+  let parse_instrument i sexp =
+    match sexp with
     | Sexp.List (Sexp.Atom "instrument" :: Sexp.Atom name :: fields) ->
-        let* instr = lift (mk_instr name) in
+        let* instr =
+          in_loc [ Key KInstrument; Index i; Key KName ] (lift (mk_instr name))
+        in
         let* cs =
-          let* args = require_field "chordsize" fields in
-          match args with
-          | [ Sexp.Atom a; Sexp.Atom b ] ->
-              let* min_v = require_int (Sexp.Atom a) in
-              let* max_v = require_int (Sexp.Atom b) in
-              lift (chordsize min_v max_v)
-          | _ -> fail "chordsize expects two ints"
+          in_loc [ Key KInstrument; Index i; Key KChordsize ]
+            (let* args = require_field "chordsize" fields in
+             match args with
+             | [ Sexp.Atom a; Sexp.Atom b ] ->
+                 let* min_v = require_int (Sexp.Atom a) in
+                 let* max_v = require_int (Sexp.Atom b) in
+                 lift (chordsize min_v max_v)
+             | _ -> fail "chordsize expects two ints")
         in
         let* perf =
-          let* items = require_field "performance" fields in
-          match items with
-          | [ Sexp.List inner ] ->
-              let* names = parse_atoms inner in
-              Ok
-                (names
-                |> List.map Performance.of_string
-                |> Performance_modes.of_list)
-          | _ -> fail "performance expects (performance (...))"
+          in_loc [ Key KInstrument; Index i; Key KPerformance ]
+            (let* items = require_field "performance" fields in
+             match items with
+             | [ Sexp.List inner ] ->
+                 let* names = parse_atoms inner in
+                 Ok
+                   (names
+                   |> List.map Performance.of_string
+                   |> Performance_modes.of_list)
+             | _ -> fail "performance expects (performance (...))")
         in
         let* dyns =
-          let* items = require_field "dynamics" fields in
-          match items with
-          | [ Sexp.List inner ] ->
-              let* names = parse_atoms inner in
-              Ok (names |> List.map Dynamic.of_string |> Dynamic_modes.of_list)
-          | _ -> fail "dynamics expects (dynamics (...))"
+          in_loc [ Key KInstrument; Index i; Key KDynamics ]
+            (let* items = require_field "dynamics" fields in
+             match items with
+             | [ Sexp.List inner ] ->
+                 let* names = parse_atoms inner in
+                 Ok (names |> List.map Dynamic.of_string |> Dynamic_modes.of_list)
+             | _ -> fail "dynamics expects (dynamics (...))")
         in
         let* compass =
-          let* args = require_field "compass" fields in
-          parse_compass args
+          in_loc [ Key KInstrument; Index i; Key KCompass ]
+            (let* args = require_field "compass" fields in
+             parse_compass args)
         in
         let* durations =
-          let* args = require_field "durations" fields in
-          match args with
-          | [ Sexp.Atom a; Sexp.Atom b ] ->
-              let* min_v = require_float (Sexp.Atom a) in
-              let* max_v = require_float (Sexp.Atom b) in
-              lift (mk_allowed_durations min_v max_v)
-          | _ -> fail "durations expects two floats"
+          in_loc [ Key KInstrument; Index i; Key KDurations ]
+            (let* args = require_field "durations" fields in
+             match args with
+             | [ Sexp.Atom a; Sexp.Atom b ] ->
+                 let* min_v = require_float (Sexp.Atom a) in
+                 let* max_v = require_float (Sexp.Atom b) in
+                 lift (mk_allowed_durations min_v max_v)
+             | _ -> fail "durations expects two floats")
         in
         Ok (inst instr cs perf dyns compass durations)
-    | _ -> fail "expected (instrument name ...)"
+    | _ ->
+        in_loc [ Key KInstrument; Index i ] (fail "expected (instrument name ...)")
 
   let parse_density items =
     match items with
@@ -648,7 +648,7 @@ module Parse = struct
 
   let of_sexp sexps =
     let* items =
-      in_field FGlobal
+      in_loc [ Key KGlobal ]
         (match sexps with
         | [ Sexp.List (Sexp.Atom "structure-formula" :: items) ] -> Ok items
         | _ -> fail "expected top-level (structure-formula ...)")
@@ -659,26 +659,29 @@ module Parse = struct
       | [ x ] -> parse x
       | _ -> fail (Printf.sprintf "field %S expects one value" name)
     in
-    let* seed = in_field FGlobal (get1 "seed" require_int) in
+    let* seed = in_loc [ Key KGlobal; Key KSeed ] (get1 "seed" require_int) in
     let* variant_duration =
-      in_field FGlobal (get1 "variant-duration" require_float)
+      in_loc [ Key KGlobal; Key KVariantDuration ]
+        (get1 "variant-duration" require_float)
     in
     let* number_of_instrument_groups =
-      in_field FInstrument (get1 "number-of-instrument-groups" require_int)
+      in_loc [ Key KInstrument; Key KInstrumentCount ]
+        (get1 "number-of-instrument-groups" require_int)
     in
     let* instr_list =
-      in_field FInstrument
-        (let* args = require_field "instruments" items in
-         let* instrs = args |> List.map parse_instrument |> sequence in
-         Ok (ParameterList (Array.of_list instrs)))
+      let* args =
+        in_loc [ Key KInstrument; Key KList ] (require_field "instruments" items)
+      in
+      let* instrs = args |> List.mapi parse_instrument |> sequence in
+      Ok (ParameterList (Array.of_list instrs))
     in
     let* instr_table =
-      in_field FInstrument
+      in_loc [ Key KInstrument; Key KTable ]
         (let* args = require_field "instrument-table" items in
          parse_table args)
     in
     let* ed_list =
-      in_field FEntrydelay
+      in_loc [ Key KEntrydelay; Key KList ]
         (let* args = require_field "entrydelays" items in
          let* floats =
            match args with
@@ -691,12 +694,12 @@ module Parse = struct
          Ok (ParameterList (Array.of_list eds)))
     in
     let* ed_table =
-      in_field FEntrydelay
+      in_loc [ Key KEntrydelay; Key KTable ]
         (let* args = require_field "entrydelay-table" items in
          parse_table args)
     in
     let* dur_list =
-      in_field FDuration
+      in_loc [ Key KDuration; Key KList ]
         (let* args = require_field "durations" items in
          let* floats =
            match args with
@@ -709,12 +712,12 @@ module Parse = struct
          Ok (ParameterList (Array.of_list durs)))
     in
     let* dur_table =
-      in_field FDuration
+      in_loc [ Key KDuration; Key KTable ]
         (let* args = require_field "duration-table" items in
          parse_table args)
     in
     let* perf_list =
-      in_field FPerformance
+      in_loc [ Key KPerformance; Key KList ]
         (let* args = require_field "performance" items in
          match args with
          | [ Sexp.List inner ] ->
@@ -729,12 +732,12 @@ module Parse = struct
       perf_arr |> Array.to_list |> List.map Performance.to_string
     in
     let* performance_table =
-      in_field FPerformance
+      in_loc [ Key KPerformance; Key KTable ]
         (let* args = require_field "performance-table" items in
          parse_named_table (fun s -> UnknownPerformance s) perf_names args)
     in
     let* dyn_list =
-      in_field FDynamics
+      in_loc [ Key KDynamics; Key KList ]
         (let* args = require_field "dynamics" items in
          match args with
          | [ Sexp.List inner ] ->
@@ -748,7 +751,7 @@ module Parse = struct
       dyn_arr |> Array.to_list |> List.map Dynamic.to_string
     in
     let* dynamics_table =
-      in_field FDynamics
+      in_loc [ Key KDynamics; Key KTable ]
         (let* args = require_field "dynamics-table" items in
          parse_named_table (fun s -> UnknownDynamic s) dyn_names args)
     in
@@ -765,86 +768,103 @@ module Parse = struct
       let (ParameterList dur_arr) = dur_list in
       dur_arr |> Array.to_list |> List.map (fun (Duration f) -> f)
     in
-    let* principles = in_field FGlobal (require_field "principles" items) in
+    let* principles = in_loc [ Key KGlobal ] (require_field "principles" items) in
     (* Every non-instrument parameter's [ensemble] field doubles as its
        combination setting (see [parse_combination]); instrument has no
        combination concept of its own (there's nothing for it to reuse
        groups from), so it's parsed separately below via
-       [parse_ensemble_group_selection] directly. *)
-    let parse_param_principles ?resolve_ratio_index name =
-      let* args = require_field name principles in
-      let* ens_args = require_field "ensemble" args in
-      let* ens = parse_combination ens_args in
-      let* samp_args = require_field "order" args in
-      let* samp = parse_principle ?resolve_ratio_index samp_args in
+       [parse_ensemble_group_selection] directly. [key_to_string key] doubles
+       as the sexp field name to look up, since they coincide for every
+       parameter kind this is used for (entrydelay/performance/dynamics). *)
+    let parse_param_principles ?resolve_ratio_index (key : key) =
+      let name = key_to_string key in
+      let* args = in_loc [ Key key ] (require_field name principles) in
+      let* ens =
+        in_loc [ Key key; Key KCombination ]
+          (let* ens_args = require_field "ensemble" args in
+           parse_combination ens_args)
+      in
+      let* samp =
+        in_loc [ Key key; Key KPrinciple ]
+          (let* samp_args = require_field "order" args in
+           parse_principle ?resolve_ratio_index samp_args)
+      in
       Ok (ens, samp)
     in
-    let parse_principle_mode name =
-      let* args = require_field name principles in
-      let* margs = require_field "mode" args in
-      parse_note_mode margs
+    let parse_principle_mode (key : key) =
+      let name = key_to_string key in
+      in_loc [ Key key; Key KMode ]
+        (let* args = require_field name principles in
+         let* margs = require_field "mode" args in
+         parse_note_mode margs)
     in
     let* instr_ensemble_group_selection, instrument_principle =
-      in_field FInstrument
-        (let* args = require_field "instrument" principles in
-         let* ens_args = require_field "ensemble" args in
-         let* ens = parse_ensemble_group_selection ens_args in
-         let* samp_args = require_field "order" args in
-         let* samp =
+      let* args =
+        in_loc [ Key KInstrument ] (require_field "instrument" principles)
+      in
+      let* ens =
+        in_loc [ Key KInstrument; Key KCombination ]
+          (let* ens_args = require_field "ensemble" args in
+           parse_ensemble_group_selection ens_args)
+      in
+      let* samp =
+        in_loc [ Key KInstrument; Key KPrinciple ]
+          (let* samp_args = require_field "order" args in
            parse_principle
              ~resolve_ratio_index:
                (resolve_index_or_name
                   (fun s ->
                     ParseError (Printf.sprintf "unknown instrument %S" s))
                   instr_names)
-             samp_args
-         in
-         Ok (ens, samp))
+             samp_args)
+      in
+      Ok (ens, samp)
     in
     let* entrydelay_combination, entrydelay_principle =
-      in_field FEntrydelay
-        (parse_param_principles "entrydelay"
-           ~resolve_ratio_index:
-             (resolve_index_or_float
-                (fun s -> ParseError (Printf.sprintf "unknown entrydelay %S" s))
-                ed_floats))
+      parse_param_principles KEntrydelay
+        ~resolve_ratio_index:
+          (resolve_index_or_float
+             (fun s -> ParseError (Printf.sprintf "unknown entrydelay %S" s))
+             ed_floats)
     in
     let* performance_combination, performance_principle =
-      in_field FPerformance
-        (parse_param_principles "performance"
-           ~resolve_ratio_index:
-             (resolve_index_or_name (fun s -> UnknownPerformance s) perf_names))
+      parse_param_principles KPerformance
+        ~resolve_ratio_index:
+          (resolve_index_or_name (fun s -> UnknownPerformance s) perf_names)
     in
-    let* performance_mode =
-      in_field FPerformance (parse_principle_mode "performance")
-    in
+    let* performance_mode = parse_principle_mode KPerformance in
     let* dynamics_combination, dynamics_principle =
-      in_field FDynamics
-        (parse_param_principles "dynamics"
-           ~resolve_ratio_index:
-             (resolve_index_or_name (fun s -> UnknownDynamic s) dyn_names))
+      parse_param_principles KDynamics
+        ~resolve_ratio_index:
+          (resolve_index_or_name (fun s -> UnknownDynamic s) dyn_names)
     in
-    let* dynamics_mode = in_field FDynamics (parse_principle_mode "dynamics") in
+    let* dynamics_mode = parse_principle_mode KDynamics in
     let* duration_combination, duration_principle, duration_relation_mode =
-      in_field FDuration
-        (let* args = require_field "duration" principles in
-         let* ens_args = require_field "ensemble" args in
-         let* ens = parse_combination ens_args in
-         let* samp_args = require_field "order" args in
-         let* samp =
+      let* args = in_loc [ Key KDuration ] (require_field "duration" principles) in
+      let* ens =
+        in_loc [ Key KDuration; Key KCombination ]
+          (let* ens_args = require_field "ensemble" args in
+           parse_combination ens_args)
+      in
+      let* samp =
+        in_loc [ Key KDuration; Key KPrinciple ]
+          (let* samp_args = require_field "order" args in
            parse_principle
              ~resolve_ratio_index:
                (resolve_index_or_float
                   (fun s -> ParseError (Printf.sprintf "unknown duration %S" s))
                   dur_floats)
-             samp_args
-         in
-         let* rel_args = require_field "relation" args in
-         let* rel = parse_duration_mode rel_args in
-         Ok (ens, samp, rel))
+             samp_args)
+      in
+      let* rel =
+        in_loc [ Key KDuration; Key KRelation ]
+          (let* rel_args = require_field "relation" args in
+           parse_duration_mode rel_args)
+      in
+      Ok (ens, samp, rel)
     in
     let* union =
-      in_field FUnion
+      in_loc [ Key KUnion ]
         (let* args = require_field "union" items in
          match args with
          | [ Sexp.Atom "none" ] -> Ok NoUnion
@@ -852,12 +872,12 @@ module Parse = struct
          | _ -> fail "union expects 'none' or 'union'")
     in
     let* density =
-      in_field FDensity
+      in_loc [ Key KDensity ]
         (let* args = require_field "density" items in
          parse_density args)
     in
     let* hierarchy =
-      in_field FHierarchy
+      in_loc [ Key KHierarchy ]
         (let* args = require_field "hierarchy" items in
          let* elems =
            match args with
@@ -887,6 +907,15 @@ module Parse = struct
       Bytes.to_string s
     in
     match Sexp.of_string content with
-    | Error e -> Error [ { field = FGlobal; problem = ParseError e } ]
+    | Error e ->
+        Error
+          ( [
+              {
+                location = [ Key KGlobal ];
+                severity = Severity.Error;
+                problem = ParseError e;
+              };
+            ],
+            [] )
     | Ok sexps -> of_sexp sexps
 end

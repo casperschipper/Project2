@@ -30,12 +30,15 @@ let hierarchy_elem_to_string = function
   | Dur -> "Dur"
   | Ent -> "Ent"
 
+type density_reason = DensityTooSmall | DensityMaxBelowMin
+type duration_range_reason = DurationRangeNegative | DurationRangeMaxBelowMin
+
 type problem =
   | NegativeEntry of float
   | InvalidInstrumentName
   | InvalidChordSize
-  | TableSizeMismatch of string
-  | InvalidDensity of string
+  | TableSizeMismatch of { instrument_rows : int; other_rows : int }
+  | InvalidDensity of density_reason
   | UnknownPerformance of string
   | UnknownDynamic of string
   | InvalidPitchCompass
@@ -43,10 +46,10 @@ type problem =
   | IncompleteHierarchy of hierarchy_elem list
   | InstrumentDensityRequiresInsFirst
   | NegativeDuration of float
-  | InvalidDurationRange of string
+  | InvalidDurationRange of duration_range_reason
   | ParseError of string
-  | RatioAllBlocked of string
-  | PerNoteRequiresInsFirst of string
+  | RatioAllBlocked of { row : int list }
+  | PerNoteRequiresInsFirst
 
 (* The hierarchy must be a permutation of [all_hierarchy_elems]: every
    parameter controls exactly one resolution step, so a missing one would
@@ -67,8 +70,14 @@ let display_problem p =
       "entry delay is" ^ string_of_float x ^ ", but may not be negative"
   | InvalidInstrumentName -> "instrument name may not be empty"
   | InvalidChordSize -> "illegal chord size limit, cannot be zero"
-  | TableSizeMismatch table_error -> table_error
-  | InvalidDensity str -> "invalid density definition: " ^ str
+  | TableSizeMismatch { instrument_rows; other_rows } ->
+      Printf.sprintf
+        "instrument table has %d row(s) but this table has %d; sizes must \
+         match for 'combination' to align rows 1:1"
+        instrument_rows other_rows
+  | InvalidDensity DensityTooSmall -> "invalid density definition: low must be at least 1"
+  | InvalidDensity DensityMaxBelowMin ->
+      "invalid density definition: max should not be higher than min"
   | UnknownPerformance s -> "unknown performance mode: " ^ s
   | UnknownDynamic s -> "unknown dynamic mode: " ^ s
   | InvalidPitchCompass -> "pitch compass minimum must not exceed maximum"
@@ -80,10 +89,126 @@ let display_problem p =
       "InstrumentDensity requires Ins to be first in the hierarchy"
   | NegativeDuration x ->
       "duration is " ^ string_of_float x ^ ", but may not be negative"
-  | InvalidDurationRange msg -> msg
+  | InvalidDurationRange DurationRangeNegative -> "duration may not be negative"
+  | InvalidDurationRange DurationRangeMaxBelowMin -> "min duration exceeds max duration"
   | ParseError msg -> "parse error: " ^ msg
-  | RatioAllBlocked msg -> msg
-  | PerNoteRequiresInsFirst msg -> msg
+  | RatioAllBlocked { row } ->
+      Printf.sprintf
+        "this table row (%s) has every element blocked (ratio weight 0); \
+         selecting it could never produce a value"
+        (row |> List.map string_of_int |> String.concat " ")
+  | PerNoteRequiresInsFirst ->
+      "this parameter is per-note: Ins must precede it in the hierarchy \
+       (chord size isn't known until an instrument is picked)"
+
+(* Closed vocabulary of path components identifying where in a
+   structure_formula (and, one level down, in the composer's sexp) a
+   [problem] belongs - reused contextually across path positions rather than
+   having one variant per (kind, position) pair. E.g. [KPerformance] appears
+   both as a parameter kind ([KPerformance; KCombination]) and, nested, as
+   one instrument's own performance field ([KInstrument; Index i;
+   KPerformance]) - the surrounding path disambiguates, not the atom itself.
+   [K]-prefixed (mirroring this file's existing [Instrument]/[Table]/
+   [Duration]/[Entrydelay]/etc. constructors, which plain names would
+   collide with). *)
+type key =
+  | KGlobal
+  | KSeed
+  | KVariantDuration
+  | KInstrument
+  | KInstrumentCount
+  | KName
+  | KChordsize
+  | KCompass
+  | KDurations
+  | KList
+  | KTable
+  | KPrinciple
+  | KCombination
+  | KMode
+  | KRelation
+  | KRow
+  | KEntrydelay
+  | KDuration
+  | KPerformance
+  | KDynamics
+  | KDensity
+  | KHierarchy
+  | KUnion
+
+type segment = Key of key | Index of int
+type location = segment list
+
+(* [severity]/[Error]/[Warning] can't be a bare top-level type here - it
+   would shadow [Result]'s [Error]/[Ok] for the rest of this file (and for
+   every file that [open]s [Parameters]). Isolated in its own module instead,
+   the same way this codebase already isolates e.g. [Sexp.List]/[Sexp.Atom]
+   from [List]. Always used qualified ([Severity.Error]/[Severity.Warning]),
+   never [open]ed. *)
+module Severity = struct
+  type t = Error | Warning
+end
+
+(* Warnings are non-fatal: a structure_formula with only warnings still
+   builds and the score still generates (mirrors score_generation.ml's
+   "IMPOSSIBLE" annotations, which are advisory and never block generation).
+   Errors remain fully blocking. *)
+type diagnostic = { location : location; severity : Severity.t; problem : problem }
+
+let key_to_string = function
+  | KGlobal -> "global"
+  | KSeed -> "seed"
+  | KVariantDuration -> "variant-duration"
+  | KInstrument -> "instrument"
+  | KInstrumentCount -> "number-of-instrument-groups"
+  | KName -> "name"
+  | KChordsize -> "chordsize"
+  | KCompass -> "compass"
+  | KDurations -> "durations"
+  | KList -> "list"
+  | KTable -> "table"
+  | KPrinciple -> "principle"
+  | KCombination -> "combination"
+  | KMode -> "mode"
+  | KRelation -> "relation"
+  | KRow -> "row"
+  | KEntrydelay -> "entrydelay"
+  | KDuration -> "duration"
+  | KPerformance -> "performance"
+  | KDynamics -> "dynamics"
+  | KDensity -> "density"
+  | KHierarchy -> "hierarchy"
+  | KUnion -> "union"
+
+let segment_to_string = function
+  | Key k -> key_to_string k
+  | Index i -> Printf.sprintf "[%d]" i
+
+(* e.g. [Key KInstrument; Index 2; Key KChordsize] -> "instrument[2].chordsize"
+   [Key KDuration; Key KTable; Key KRow; Index 3] -> "duration.table.row[3]"
+   [Key KDynamics; Key KCombination] -> "dynamics.combination" *)
+let location_to_string = function
+  | [] -> "(root)"
+  | seg0 :: rest ->
+      List.fold_left
+        (fun acc seg ->
+          match seg with
+          | Index _ -> acc ^ segment_to_string seg
+          | Key _ -> acc ^ "." ^ segment_to_string seg)
+        (segment_to_string seg0) rest
+
+let severity_to_string = function
+  | Severity.Error -> "ERROR"
+  | Severity.Warning -> "WARNING"
+
+let display_diagnostic { location; severity; problem } =
+  Printf.sprintf "[%s] %s: %s" (location_to_string location)
+    (severity_to_string severity) (display_problem problem)
+
+let print_diagnostics label diags =
+  Printf.printf "%s:\n" label;
+  List.iter (fun d -> Printf.printf "  - %s\n" (display_diagnostic d)) diags;
+  flush stdout
 
 let entry_to_float (Entrydelay x) = x
 (* let value_to_float v = match v with Entry (Entrydelay x) -> x *)
@@ -250,10 +375,8 @@ let print_allowed_durations (AllowedDurations { min; max }) =
   Printf.sprintf "Allowed durations: from %f till %f" min max
 
 let mk_allowed_durations mini maxi =
-  if mini < 0.0 || maxi < 0.0 then
-    Error (InvalidDurationRange "duration may not be negative")
-  else if mini > maxi then
-    Error (InvalidDurationRange "min duration exceeds max duration")
+  if mini < 0.0 || maxi < 0.0 then Error (InvalidDurationRange DurationRangeNegative)
+  else if mini > maxi then Error (InvalidDurationRange DurationRangeMaxBelowMin)
   else Ok (AllowedDurations { min = mini; max = maxi })
 
 (* an instrument, may also have certain limitations *)
@@ -271,21 +394,31 @@ type instrument =
    the structure formula's top-level "performance" / "dynamics" fields);
    every instrument's own (performance (...)) / (dynamics (...)) must be a
    subset of the corresponding master list *)
-let check_instrument_performances_known known_performances instrs =
-  List.concat_map
-    (fun (Instrument { performance; _ }) ->
+let check_instrument_performances_known known_performances instrs : diagnostic list =
+  instrs
+  |> List.mapi (fun i (Instrument { performance; _ }) ->
       Performance_modes.diff performance known_performances
       |> Performance_modes.to_list
-      |> List.map (fun p -> UnknownPerformance (Performance.to_string p)))
-    instrs
+      |> List.map (fun p ->
+          {
+            location = [ Key KInstrument; Index i; Key KPerformance ];
+            severity = Severity.Warning;
+            problem = UnknownPerformance (Performance.to_string p);
+          }))
+  |> List.concat
 
-let check_instrument_dynamics_known known_dynamics instrs =
-  List.concat_map
-    (fun (Instrument { dynamics; _ }) ->
+let check_instrument_dynamics_known known_dynamics instrs : diagnostic list =
+  instrs
+  |> List.mapi (fun i (Instrument { dynamics; _ }) ->
       Dynamic_modes.diff dynamics known_dynamics
       |> Dynamic_modes.to_list
-      |> List.map (fun d -> UnknownDynamic (Dynamic.to_string d)))
-    instrs
+      |> List.map (fun d ->
+          {
+            location = [ Key KInstrument; Index i; Key KDynamics ];
+            severity = Severity.Warning;
+            problem = UnknownDynamic (Dynamic.to_string d);
+          }))
+  |> List.concat
 
 let print_instrument
     (Instrument
@@ -350,9 +483,8 @@ type vertical_density = Autonomous of autonomous_density | InstrumentDensity
 (* not yet implemented*)
 
 let mk_autonomous ~low ~high ~selection_principle =
-  if low < 1 then Error (InvalidDensity "too small")
-  else if high < low then
-    Error (InvalidDensity "max should not be higher than min")
+  if low < 1 then Error (InvalidDensity DensityTooSmall)
+  else if high < low then Error (InvalidDensity DensityMaxBelowMin)
   else Ok (Autonomous { low; high; selection_principle })
 
 let group_selection_to_string gs =
@@ -559,7 +691,8 @@ let ratio_weight_of weighted =
 (* [check_ratio_coverage] flags any table row all of whose LIST indices are
    blocked (weight 0) under a Ratio principle - such a row would produce an
    empty RATIO sampling pool (a crash) if the ensemble ever selected it. *)
-let check_ratio_coverage label (Table rows) principle =
+let check_ratio_coverage (table_loc : location) (Table rows) principle :
+    diagnostic list =
   match principle with
   | Ratio weighted ->
       let weight_of = ratio_weight_of weighted in
@@ -570,13 +703,11 @@ let check_ratio_coverage label (Table rows) principle =
             Array.length row > 0 && Array.for_all (fun i -> weight_of i = 0) row
           then
             Some
-              (RatioAllBlocked
-                 (Printf.sprintf
-                    "%s: table row %d (%s) has every element blocked (ratio \
-                     weight 0); selecting it could never produce a value"
-                    label row_i
-                    (row |> Array.to_list |> List.map string_of_int
-                   |> String.concat " ")))
+              {
+                location = table_loc @ [ Key KRow; Index row_i ];
+                severity = Severity.Warning;
+                problem = RatioAllBlocked { row = Array.to_list row };
+              }
           else None)
   | _ -> []
 

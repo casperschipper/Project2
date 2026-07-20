@@ -4,8 +4,11 @@ open Pr26.Score_generation
 
 let render file =
   match Parse.read_file file with
-  | Error errors -> print_located_errors file errors
-  | Ok sf ->
+  | Error (errors, warnings) ->
+      print_diagnostics (file ^ " errors") errors;
+      if warnings <> [] then print_diagnostics (file ^ " warnings") warnings
+  | Ok (sf, warnings) ->
+      if warnings <> [] then print_diagnostics (file ^ " warnings") warnings;
       let instrs =
         match sf.instr_list with ParameterList arr -> Array.to_list arr
       in
