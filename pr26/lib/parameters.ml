@@ -42,6 +42,8 @@ type problem =
   | UnknownPerformance of string
   | UnknownDynamic of string
   | InvalidPitchCompass
+  | InvalidOctave of int
+  | InvalidRegister
   | DuplicateHierarchy
   | IncompleteHierarchy of hierarchy_elem list
   | InstrumentDensityRequiresInsFirst
@@ -81,6 +83,8 @@ let display_problem p =
   | UnknownPerformance s -> "unknown performance mode: " ^ s
   | UnknownDynamic s -> "unknown dynamic mode: " ^ s
   | InvalidPitchCompass -> "pitch compass minimum must not exceed maximum"
+  | InvalidOctave n -> Printf.sprintf "octave %d is out of range 1-9" n
+  | InvalidRegister -> "register low bound must not exceed high bound"
   | DuplicateHierarchy -> "each hierarchy level may only appear once"
   | IncompleteHierarchy missing ->
       Printf.sprintf "hierarchy is missing: %s"
@@ -231,6 +235,8 @@ let problem_id = function
   | UnknownPerformance _ -> "unknown-performance"
   | UnknownDynamic _ -> "unknown-dynamic"
   | InvalidPitchCompass -> "invalid-pitch-compass"
+  | InvalidOctave _ -> "invalid-octave"
+  | InvalidRegister -> "invalid-register"
   | DuplicateHierarchy -> "duplicate-hierarchy"
   | IncompleteHierarchy _ -> "incomplete-hierarchy"
   | InstrumentDensityRequiresInsFirst -> "instrument-density-requires-ins-first"
@@ -286,8 +292,10 @@ let json_of_problem_data p =
   | ParseError msg -> json_obj [ ("message", json_string msg) ]
   | RatioAllBlocked { row } ->
       json_obj [ ("row", json_array (List.map string_of_int row)) ]
+  | InvalidOctave n -> json_obj [ ("octave", string_of_int n) ]
   | InvalidInstrumentName | InvalidChordSize | InvalidDensity _
-  | InvalidPitchCompass | DuplicateHierarchy | InstrumentDensityRequiresInsFirst
+  | InvalidPitchCompass | InvalidRegister | DuplicateHierarchy
+  | InstrumentDensityRequiresInsFirst
   | InvalidDurationRange _ | PerNoteRequiresInsFirst ->
       json_obj []
 
@@ -446,23 +454,45 @@ let remove_performances (PerformanceList known) strings =
 
 module Pitch_set = Set.Make (Int)
 
-type register = Register of int
+(* HARMONY's own problem variants - hoisted here, ahead of [step]'s use in
+   [absolute_pitch], from where they used to live further down next to the
+   rest of the HARMONY/ROW module. *)
+type harmony_problem =
+  | InvalidStep of { n : int; tr : int }
+  | InvalidCallNumber of int
 
-let reg2int (Register i) = i
+let display_harmony_problem = function
+  | InvalidStep { n; tr } ->
+      Printf.sprintf "relative pitch %d is out of range 1..%d" n tr
+  | InvalidCallNumber n ->
+      Printf.sprintf "%d is not a valid TRANSP-ROW call number (0-4)" n
 
-type absolute_pitch = Absolute of register * int
-type relative_pitch = Relative of int
+(* EMR-3 relative pitch (§7.1): the step within an octave, 1..tr (tr = tones
+   per octave, composer-set via octave-division, 1-99). *)
+type step = Step of int
 
-let absolute_koenig absolute = (absolute / 100, absolute mod 100)
-let absolute register relative = Absolute (register, relative)
+let mk_step ~tr n =
+  if n < 1 || n > tr then Error (InvalidStep { n; tr }) else Ok (Step n)
 
-let absolute_of_koenig n =
-  let oct, rel = absolute_koenig n in
-  Absolute (Register oct, rel)
+let step_to_int (Step n) = n
 
-let absolute_compare (Absolute (Register o1, r1)) (Absolute (Register o2, r2)) =
-  let c = Int.compare o1 o2 in
-  if c <> 0 then c else Int.compare r1 r2
+(* EMR-3 absolute pitch's octave digit (1-9). Named for what it actually is -
+   not "register", which in EMR-3 (§7.1) denotes a range of absolute pitches
+   (see [register] below), a different concept entirely. *)
+type octave = Octave of int
+
+let mk_octave n = if n < 1 || n > 9 then Error (InvalidOctave n) else Ok (Octave n)
+let octave_to_int (Octave n) = n
+
+(* EMR-3 absolute pitch (§7.1): an octave (1-9) plus a relative pitch within
+   it, e.g. 401 = octave 4, step 1. *)
+type absolute_pitch = { octave : octave; step : step }
+
+let absolute octave step = { octave; step }
+
+let absolute_pitch_compare a b =
+  let c = Int.compare (octave_to_int a.octave) (octave_to_int b.octave) in
+  if c <> 0 then c else Int.compare (step_to_int a.step) (step_to_int b.step)
 
 type pitch_compass =
   | PitchCompass of {
@@ -472,8 +502,21 @@ type pitch_compass =
     }
 
 let mk_pitch_compass min max forbidden =
-  if absolute_compare min max > 0 then Error InvalidPitchCompass
+  if absolute_pitch_compare min max > 0 then Error InvalidPitchCompass
   else Ok (PitchCompass { min; max; forbidden })
+
+(* EMR-3 REGISTER (§7.1, fig 7-3): a range between two absolute pitches,
+   which may span octaves - e.g. (401,512) spans octave 4 and octave 5, per
+   the manual's own example. Percussion's "0,0" sentinel becomes a real
+   variant, mirroring how [pitch] below already replaces Koenig's pitch-0
+   hack for HARMONY. *)
+type register =
+  | PitchRegister of { low : absolute_pitch; high : absolute_pitch }
+  | PercussionRegister
+
+let mk_register low high =
+  if absolute_pitch_compare low high > 0 then Error InvalidRegister
+  else Ok (PitchRegister { low; high })
 
 type allowed_durations = AllowedDurations of { min : float; max : float }
 
@@ -536,8 +579,8 @@ let print_instrument
          pitchcompass =
            PitchCompass
              {
-               min = Absolute (Register min_oct, min_rel);
-               max = Absolute (Register max_oct, max_rel);
+               min = { octave = Octave min_oct; step = Step min_rel };
+               max = { octave = Octave max_oct; step = Step max_rel };
                forbidden;
              };
          durations;
@@ -884,35 +927,20 @@ let print_errors label errors =
 
 (* Original PR-2 marks a percussion event by "abusing" a pitch value: relative
    pitch 0, and register (0,0). We replace that with a real sum
-   type: a tone is either a pitch (a register plus a step within it) or a
-   percussion event, which carries no pitch information at all. *)
+   type: a tone is either a pitch (an absolute pitch, i.e. octave + step) or
+   a percussion event, which carries no pitch information at all. [step] and
+   [harmony_problem] live earlier in this file now, alongside [absolute_pitch]
+   which reuses [step] directly. *)
 
-type step =
-  | Step of int (* relative pitch within the tone system, i.e. 1..tr *)
+type pitch = Pitched of absolute_pitch | Percussion
 
-type pitch = Pitched of register * step | Percussion
-
-(* HARMONY (and so ROW) only ever decides the step. The octave placement
-   (register) is a separate hierarchy parameter whose order relative to
-   HARMONY the composer chooses freely (EMR-3 p.74-77, fig 7-6), so no
-   register is known yet at this stage. ROW therefore produces this
-   lighter value; combine it with a register, once one is chosen
-   elsewhere, via [attach_register]. *)
+(* HARMONY (and so ROW) only ever decides the step. The octave placement is a
+   separate hierarchy parameter whose order relative to HARMONY the composer
+   chooses freely (EMR-3 p.74-77, fig 7-6), so no octave is known yet at this
+   stage. ROW therefore produces this lighter value; combine it with an
+   octave, once one is chosen elsewhere, via [attach_octave]. *)
 
 type row_value = Tone of step | RowPercussion
-
-type harmony_problem =
-  | InvalidStep of { n : int; tr : int }
-  | InvalidCallNumber of int
-
-let display_harmony_problem = function
-  | InvalidStep { n; tr } ->
-      Printf.sprintf "relative pitch %d is out of range 1..%d" n tr
-  | InvalidCallNumber n ->
-      Printf.sprintf "%d is not a valid TRANSP-ROW call number (0-4)" n
-
-let mk_step ~tr n =
-  if n < 1 || n > tr then Error (InvalidStep { n; tr }) else Ok (Step n)
 
 (* the composer writes relative pitches 0..tr into the row; 0 is PR-2's
    percussion sentinel, which becomes its own case here instead *)
@@ -928,9 +956,9 @@ let mk_row ~tr ints =
   |> sequence_result
   |> Result.map (fun lst -> Row (Array.of_list lst))
 
-let attach_register register = function
+let attach_octave octave = function
   | RowPercussion -> Percussion
-  | Tone step -> Pitched (register, step)
+  | Tone step -> Pitched (absolute octave step)
 
 (* TRANSP-ROW, entry 20 *)
 type transposition =
@@ -1002,4 +1030,4 @@ let row_value_to_string = function
 
 let pitch_to_string = function
   | Percussion -> "*"
-  | Pitched (Register r, Step s) -> Printf.sprintf "%d.%d" r s
+  | Pitched { octave = Octave o; step = Step s } -> Printf.sprintf "%d.%d" o s

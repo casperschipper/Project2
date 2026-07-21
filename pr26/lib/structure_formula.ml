@@ -548,10 +548,12 @@ module Parse = struct
         let* p1 = require_int (Sexp.Atom p1) in
         let* r2 = require_int (Sexp.Atom r2) in
         let* p2 = require_int (Sexp.Atom p2) in
+        let* o1 = lift (mk_octave r1) in
+        let* o2 = lift (mk_octave r2) in
         lift
           (mk_pitch_compass
-             (absolute (Register r1) p1)
-             (absolute (Register r2) p2)
+             (absolute o1 (Step p1))
+             (absolute o2 (Step p2))
              Pitch_set.empty)
     | _ -> fail "compass expects (register pitch) (register pitch)"
 
