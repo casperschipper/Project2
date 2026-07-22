@@ -643,6 +643,16 @@ module Parse = struct
           "register expects 'percussion' or (register pitch) (register \
            pitch)"
 
+  (* One entry of HARMONY's row (EMR-3 8.2): either a relative pitch, or the
+     literal atom "p" marking a percussion event - never PR-2's 0 sentinel,
+     which is now just an ordinary out-of-range relative pitch. *)
+  let parse_row_item = function
+    | Sexp.Atom "p" -> Ok None
+    | Sexp.Atom _ as a ->
+        let* n = require_int a in
+        Ok (Some n)
+    | Sexp.List _ -> fail "row entry expects a relative pitch or 'p'"
+
   let parse_instrument i sexp =
     match sexp with
     | Sexp.List (Sexp.Atom "instrument" :: Sexp.Atom name :: fields) ->
@@ -906,22 +916,23 @@ module Parse = struct
         in_loc
           [ Key KHarmony; Key KRow ]
           (let* row_args = require_field "row" args in
-           let* ints =
+           let* items =
              match row_args with
-             | [ Sexp.List inner ] -> inner |> List.map require_int |> sequence
+             | [ Sexp.List inner ] -> inner |> List.map parse_row_item |> sequence
              | _ -> fail "row expects (row (...))"
            in
-           lift (mk_row ~tr ints))
+           lift (mk_row ~tr items))
       in
       let* transposition =
         in_loc
           [ Key KHarmony; Key KTransposition ]
           (let* t_args = require_field "transposition" args in
            match t_args with
-           | [ (Sexp.Atom _ as a) ] ->
-               let* n = require_int a in
-               lift (transposition_of_call_number n)
-           | _ -> fail "transposition expects one int")
+           | [ Sexp.Atom s ] -> lift (transposition_of_string s)
+           | _ ->
+               fail
+                 "transposition expects one of: none, alea, series, \
+                  chromatic, serial")
       in
       let* harmony_mode =
         in_loc

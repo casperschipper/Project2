@@ -54,7 +54,7 @@ type problem =
   | PerNoteRequiresInsFirst
   | InvalidTr of int
   | InvalidRelativePitch of { n : int; tr : int }
-  | InvalidTranspositionCall of int
+  | InvalidTranspositionName of string
 
 (* The hierarchy must be a permutation of [all_hierarchy_elems]: every
    parameter controls exactly one resolution step, so a missing one would
@@ -111,8 +111,11 @@ let display_problem p =
       Printf.sprintf "tones-per-octave (tr) must be at least 1, got %d" n
   | InvalidRelativePitch { n; tr } ->
       Printf.sprintf "relative pitch %d is out of range 1..%d" n tr
-  | InvalidTranspositionCall n ->
-      Printf.sprintf "%d is not a valid TRANSP-ROW call number (0-4)" n
+  | InvalidTranspositionName s ->
+      Printf.sprintf
+        "%S is not a valid transposition (expected none, alea, series, \
+         chromatic, or serial)"
+        s
 
 (* Closed vocabulary of path components identifying where in a
    structure_formula (and, one level down, in the composer's sexp) a
@@ -265,7 +268,7 @@ let problem_id = function
   | PerNoteRequiresInsFirst -> "per-note-requires-ins-first"
   | InvalidTr _ -> "invalid-tr"
   | InvalidRelativePitch _ -> "invalid-relative-pitch"
-  | InvalidTranspositionCall _ -> "invalid-transposition-call"
+  | InvalidTranspositionName _ -> "invalid-transposition-name"
 
 (* Minimal JSON writing. Only what the diagnostic shape needs - there is no
    json library in this project's dependencies and pulling one in for three
@@ -316,7 +319,7 @@ let json_of_problem_data p =
   | InvalidTr n -> json_obj [ ("tr", string_of_int n) ]
   | InvalidRelativePitch { n; tr } ->
       json_obj [ ("n", string_of_int n); ("tr", string_of_int tr) ]
-  | InvalidTranspositionCall n -> json_obj [ ("callNumber", string_of_int n) ]
+  | InvalidTranspositionName s -> json_obj [ ("name", json_string s) ]
   | InvalidInstrumentName | InvalidChordSize | InvalidDensity _
   | InvalidPitchCompass | InvalidRegister | DuplicateHierarchy
   | InstrumentDensityRequiresInsFirst
@@ -978,16 +981,18 @@ type pitch = Pitched of absolute_pitch | Percussion
 
 type row_value = Tone of step | RowPercussion
 
-(* the composer writes relative pitches 0..tr into the row; 0 is PR-2's
-   percussion sentinel, which becomes its own case here instead *)
-let mk_row_value ~tr n =
-  if n = 0 then Ok RowPercussion
-  else mk_step ~tr n |> Result.map (fun s -> Tone s)
+(* The composer writes relative pitches 1..tr into the row, or an explicit
+   percussion marker (sexp atom "p") - [None] here, never PR-2's 0 sentinel,
+   which is now just an ordinary out-of-range relative pitch like any other
+   invalid step. *)
+let mk_row_value ~tr = function
+  | None -> Ok RowPercussion
+  | Some n -> mk_step ~tr n |> Result.map (fun s -> Tone s)
 
 type row = Row of row_value array
 
-let mk_row ~tr ints =
-  ints
+let mk_row ~tr items =
+  items
   |> List.map (mk_row_value ~tr)
   |> sequence_result
   |> Result.map (fun lst -> Row (Array.of_list lst))
@@ -1022,21 +1027,24 @@ let resolve_pitch reg row_value =
       | Some octave -> (Pitched (absolute octave step), true)
       | None -> (Pitched low, false))
 
-(* TRANSP-ROW, entry 20 *)
+(* TRANSP-ROW, entry 20: written as an explicit name in the sexp rather than
+   the manual's own call number (0-4), matching how every other selection
+   principle is already spelled out ("alea", "series", ...) rather than
+   numbered. *)
 type transposition =
-  | NoTransposition (* 0 *)
-  | TransposeAlea (* 1 *)
-  | TransposeSeries (* 2 *)
-  | TransposeChromatic (* 3: ascending sequence 1..tr *)
-  | TransposeSerial (* 4: the row itself is reused as transposition intervals *)
+  | NoTransposition
+  | TransposeAlea
+  | TransposeSeries
+  | TransposeChromatic (* ascending sequence 1..tr *)
+  | TransposeSerial (* the row itself is reused as transposition intervals *)
 
-let transposition_of_call_number = function
-  | 0 -> Ok NoTransposition
-  | 1 -> Ok TransposeAlea
-  | 2 -> Ok TransposeSeries
-  | 3 -> Ok TransposeChromatic
-  | 4 -> Ok TransposeSerial
-  | n -> Error (InvalidTranspositionCall n)
+let transposition_of_string = function
+  | "none" -> Ok NoTransposition
+  | "alea" -> Ok TransposeAlea
+  | "series" -> Ok TransposeSeries
+  | "chromatic" -> Ok TransposeChromatic
+  | "serial" -> Ok TransposeSerial
+  | s -> Error (InvalidTranspositionName s)
 
 let row_value_to_int = function RowPercussion -> 0 | Tone (Step n) -> n
 

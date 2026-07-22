@@ -355,16 +355,19 @@ export function validateProject(p: Project): Diagnostic[] {
     out.push(diag("empty-list", "error", [key("register"), key("list")], "the register list is empty"));
   }
 
-  // ROW: relative pitches must be 0 (percussion) or 1..tr.
-  p.row.forEach((n, i) => {
-    if (!Number.isInteger(n) || n < 0 || n > p.octaveDivision) {
+  // ROW: each entry is either the literal "p" (percussion) or a relative
+  // pitch 1..tr - never a magic 0.
+  p.row.forEach((raw, i) => {
+    if (raw === "p") return;
+    const n = Number(raw);
+    if (!Number.isInteger(n) || n < 1 || n > p.octaveDivision) {
       out.push(
         diag(
           "invalid-relative-pitch",
           "error",
           [key("harmony"), key("row"), idx(i)],
-          `relative pitch ${n} is out of range 0..${p.octaveDivision} (0 marks a percussion event)`,
-          { n, tr: p.octaveDivision },
+          `"${raw}" is not a valid row entry - use a relative pitch 1..${p.octaveDivision}, or 'p' for percussion`,
+          { raw, tr: p.octaveDivision },
         ),
       );
     }

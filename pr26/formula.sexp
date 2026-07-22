@@ -94,11 +94,14 @@
     (1 2)
     (0 2))
 
-  ;; HARMONY (EMR-3 8.2): ROW only. Relative pitches 1..tr, 0 marks a
+  ;; HARMONY (EMR-3 8.2): ROW only. Relative pitches 1..tr, or 'p' for a
   ;; percussion event in the row itself (mirrors REGISTER's own convention).
   (harmony
-    (row (1 2 3 0 5 7 9 11 12 4 6 8 10))
-    (transposition 0)
+    (row (1 2 3 p 5 7 9 11 12 4 6 8 10))
+    ;; transposition: none | alea | series | chromatic | serial
+    ;; (TRANSP-ROW, entry 20) - how the row is transposed once it has been
+    ;; used up in full and starts over.
+    (transposition none)
     (mode per-chord))
 
   ;; selection principles reference:

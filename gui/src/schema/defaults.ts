@@ -150,8 +150,8 @@ export function defaultProject(): Project {
     registerPrinciple: { kind: "series" },
     registerMode: "per-chord",
 
-    row: [1, 2, 3, 0, 5, 7, 9, 11, 12, 4, 6, 8, 10],
-    transposition: 0,
+    row: ["1", "2", "3", "p", "5", "7", "9", "11", "12", "4", "6", "8", "10"],
+    transposition: "none",
     harmonyMode: "per-chord",
   };
 }

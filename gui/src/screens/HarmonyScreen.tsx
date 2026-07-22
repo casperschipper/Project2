@@ -28,15 +28,16 @@ export function HarmonyScreen() {
           label="Row"
           helpKey="fields/harmony-row"
           path="harmony.row"
-          hint={`Relative pitches 1..${project.octaveDivision}. 0 marks a percussion event in the row itself. Drag the grip to reorder.`}
+          hint={`Relative pitches 1..${project.octaveDivision}, or 'p' for an explicit percussion event. Drag the grip to reorder.`}
         >
           <TokenListEditor
-            values={project.row.map(String)}
-            onChange={(v) => update((p) => (p.row = v.map((s) => Number(s) || 0)))}
-            placeholder="0"
+            values={project.row}
+            onChange={(v) => update((p) => (p.row = v))}
+            placeholder="p"
             invalid={(v) => {
+              if (v === "p") return false;
               const n = Number(v);
-              return !Number.isInteger(n) || n < 0 || n > project.octaveDivision;
+              return !Number.isInteger(n) || n < 1 || n > project.octaveDivision;
             }}
           />
         </Field>
@@ -53,14 +54,14 @@ export function HarmonyScreen() {
             style={{ width: 340 }}
             value={project.transposition}
             onChange={(e) =>
-              update((p) => (p.transposition = Number(e.target.value) as Transposition))
+              update((p) => (p.transposition = e.target.value as Transposition))
             }
           >
-            <option value={0}>None — the row repeats unchanged</option>
-            <option value={1}>Alea — a random interval each pass</option>
-            <option value={2}>Series — each interval once before repeating</option>
-            <option value={3}>Chromatic — an ascending sequence of intervals</option>
-            <option value={4}>Serial — the row itself reused as transposition intervals</option>
+            <option value="none">None — the row repeats unchanged</option>
+            <option value="alea">Alea — a random interval each pass</option>
+            <option value="series">Series — each interval once before repeating</option>
+            <option value="chromatic">Chromatic — an ascending sequence of intervals</option>
+            <option value="serial">Serial — the row itself reused as transposition intervals</option>
           </select>
         </Field>
 

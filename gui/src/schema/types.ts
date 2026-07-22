@@ -126,7 +126,7 @@ export type Register =
   | { kind: "pitch"; low: Pitch; high: Pitch };
 
 /** TRANSP-ROW (EMR-3 8.2, entry 20): how the row is transposed once exhausted. */
-export type Transposition = 0 | 1 | 2 | 3 | 4;
+export type Transposition = "none" | "alea" | "series" | "chromatic" | "serial";
 
 /** Display string for one register entry, e.g. in the table/principle editors. */
 export function registerLabel(r: Register): string {
@@ -216,8 +216,12 @@ export type Project = {
   registerMode: NoteMode;
 
   // --- harmony (ROW only - see harmony.md) -------------------------------
-  /** Relative pitches 1..octaveDivision; 0 marks a percussion event in the row itself. */
-  row: number[];
+  /**
+   * Each entry is either a relative pitch (1..octaveDivision, as a decimal
+   * string like the other time-value lists) or the literal token "p",
+   * marking an explicit percussion event - never a magic 0.
+   */
+  row: string[];
   transposition: Transposition;
   harmonyMode: NoteMode;
 };
