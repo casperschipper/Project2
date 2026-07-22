@@ -13,6 +13,13 @@
 [x] Solved a problem with entrydelay, entry and note, that caused entrydelays to be thrown away.
 
 
+# GUI notes
+
+[ ] 0 or 1 based indexing of tables and other things
+[ ] notes, 
+[ ] named instrument groups
+
+
 Still to do:
 
 

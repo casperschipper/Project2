@@ -15,6 +15,11 @@ type note = {
   (* [false] iff this duration was an [Impossible] fallback: no candidate
      actually satisfied the duration/entry-delay relation. *)
   duration_ok : bool;
+  pitch : pitch;
+  (* [false] iff [Reg]/[Har]'s resolved values didn't actually agree (a
+     percussion register paired with a real step, or a register the step
+     didn't fit in) - see [resolve_pitch]. *)
+  pitch_ok : bool;
   (* [true] iff this note's instrument had already been picked earlier within
      the same autonomous-density chord - i.e. there weren't enough distinct
      instruments to "score" the chord without reusing one (EMR-3 8.16). *)
@@ -35,6 +40,7 @@ type entry = {
   performance : Performance.t option;
   dynamic : Dynamic.t option;
   duration : duration option;
+  pitch : pitch option;
   (* see [note.instrument_repeated] - true if any note in this entry is. *)
   instrument_repeated : bool;
 }
@@ -233,6 +239,15 @@ type proto = {
   (* [false] iff no candidate duration actually satisfied the duration/
      entry-delay relation and this note's value is an [Impossible] fallback. *)
   duration_ok : bool note_value option;
+  register : register note_value option;
+  (* [false] iff no candidate register actually satisfied [reg_pred_from]
+     (a "wrong register... provided with a comment", EMR-3 §7.1) and this
+     note's value is an [Impossible] fallback. *)
+  register_ok : bool note_value option;
+  harmony : row_value note_value option;
+  (* [false] iff the row-stream search in [resolve_step]'s [Har] arm hit its
+     try cap without finding a value agreeing with [Reg] - see there. *)
+  harmony_ok : bool note_value option;
   (* [true] iff, within the current autonomous-density chord, this proto's
      instrument had already been picked by an earlier entry in the same
      chord - set by [resolve_layer_autonomous]'s [fill_group] once the whole
@@ -250,6 +265,10 @@ let empty_proto =
     instrument_repeated = false;
     duration = None;
     duration_ok = None;
+    register = None;
+    register_ok = None;
+    harmony = None;
+    harmony_ok = None;
   }
 
 (* States threaded through the hierarchy fold — one per parameter hierarchy
@@ -262,6 +281,10 @@ type layer_states = {
   perf_state : Performance.t sel_state;
   dyn_state : Dynamic.t sel_state;
   dur_state : duration sel_state;
+  reg_state : register sel_state;
+  (* Not a [sel_state]: ROW is its own bespoke, order-preserving stream
+     (EMR-3 8.2), never an Alea/Series/Tendency draw - see [row_stream]. *)
+  har_state : row_value Seq.t;
   instr_arr : instrument array;
 }
 
@@ -273,6 +296,7 @@ let advance_all_windows states =
     perf_state = sel_advance_window states.perf_state;
     dyn_state = sel_advance_window states.dyn_state;
     dur_state = sel_advance_window states.dur_state;
+    reg_state = sel_advance_window states.reg_state;
   }
 
 (* Resolve one chord-wide-or-per-note parameter at its hierarchy position:
@@ -341,7 +365,14 @@ let ins_pred_from proto =
     | Some (Shared d) -> duration_range_ok durations d
     | Some (PerNote ds) -> List.for_all (duration_range_ok durations) ds
   in
-  fun i -> from_perf i && from_dyn i && from_dur i
+  let from_reg (Instrument { pitchcompass; _ }) =
+    match proto.register with
+    | None -> true
+    | Some (Shared r) -> register_compatible_with_compass pitchcompass r
+    | Some (PerNote rs) ->
+        List.for_all (register_compatible_with_compass pitchcompass) rs
+  in
+  fun i -> from_perf i && from_dyn i && from_dur i && from_reg i
 
 (* [Per]/[Dyn]'s predicate: restrict to modes the (already- or not-yet-known)
    instrument can play, exactly mirroring [Ins]'s own conditioning above. *)
@@ -386,11 +417,70 @@ let ed_pred_from proto dur_relation =
       fun (Entrydelay ed) -> ed >= max_d
   | _ -> Fun.const true
 
+let register_is_percussion = function
+  | PercussionRegister -> true
+  | PitchRegister _ -> false
+
+let row_value_is_percussion = function
+  | RowPercussion -> true
+  | Tone _ -> false
+
+(* [Reg]'s predicate (EMR-3 fig 7-6): conditioned on both [Ins] (via the
+   instrument's compass, mirroring [mode_pred_from_instrument]) and [Har]
+   (percussion-agreement with the already-resolved relative pitch, when
+   [Har] ran first). When the *other* side is [PerNote] this requires
+   agreement with every one of its values rather than the one at the
+   matching note index - the same conservative "must satisfy all" choice
+   [ins_pred_from] already makes for per-note performance/dynamics/duration,
+   since [resolve_note_param]'s per-note draws share one static predicate
+   across all [n] notes. *)
+let reg_pred_from ~instr_arr proto =
+  let instr_pred =
+    match proto.instrument with
+    | Some (Instrument { pitchcompass; _ }) ->
+        register_compatible_with_compass pitchcompass
+    | None ->
+        fun r ->
+          Array.exists
+            (fun (Instrument { pitchcompass; _ }) ->
+              register_compatible_with_compass pitchcompass r)
+            instr_arr
+  in
+  let harmony_pred =
+    match proto.harmony with
+    | None -> Fun.const true
+    | Some (Shared h) ->
+        fun r -> register_is_percussion r = row_value_is_percussion h
+    | Some (PerNote hs) ->
+        fun r ->
+          List.for_all
+            (fun h -> register_is_percussion r = row_value_is_percussion h)
+            hs
+  in
+  fun r -> instr_pred r && harmony_pred r
+
+(* [Har]'s predicate: percussion-agreement with the already-resolved
+   [Reg] (when [Reg] ran first) - see [reg_pred_from] above for the
+   PerNote/"must satisfy all" caveat, which applies symmetrically here. No
+   direct dependence on [Ins]: relative pitch doesn't depend on which
+   instrument plays it, only REGISTER mediates that (EMR-3 §7.1). *)
+let har_pred_from proto =
+  match proto.register with
+  | None -> Fun.const true
+  | Some (Shared r) ->
+      fun h -> row_value_is_percussion h = register_is_percussion r
+  | Some (PerNote rs) ->
+      fun h ->
+        List.for_all
+          (fun r -> row_value_is_percussion h = register_is_percussion r)
+          rs
+
 (* One hierarchy element's worth of work for one entry. This is the single
    place that knows how [Ins]/[Ent]/[Dur]/[Per]/[Dyn] each condition on, or
    get conditioned by, one another - both density modes below just fold this
    over the composer's [hierarchy] list once per entry. *)
-let resolve_step ~perf_mode ~dyn_mode ~dur_relation (states, proto) elem =
+let resolve_step ~perf_mode ~dyn_mode ~dur_relation ~reg_mode ~har_mode
+    (states, proto) elem =
   match elem with
   | Ins ->
       let v, instr_state' =
@@ -476,24 +566,101 @@ let resolve_step ~perf_mode ~dyn_mode ~dur_relation (states, proto) elem =
         resolve_note_param dyn_mode proto.nr_of_notes pred states.dyn_state
       in
       ({ states with dyn_state = dyn_state' }, { proto with dynamic = Some v })
+  | Reg ->
+      let pred = reg_pred_from ~instr_arr:states.instr_arr proto in
+      let v, oks, reg_state' =
+        resolve_note_param_tagged reg_mode proto.nr_of_notes pred
+          states.reg_state
+      in
+      ( { states with reg_state = reg_state' },
+        { proto with register = Some v; register_ok = Some oks } )
+  | Har ->
+      (* EMR-3 fig 7-6: "if REGISTER precedes HARMONY, a 0-pitch is selected
+         for the 0,0 register" - once [Reg] has already fixed a percussion
+         register, HARMONY's role is trivial and the row stream isn't
+         consumed at all for this entry (it stays in sync for the *next*
+         entry, whichever value it would have produced here is simply never
+         needed). Otherwise pull the next row value(s) as normal - [Har]'s
+         only conditioning is the symmetric check in [har_pred_from], for
+         when [Reg] hasn't run yet but did contain a percussion pick. *)
+      let forced_percussion =
+        match proto.register with
+        | Some (Shared PercussionRegister) -> true
+        | Some (PerNote rs) -> List.for_all register_is_percussion rs
+        | _ -> false
+      in
+      if forced_percussion then
+        let n = Option.value proto.nr_of_notes ~default:1 in
+        let v, oks =
+          match har_mode with
+          | PerChord -> (Shared RowPercussion, Shared true)
+          | PerNote ->
+              ( PerNote (List.init n (fun _ -> RowPercussion)),
+                PerNote (List.init n (fun _ -> true)) )
+        in
+        (states, { proto with harmony = Some v; harmony_ok = Some oks })
+      else
+        let pred = har_pred_from proto in
+        let n = Option.value proto.nr_of_notes ~default:1 in
+        (* [row_stream] is infinite (it keeps re-transposing once the row is
+           used up), but every pass preserves which entries are
+           [RowPercussion] vs [Tone] - a composer-written row with no [Tone]
+           at all (or none at all matching a fixed non-percussion register)
+           would make [pred] unsatisfiable forever. Cap the search instead of
+           risking an infinite loop; beyond the cap, accept the next value
+           anyway and flag it not-ok, mirroring EMR-3's own "wrong pitch...
+           provided with a comment" fallback. *)
+        let max_tries = 10_000 in
+        let draw_one st =
+          let rec try_next tries st =
+            let hd, tl =
+              match Seq.uncons st with
+              | Some (hd, tl) -> (hd, tl)
+              | None -> assert false
+            in
+            if pred hd then (hd, tl, true)
+            else if tries >= max_tries then (hd, tl, false)
+            else try_next (tries + 1) tl
+          in
+          try_next 0 st
+        in
+        let v, oks, har_state' =
+          match har_mode with
+          | PerChord ->
+              let hd, tl, ok = draw_one states.har_state in
+              (Shared hd, Shared ok, tl)
+          | PerNote ->
+              let vs, oks, st' =
+                List.init n (fun _ -> ())
+                |> List.fold_left
+                     (fun (acc, oks_acc, st) () ->
+                       let hd, tl, ok = draw_one st in
+                       (hd :: acc, ok :: oks_acc, tl))
+                     ([], [], states.har_state)
+              in
+              (PerNote (List.rev vs), PerNote (List.rev oks), st')
+        in
+        ( { states with har_state = har_state' },
+          { proto with harmony = Some v; harmony_ok = Some oks } )
 
 let resolve_entry ?(start = empty_proto) ~hierarchy ~perf_mode ~dyn_mode
-    ~dur_relation states =
+    ~dur_relation ~reg_mode ~har_mode states =
   List.fold_left
-    (resolve_step ~perf_mode ~dyn_mode ~dur_relation)
+    (resolve_step ~perf_mode ~dyn_mode ~dur_relation ~reg_mode ~har_mode)
     (states, start) hierarchy
 
 (** With [InstrumentDensity], every entry is its own timepoint - one instrument,
     one already-resolved entry delay. Each is wrapped as a singleton group so
     step 2 can treat both density modes uniformly. *)
 let resolve_layer_instrument_density ~n_events ~hierarchy ~perf_mode ~dyn_mode
-    ~dur_relation states0 =
+    ~dur_relation ~reg_mode ~har_mode states0 =
   let _, groups =
     List.init n_events (fun _ -> ())
     |> List.fold_left
          (fun (states, acc) () ->
            let states', proto =
-             resolve_entry ~hierarchy ~perf_mode ~dyn_mode ~dur_relation states
+             resolve_entry ~hierarchy ~perf_mode ~dyn_mode ~dur_relation
+               ~reg_mode ~har_mode states
            in
            let ed =
              match proto.entrydelay with
@@ -539,7 +706,7 @@ let resolve_layer_instrument_density ~n_events ~hierarchy ~perf_mode ~dyn_mode
       single-sub-pick "[Dur] before [Ent]" case, just decided once for the whole
       chord instead of once per sub-pick). *)
 let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
-    ~dur_relation ~low ~high ~selection_principle states0 =
+    ~dur_relation ~reg_mode ~har_mode ~low ~high ~selection_principle states0 =
   let dens_arr =
     Array.init (high - low + 1) (fun i -> low + i) |> elements_of_array
   in
@@ -563,7 +730,7 @@ let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
       | None -> empty_proto
     in
     resolve_entry ~start ~hierarchy:hierarchy_no_ent ~perf_mode ~dyn_mode
-      ~dur_relation states
+      ~dur_relation ~reg_mode ~har_mode states
   in
   let max_duration_of proto =
     match proto.duration with
@@ -721,7 +888,17 @@ let notes_of_proto proto : note list =
   let dur_ok =
     match proto.duration_ok with Some tv -> tv | None -> assert false
   in
+  let reg = match proto.register with Some tv -> tv | None -> assert false in
+  let reg_ok =
+    match proto.register_ok with Some tv -> tv | None -> assert false
+  in
+  let har = match proto.harmony with Some tv -> tv | None -> assert false in
+  let har_ok =
+    match proto.harmony_ok with Some tv -> tv | None -> assert false
+  in
   List.init n (fun i ->
+      let pitch, agree_ok = resolve_pitch (value_at reg i) (value_at har i) in
+      let pitch_ok = agree_ok && value_at reg_ok i && value_at har_ok i in
       {
         time = 0.0;
         instrument = instr;
@@ -729,6 +906,8 @@ let notes_of_proto proto : note list =
         dynamic = value_at dyn i;
         duration = value_at dur i;
         duration_ok = value_at dur_ok i;
+        pitch;
+        pitch_ok;
         instrument_repeated = proto.instrument_repeated;
       })
 
@@ -759,6 +938,7 @@ let entry_of_group time (Entrydelay ed) (protos : proto list) : entry =
     performance = uniform_value (fun (n : note) -> n.performance) notes;
     dynamic = uniform_value (fun (n : note) -> n.dynamic) notes;
     duration = uniform_value (fun (n : note) -> n.duration) notes;
+    pitch = uniform_value (fun (n : note) -> n.pitch) notes;
     instrument_repeated =
       List.exists (fun (n : note) -> n.instrument_repeated) notes;
   }
@@ -778,6 +958,7 @@ let resolve_times (groups : (entrydelay * proto list) list) : entry list =
 let calculate_layer_hierarchical ~n_events ~hierarchy ~instr_arr
     ~instr_principle ~ed_arr ~ed_principle ~perf_arr ~perf_principle ~perf_mode
     ~dyn_arr ~dyn_principle ~dyn_mode ~dur_arr ~dur_principle ~dur_relation
+    ~reg_arr ~reg_principle ~reg_mode ~row ~tr ~transposition ~har_mode
     ~density =
   let states0 =
     {
@@ -786,6 +967,8 @@ let calculate_layer_hierarchical ~n_events ~hierarchy ~instr_arr
       perf_state = sel_init perf_principle n_events perf_arr;
       dyn_state = sel_init dyn_principle n_events dyn_arr;
       dur_state = sel_init dur_principle n_events dur_arr;
+      reg_state = sel_init reg_principle n_events reg_arr;
+      har_state = row_stream ~tr ~transposition row;
       instr_arr = Array.map value_from_element instr_arr;
     }
   in
@@ -793,24 +976,26 @@ let calculate_layer_hierarchical ~n_events ~hierarchy ~instr_arr
     match density with
     | InstrumentDensity ->
         resolve_layer_instrument_density ~n_events ~hierarchy ~perf_mode
-          ~dyn_mode ~dur_relation states0
+          ~dyn_mode ~dur_relation ~reg_mode ~har_mode states0
     | Autonomous { low; high; selection_principle } ->
         resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
-          ~dur_relation ~low ~high ~selection_principle states0
+          ~dur_relation ~reg_mode ~har_mode ~low ~high ~selection_principle
+          states0
   in
   resolve_times groups
 
-let zip5 a b c d e =
+let zip6 a b c d e f =
   List.map2
-    (fun (x, y) (z, (w, v)) -> (x, y, z, w, v))
+    (fun (x, y) (z, (w, (v, u))) -> (x, y, z, w, v, u))
     (List.combine a b)
-    (List.combine c (List.combine d e))
+    (List.combine c (List.combine d (List.combine e f)))
 
 let generate_score_hierarchical ~variant_duration ~instrument_ensemble
     ~instrument_principle ~entry_delay_ensemble ~entry_delay_principle
     ~perf_ensemble ~perf_principle ~perf_mode ~dyn_ensemble ~dyn_principle
-    ~dyn_mode ~dur_ensemble ~dur_principle ~dur_relation ~union ~hierarchy
-    ~density =
+    ~dyn_mode ~dur_ensemble ~dur_principle ~dur_relation ~reg_ensemble
+    ~reg_principle ~reg_mode ~row ~tr ~transposition ~har_mode ~union
+    ~hierarchy ~density =
   match union with
   | Union ->
       let entr_arr = ensemble_values_union entry_delay_ensemble in
@@ -818,6 +1003,7 @@ let generate_score_hierarchical ~variant_duration ~instrument_ensemble
       let perf_arr = ensemble_values_union perf_ensemble in
       let dyn_arr = ensemble_values_union dyn_ensemble in
       let dur_arr = ensemble_values_union dur_ensemble in
+      let reg_arr = ensemble_values_union reg_ensemble in
       let n_events =
         calculate_number_of_events variant_duration entry_delay_principle
           entr_arr
@@ -828,7 +1014,8 @@ let generate_score_hierarchical ~variant_duration ~instrument_ensemble
           ~instr_principle:instrument_principle ~ed_arr:entr_arr
           ~ed_principle:entry_delay_principle ~perf_arr ~perf_principle
           ~perf_mode ~dyn_arr ~dyn_principle ~dyn_mode ~dur_arr ~dur_principle
-          ~dur_relation ~density;
+          ~dur_relation ~reg_arr ~reg_principle ~reg_mode ~row ~tr
+          ~transposition ~har_mode ~density;
       ]
   | NoUnion ->
       let instr_arrays = ensemble_values_no_union instrument_ensemble in
@@ -843,8 +1030,10 @@ let generate_score_hierarchical ~variant_duration ~instrument_ensemble
       let perf_arrays = broadcast (ensemble_values_no_union perf_ensemble) in
       let dyn_arrays = broadcast (ensemble_values_no_union dyn_ensemble) in
       let dur_arrays = broadcast (ensemble_values_no_union dur_ensemble) in
-      zip5 instr_arrays entr_arrays perf_arrays dyn_arrays dur_arrays
-      |> List.map (fun (instr_arr, entr_arr, perf_arr, dyn_arr, dur_arr) ->
+      let reg_arrays = broadcast (ensemble_values_no_union reg_ensemble) in
+      zip6 instr_arrays entr_arrays perf_arrays dyn_arrays dur_arrays reg_arrays
+      |> List.map
+           (fun (instr_arr, entr_arr, perf_arr, dyn_arr, dur_arr, reg_arr) ->
           let n_events =
             calculate_number_of_events variant_duration entry_delay_principle
               entr_arr
@@ -854,13 +1043,22 @@ let generate_score_hierarchical ~variant_duration ~instrument_ensemble
             ~instr_principle:instrument_principle ~ed_arr:entr_arr
             ~ed_principle:entry_delay_principle ~perf_arr ~perf_principle
             ~perf_mode ~dyn_arr ~dyn_principle ~dyn_mode ~dur_arr ~dur_principle
-            ~dur_relation ~density)
+            ~dur_relation ~reg_arr ~reg_principle ~reg_mode ~row ~tr
+            ~transposition ~har_mode ~density)
 
 let build_score cfg =
   Random.init cfg.seed;
   let instr_to_string (Instrument { instrument = InstrumentName n; _ }) = n in
   let ed_to_string (Entrydelay f) = Printf.sprintf "%.3f" f in
   let dur_to_string (Duration f) = Printf.sprintf "%.3f" f in
+  let reg_to_string = function
+    | PercussionRegister -> "percussion"
+    | PitchRegister { low; high } ->
+        let fmt { octave = Octave o; step = Step s } =
+          Printf.sprintf "%d%02d" o s
+        in
+        Printf.sprintf "%s-%s" (fmt low) (fmt high)
+  in
   let instr_ensemble =
     construct_ensemble ~label:"instrument" ~to_string:instr_to_string
       cfg.instr_list cfg.instr_table EnsembleGroupSeries
@@ -906,6 +1104,16 @@ let build_score cfg =
         construct_ensemble ~label:"duration" ~to_string:dur_to_string
           cfg.dur_list cfg.dur_table sel 1
   in
+  let reg_ensemble =
+    match cfg.register_combination with
+    | Combination ->
+        construct_ensemble_combination ~label:"register"
+          ~to_string:reg_to_string cfg.reg_list cfg.register_table
+          instr_ensemble
+    | NoCombination sel ->
+        construct_ensemble ~label:"register" ~to_string:reg_to_string
+          cfg.reg_list cfg.register_table sel 1
+  in
   generate_score_hierarchical ~variant_duration:cfg.variant_duration
     ~instrument_ensemble:instr_ensemble
     ~instrument_principle:cfg.instrument_principle
@@ -915,8 +1123,11 @@ let build_score cfg =
     ~dyn_ensemble ~dyn_principle:cfg.dynamics_principle
     ~dyn_mode:cfg.dynamics_mode ~dur_ensemble
     ~dur_principle:cfg.duration_principle
-    ~dur_relation:cfg.duration_relation_mode ~union:cfg.union
-    ~hierarchy:cfg.hierarchy ~density:cfg.density
+    ~dur_relation:cfg.duration_relation_mode ~reg_ensemble
+    ~reg_principle:cfg.register_principle ~reg_mode:cfg.register_mode
+    ~row:cfg.row ~tr:cfg.tr ~transposition:cfg.transposition
+    ~har_mode:cfg.harmony_mode ~union:cfg.union ~hierarchy:cfg.hierarchy
+    ~density:cfg.density
 
 let build_constraint_map instrs =
   List.map
@@ -986,7 +1197,17 @@ let note_problems constraint_map (note : note) =
               d;
           ]
       in
+      let pitch_problem =
+        if note.pitch_ok then []
+        else
+          [
+            Printf.sprintf
+              "pitch %s did not agree between register and harmony"
+              (pitch_to_string note.pitch);
+          ]
+      in
       perf_problem @ dyn_problem @ dur_problem @ dur_relation_problem
+      @ pitch_problem
 
 (* Aligns rows of already-stringified cells by padding each column to its
    widest value. Knows nothing about score events, so it can't drift out of
@@ -1019,10 +1240,19 @@ let note_cells ~entrydelay (note : note) =
     name;
     Performance.to_string note.performance;
     Dynamic.to_string note.dynamic;
+    pitch_to_string note.pitch;
   ]
 
 let note_header =
-  [ "time"; "entrydelay"; "duration"; "instrument"; "performance"; "dynamic" ]
+  [
+    "time";
+    "entrydelay";
+    "duration";
+    "instrument";
+    "performance";
+    "dynamic";
+    "pitch";
+  ]
 
 (* Flat view: one row per note (a multi-note chord produces several rows
    sharing the same time), ignoring entry grouping entirely. *)
@@ -1090,6 +1320,7 @@ let write_entries_score filename instrs ~density (layers : entry list list) =
       density_cell density e;
       opt_to_string Performance.to_string e.performance;
       opt_to_string Dynamic.to_string e.dynamic;
+      opt_to_string pitch_to_string e.pitch;
     ]
   in
   let entry_header =
@@ -1102,6 +1333,7 @@ let write_entries_score filename instrs ~density (layers : entry list list) =
       "density";
       "performance";
       "dynamic";
+      "pitch";
     ]
   in
   let all_entry_rows =
@@ -1169,8 +1401,9 @@ let print_layers instrs (layers : entry list list) =
   print_endline "";
   if !total_violations = 0 then
     print_endline
-      "OK: every performance, dynamic and duration is valid for its instrument"
+      "OK: every performance, dynamic, duration and pitch is valid for its \
+       instrument"
   else
     Printf.printf
-      "VIOLATIONS: %d note(s) have invalid performance/dynamic/duration\n"
+      "VIOLATIONS: %d note(s) have invalid performance/dynamic/duration/pitch\n"
       !total_violations

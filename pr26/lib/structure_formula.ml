@@ -67,6 +67,22 @@ type structure_formula = {
   dynamics_principle : selection_principle;
   dynamics_combination : combination;
   dynamics_mode : note_mode;
+  (* REGISTER (EMR-3 7.1): mirrors performance/dynamics exactly - a list of
+     [register] values, a table, an ensemble/combination, an order
+     principle, and a chord-vs-per-note mode. *)
+  reg_list : register parameter_list;
+  register_table : ptable;
+  register_principle : selection_principle;
+  register_combination : combination;
+  register_mode : note_mode;
+  (* HARMONY (EMR-3 8.2): ROW only (CHORD/INTERVAL are out of scope, see
+     harmony.md) - a fixed sequence of relative pitches, transposed as a
+     whole once exhausted; no ensemble machinery, since it's its own
+     bespoke stream rather than an Alea/Series/Tendency draw. *)
+  row : row;
+  tr : int;
+  transposition : transposition;
+  harmony_mode : note_mode;
   union : union;
   density : vertical_density;
   hierarchy : hierarchy;
@@ -89,9 +105,21 @@ let check_combination ~combination_loc ~instr_table_loc ~other_table_loc
           }
       in
       [
-        { location = combination_loc; severity = Severity.Warning; problem = mismatch };
-        { location = instr_table_loc; severity = Severity.Warning; problem = mismatch };
-        { location = other_table_loc; severity = Severity.Warning; problem = mismatch };
+        {
+          location = combination_loc;
+          severity = Severity.Warning;
+          problem = mismatch;
+        };
+        {
+          location = instr_table_loc;
+          severity = Severity.Warning;
+          problem = mismatch;
+        };
+        {
+          location = other_table_loc;
+          severity = Severity.Warning;
+          problem = mismatch;
+        };
       ]
   | _ -> []
 
@@ -112,7 +140,9 @@ let mk_structure_formula ~seed ~variant_duration ~instr_list ~instr_table
     ~dynamics_table ~entrydelay_combination ~instrument_principle
     ~entrydelay_principle ~performance_principle ~performance_combination
     ~performance_mode ~dynamics_principle ~dynamics_combination ~dynamics_mode
-    ~union ~hierarchy ~density ~dur_list ~dur_table ~duration_combination
+    ~reg_list ~register_table ~register_principle ~register_combination
+    ~register_mode ~row ~tr ~transposition ~harmony_mode ~union ~hierarchy
+    ~density ~dur_list ~dur_table ~duration_combination
     ~duration_relation_mode ~duration_principle =
   let hierarchy_errors =
     match (density, hierarchy) with
@@ -129,22 +159,31 @@ let mk_structure_formula ~seed ~variant_duration ~instr_list ~instr_table
     | _ -> []
   in
   let combination_errors =
-    check_combination ~combination_loc:[ Key KEntrydelay; Key KCombination ]
+    check_combination
+      ~combination_loc:[ Key KEntrydelay; Key KCombination ]
       ~instr_table_loc:[ Key KInstrument; Key KTable ]
       ~other_table_loc:[ Key KEntrydelay; Key KTable ]
       instr_table ed_table entrydelay_combination
-    @ check_combination ~combination_loc:[ Key KPerformance; Key KCombination ]
+    @ check_combination
+        ~combination_loc:[ Key KPerformance; Key KCombination ]
         ~instr_table_loc:[ Key KInstrument; Key KTable ]
         ~other_table_loc:[ Key KPerformance; Key KTable ]
         instr_table performance_table performance_combination
-    @ check_combination ~combination_loc:[ Key KDynamics; Key KCombination ]
+    @ check_combination
+        ~combination_loc:[ Key KDynamics; Key KCombination ]
         ~instr_table_loc:[ Key KInstrument; Key KTable ]
         ~other_table_loc:[ Key KDynamics; Key KTable ]
         instr_table dynamics_table dynamics_combination
-    @ check_combination ~combination_loc:[ Key KDuration; Key KCombination ]
+    @ check_combination
+        ~combination_loc:[ Key KDuration; Key KCombination ]
         ~instr_table_loc:[ Key KInstrument; Key KTable ]
         ~other_table_loc:[ Key KDuration; Key KTable ]
         instr_table dur_table duration_combination
+    @ check_combination
+        ~combination_loc:[ Key KRegister; Key KCombination ]
+        ~instr_table_loc:[ Key KInstrument; Key KTable ]
+        ~other_table_loc:[ Key KRegister; Key KTable ]
+        instr_table register_table register_combination
   in
   let (ParameterList instr_arr) = instr_list in
   (* Membership errors are about the offending instrument's own
@@ -163,16 +202,24 @@ let mk_structure_formula ~seed ~variant_duration ~instr_list ~instr_table
       (Array.to_list instr_arr)
   in
   let ratio_coverage_errors =
-    check_ratio_coverage [ Key KInstrument; Key KTable ] instr_table
-      instrument_principle
-    @ check_ratio_coverage [ Key KEntrydelay; Key KTable ] ed_table
-        entrydelay_principle
-    @ check_ratio_coverage [ Key KPerformance; Key KTable ] performance_table
-        performance_principle
-    @ check_ratio_coverage [ Key KDynamics; Key KTable ] dynamics_table
-        dynamics_principle
-    @ check_ratio_coverage [ Key KDuration; Key KTable ] dur_table
-        duration_principle
+    check_ratio_coverage
+      [ Key KInstrument; Key KTable ]
+      instr_table instrument_principle
+    @ check_ratio_coverage
+        [ Key KEntrydelay; Key KTable ]
+        ed_table entrydelay_principle
+    @ check_ratio_coverage
+        [ Key KPerformance; Key KTable ]
+        performance_table performance_principle
+    @ check_ratio_coverage
+        [ Key KDynamics; Key KTable ]
+        dynamics_table dynamics_principle
+    @ check_ratio_coverage
+        [ Key KDuration; Key KTable ]
+        dur_table duration_principle
+    @ check_ratio_coverage
+        [ Key KRegister; Key KTable ]
+        register_table register_principle
     @
     match density with
     | Autonomous { low; high; selection_principle = Ratio _ as p } ->
@@ -211,6 +258,8 @@ let mk_structure_formula ~seed ~variant_duration ~instr_list ~instr_table
     needs_ins_first [ Key KPerformance; Key KMode ] Per performance_mode
     @ needs_ins_first [ Key KDynamics; Key KMode ] Dyn dynamics_mode
     @ needs_ins_first [ Key KDuration; Key KRelation ] Dur dur_note_mode
+    @ needs_ins_first [ Key KRegister; Key KMode ] Reg register_mode
+    @ needs_ins_first [ Key KHarmony; Key KMode ] Har harmony_mode
   in
   let all_diags =
     hierarchy_errors @ combination_errors @ performance_membership_errors
@@ -218,7 +267,9 @@ let mk_structure_formula ~seed ~variant_duration ~instr_list ~instr_table
     @ per_note_ordering_errors
   in
   match
-    List.partition (fun (d : diagnostic) -> d.severity = Severity.Error) all_diags
+    List.partition
+      (fun (d : diagnostic) -> d.severity = Severity.Error)
+      all_diags
   with
   | [], warnings ->
       Ok
@@ -244,6 +295,15 @@ let mk_structure_formula ~seed ~variant_duration ~instr_list ~instr_table
             dynamics_principle;
             dynamics_combination;
             dynamics_mode;
+            reg_list;
+            register_table;
+            register_principle;
+            register_combination;
+            register_mode;
+            row;
+            tr;
+            transposition;
+            harmony_mode;
             union;
             density;
             hierarchy;
@@ -293,10 +353,12 @@ module Parse = struct
         | Some f -> Ok f
         | None -> (
             match String.index_opt s '/' with
-            | Some i ->
+            | Some i -> (
                 let num_s = String.sub s 0 i in
                 let den_s = String.sub s (i + 1) (String.length s - i - 1) in
-                (match (float_of_string_opt num_s, float_of_string_opt den_s) with
+                match
+                  (float_of_string_opt num_s, float_of_string_opt den_s)
+                with
                 | Some num, Some den when den <> 0.0 -> Ok (num /. den)
                 | _ -> fail (Printf.sprintf "expected float, got %S" s))
             | None -> fail (Printf.sprintf "expected float, got %S" s)))
@@ -540,6 +602,7 @@ module Parse = struct
 
   let parse_compass items =
     match items with
+    | [ Sexp.Atom "percussion" ] -> Ok PercussionCompass
     | [
      Sexp.List [ Sexp.Atom r1; Sexp.Atom p1 ];
      Sexp.List [ Sexp.Atom r2; Sexp.Atom p2 ];
@@ -551,11 +614,34 @@ module Parse = struct
         let* o1 = lift (mk_octave r1) in
         let* o2 = lift (mk_octave r2) in
         lift
-          (mk_pitch_compass
-             (absolute o1 (Step p1))
-             (absolute o2 (Step p2))
+          (mk_pitch_compass (absolute o1 (Step p1)) (absolute o2 (Step p2))
              Pitch_set.empty)
-    | _ -> fail "compass expects (register pitch) (register pitch)"
+    | _ ->
+        fail
+          "compass expects 'percussion' or (register pitch) (register pitch)"
+
+  (* REGISTER entries mirror compass' own (octave step) (octave step) shape
+     - the two concepts share the same underlying [absolute_pitch] pair, one
+     bounding an instrument's own range, the other bounding where a tone may
+     be placed - plus a 'percussion' marker for [PercussionRegister]. *)
+  let parse_register items =
+    match items with
+    | [ Sexp.Atom "percussion" ] -> Ok PercussionRegister
+    | [
+     Sexp.List [ Sexp.Atom r1; Sexp.Atom p1 ];
+     Sexp.List [ Sexp.Atom r2; Sexp.Atom p2 ];
+    ] ->
+        let* r1 = require_int (Sexp.Atom r1) in
+        let* p1 = require_int (Sexp.Atom p1) in
+        let* r2 = require_int (Sexp.Atom r2) in
+        let* p2 = require_int (Sexp.Atom p2) in
+        let* o1 = lift (mk_octave r1) in
+        let* o2 = lift (mk_octave r2) in
+        lift (mk_register (absolute o1 (Step p1)) (absolute o2 (Step p2)))
+    | _ ->
+        fail
+          "register expects 'percussion' or (register pitch) (register \
+           pitch)"
 
   let parse_instrument i sexp =
     match sexp with
@@ -564,7 +650,8 @@ module Parse = struct
           in_loc [ Key KInstrument; Index i; Key KName ] (lift (mk_instr name))
         in
         let* cs =
-          in_loc [ Key KInstrument; Index i; Key KChordsize ]
+          in_loc
+            [ Key KInstrument; Index i; Key KChordsize ]
             (let* args = require_field "chordsize" fields in
              match args with
              | [ Sexp.Atom a; Sexp.Atom b ] ->
@@ -574,7 +661,8 @@ module Parse = struct
              | _ -> fail "chordsize expects two ints")
         in
         let* perf =
-          in_loc [ Key KInstrument; Index i; Key KPerformance ]
+          in_loc
+            [ Key KInstrument; Index i; Key KPerformance ]
             (let* items = require_field "performance" fields in
              match items with
              | [ Sexp.List inner ] ->
@@ -586,21 +674,25 @@ module Parse = struct
              | _ -> fail "performance expects (performance (...))")
         in
         let* dyns =
-          in_loc [ Key KInstrument; Index i; Key KDynamics ]
+          in_loc
+            [ Key KInstrument; Index i; Key KDynamics ]
             (let* items = require_field "dynamics" fields in
              match items with
              | [ Sexp.List inner ] ->
                  let* names = parse_atoms inner in
-                 Ok (names |> List.map Dynamic.of_string |> Dynamic_modes.of_list)
+                 Ok
+                   (names |> List.map Dynamic.of_string |> Dynamic_modes.of_list)
              | _ -> fail "dynamics expects (dynamics (...))")
         in
         let* compass =
-          in_loc [ Key KInstrument; Index i; Key KCompass ]
+          in_loc
+            [ Key KInstrument; Index i; Key KCompass ]
             (let* args = require_field "compass" fields in
              parse_compass args)
         in
         let* durations =
-          in_loc [ Key KInstrument; Index i; Key KDurations ]
+          in_loc
+            [ Key KInstrument; Index i; Key KDurations ]
             (let* args = require_field "durations" fields in
              match args with
              | [ Sexp.Atom a; Sexp.Atom b ] ->
@@ -611,7 +703,9 @@ module Parse = struct
         in
         Ok (inst instr cs perf dyns compass durations)
     | _ ->
-        in_loc [ Key KInstrument; Index i ] (fail "expected (instrument name ...)")
+        in_loc
+          [ Key KInstrument; Index i ]
+          (fail "expected (instrument name ...)")
 
   let parse_density items =
     match items with
@@ -646,6 +740,8 @@ module Parse = struct
     | "Dyn" -> Ok Dyn
     | "Dur" -> Ok Dur
     | "Ent" -> Ok Ent
+    | "Reg" -> Ok Reg
+    | "Har" -> Ok Har
     | s -> fail (Printf.sprintf "unknown hierarchy element %S" s)
 
   let of_sexp sexps =
@@ -663,27 +759,42 @@ module Parse = struct
     in
     let* seed = in_loc [ Key KGlobal; Key KSeed ] (get1 "seed" require_int) in
     let* variant_duration =
-      in_loc [ Key KGlobal; Key KVariantDuration ]
+      in_loc
+        [ Key KGlobal; Key KVariantDuration ]
         (get1 "variant-duration" require_float)
     in
+    (* tones-per-octave (tr, EMR-3 9.3): global, since HARMONY's row and
+       REGISTER's octave digit both share it. Also the GUI's existing
+       "octave-division" field, so no new sexp key is introduced here. *)
+    let* tr =
+      in_loc [ Key KGlobal; Key KTr ] (get1 "octave-division" require_int)
+    in
+    let* () =
+      in_loc [ Key KGlobal; Key KTr ] (lift (if tr < 1 then Error (InvalidTr tr) else Ok ()))
+    in
     let* number_of_instrument_groups =
-      in_loc [ Key KInstrument; Key KInstrumentCount ]
+      in_loc
+        [ Key KInstrument; Key KInstrumentCount ]
         (get1 "number-of-instrument-groups" require_int)
     in
     let* instr_list =
       let* args =
-        in_loc [ Key KInstrument; Key KList ] (require_field "instruments" items)
+        in_loc
+          [ Key KInstrument; Key KList ]
+          (require_field "instruments" items)
       in
       let* instrs = args |> List.mapi parse_instrument |> sequence in
       Ok (ParameterList (Array.of_list instrs))
     in
     let* instr_table =
-      in_loc [ Key KInstrument; Key KTable ]
+      in_loc
+        [ Key KInstrument; Key KTable ]
         (let* args = require_field "instrument-table" items in
          parse_table args)
     in
     let* ed_list =
-      in_loc [ Key KEntrydelay; Key KList ]
+      in_loc
+        [ Key KEntrydelay; Key KList ]
         (let* args = require_field "entrydelays" items in
          let* floats =
            match args with
@@ -696,12 +807,14 @@ module Parse = struct
          Ok (ParameterList (Array.of_list eds)))
     in
     let* ed_table =
-      in_loc [ Key KEntrydelay; Key KTable ]
+      in_loc
+        [ Key KEntrydelay; Key KTable ]
         (let* args = require_field "entrydelay-table" items in
          parse_table args)
     in
     let* dur_list =
-      in_loc [ Key KDuration; Key KList ]
+      in_loc
+        [ Key KDuration; Key KList ]
         (let* args = require_field "durations" items in
          let* floats =
            match args with
@@ -714,12 +827,14 @@ module Parse = struct
          Ok (ParameterList (Array.of_list durs)))
     in
     let* dur_table =
-      in_loc [ Key KDuration; Key KTable ]
+      in_loc
+        [ Key KDuration; Key KTable ]
         (let* args = require_field "duration-table" items in
          parse_table args)
     in
     let* perf_list =
-      in_loc [ Key KPerformance; Key KList ]
+      in_loc
+        [ Key KPerformance; Key KList ]
         (let* args = require_field "performance" items in
          match args with
          | [ Sexp.List inner ] ->
@@ -734,12 +849,14 @@ module Parse = struct
       perf_arr |> Array.to_list |> List.map Performance.to_string
     in
     let* performance_table =
-      in_loc [ Key KPerformance; Key KTable ]
+      in_loc
+        [ Key KPerformance; Key KTable ]
         (let* args = require_field "performance-table" items in
          parse_named_table (fun s -> UnknownPerformance s) perf_names args)
     in
     let* dyn_list =
-      in_loc [ Key KDynamics; Key KList ]
+      in_loc
+        [ Key KDynamics; Key KList ]
         (let* args = require_field "dynamics" items in
          match args with
          | [ Sexp.List inner ] ->
@@ -753,9 +870,66 @@ module Parse = struct
       dyn_arr |> Array.to_list |> List.map Dynamic.to_string
     in
     let* dynamics_table =
-      in_loc [ Key KDynamics; Key KTable ]
+      in_loc
+        [ Key KDynamics; Key KTable ]
         (let* args = require_field "dynamics-table" items in
          parse_named_table (fun s -> UnknownDynamic s) dyn_names args)
+    in
+    let* reg_list =
+      in_loc
+        [ Key KRegister; Key KList ]
+        (let* args = require_field "registers" items in
+         match args with
+         | [ Sexp.List inner ] ->
+             let* regs =
+               inner
+               |> List.map (function
+                    | Sexp.List entry -> parse_register entry
+                    | Sexp.Atom _ -> fail "expected list for register entry")
+               |> sequence
+             in
+             Ok (ParameterList (Array.of_list regs))
+         | _ -> fail "registers expects (registers (...))")
+    in
+    (* Registers have no natural name to reference by (unlike performance/
+       dynamics modes), so register-table cells are always plain LIST
+       indexes - a plain [parse_table], not [parse_named_table]. *)
+    let* register_table =
+      in_loc
+        [ Key KRegister; Key KTable ]
+        (let* args = require_field "register-table" items in
+         parse_table args)
+    in
+    let* row, transposition, harmony_mode =
+      let* args = in_loc [ Key KHarmony ] (require_field "harmony" items) in
+      let* row =
+        in_loc
+          [ Key KHarmony; Key KRow ]
+          (let* row_args = require_field "row" args in
+           let* ints =
+             match row_args with
+             | [ Sexp.List inner ] -> inner |> List.map require_int |> sequence
+             | _ -> fail "row expects (row (...))"
+           in
+           lift (mk_row ~tr ints))
+      in
+      let* transposition =
+        in_loc
+          [ Key KHarmony; Key KTransposition ]
+          (let* t_args = require_field "transposition" args in
+           match t_args with
+           | [ (Sexp.Atom _ as a) ] ->
+               let* n = require_int a in
+               lift (transposition_of_call_number n)
+           | _ -> fail "transposition expects one int")
+      in
+      let* harmony_mode =
+        in_loc
+          [ Key KHarmony; Key KMode ]
+          (let* m_args = require_field "mode" args in
+           parse_note_mode m_args)
+      in
+      Ok (row, transposition, harmony_mode)
     in
     let instr_names =
       let (ParameterList instr_arr) = instr_list in
@@ -770,7 +944,9 @@ module Parse = struct
       let (ParameterList dur_arr) = dur_list in
       dur_arr |> Array.to_list |> List.map (fun (Duration f) -> f)
     in
-    let* principles = in_loc [ Key KGlobal ] (require_field "principles" items) in
+    let* principles =
+      in_loc [ Key KGlobal ] (require_field "principles" items)
+    in
     (* Every non-instrument parameter's [ensemble] field doubles as its
        combination setting (see [parse_combination]); instrument has no
        combination concept of its own (there's nothing for it to reuse
@@ -782,12 +958,14 @@ module Parse = struct
       let name = key_to_string key in
       let* args = in_loc [ Key key ] (require_field name principles) in
       let* ens =
-        in_loc [ Key key; Key KCombination ]
+        in_loc
+          [ Key key; Key KCombination ]
           (let* ens_args = require_field "ensemble" args in
            parse_combination ens_args)
       in
       let* samp =
-        in_loc [ Key key; Key KPrinciple ]
+        in_loc
+          [ Key key; Key KPrinciple ]
           (let* samp_args = require_field "order" args in
            parse_principle ?resolve_ratio_index samp_args)
       in
@@ -805,12 +983,14 @@ module Parse = struct
         in_loc [ Key KInstrument ] (require_field "instrument" principles)
       in
       let* ens =
-        in_loc [ Key KInstrument; Key KCombination ]
+        in_loc
+          [ Key KInstrument; Key KCombination ]
           (let* ens_args = require_field "ensemble" args in
            parse_ensemble_group_selection ens_args)
       in
       let* samp =
-        in_loc [ Key KInstrument; Key KPrinciple ]
+        in_loc
+          [ Key KInstrument; Key KPrinciple ]
           (let* samp_args = require_field "order" args in
            parse_principle
              ~resolve_ratio_index:
@@ -841,15 +1021,23 @@ module Parse = struct
           (resolve_index_or_name (fun s -> UnknownDynamic s) dyn_names)
     in
     let* dynamics_mode = parse_principle_mode KDynamics in
+    let* register_combination, register_principle =
+      parse_param_principles KRegister
+    in
+    let* register_mode = parse_principle_mode KRegister in
     let* duration_combination, duration_principle, duration_relation_mode =
-      let* args = in_loc [ Key KDuration ] (require_field "duration" principles) in
+      let* args =
+        in_loc [ Key KDuration ] (require_field "duration" principles)
+      in
       let* ens =
-        in_loc [ Key KDuration; Key KCombination ]
+        in_loc
+          [ Key KDuration; Key KCombination ]
           (let* ens_args = require_field "ensemble" args in
            parse_combination ens_args)
       in
       let* samp =
-        in_loc [ Key KDuration; Key KPrinciple ]
+        in_loc
+          [ Key KDuration; Key KPrinciple ]
           (let* samp_args = require_field "order" args in
            parse_principle
              ~resolve_ratio_index:
@@ -859,7 +1047,8 @@ module Parse = struct
              samp_args)
       in
       let* rel =
-        in_loc [ Key KDuration; Key KRelation ]
+        in_loc
+          [ Key KDuration; Key KRelation ]
           (let* rel_args = require_field "relation" args in
            parse_duration_mode rel_args)
       in
@@ -895,7 +1084,9 @@ module Parse = struct
       ~ed_table ~perf_list ~performance_table ~dyn_list ~dynamics_table
       ~entrydelay_combination ~instrument_principle ~entrydelay_principle
       ~performance_principle ~performance_combination ~performance_mode
-      ~dynamics_principle ~dynamics_combination ~dynamics_mode ~union ~density
+      ~dynamics_principle ~dynamics_combination ~dynamics_mode ~reg_list
+      ~register_table ~register_principle ~register_combination
+      ~register_mode ~row ~tr ~transposition ~harmony_mode ~union ~density
       ~hierarchy ~dur_list ~dur_table ~duration_combination
       ~duration_relation_mode ~duration_principle
 

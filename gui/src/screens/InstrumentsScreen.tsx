@@ -24,8 +24,9 @@ export function InstrumentsScreen() {
         chordSizeMax: 1,
         performance: p.performance.slice(0, 1),
         dynamics: p.dynamics.slice(),
-        compassLow: { register: 1, pitch: 1 },
-        compassHigh: { register: 5, pitch: 12 },
+        percussion: false,
+        compassLow: { octave: 1, pitch: 1 },
+        compassHigh: { octave: 5, pitch: 12 },
         durationMin: "0.1",
         durationMax: "4.0",
       });
@@ -228,39 +229,54 @@ function InstrumentCard({
               label="Compass"
               helpKey="fields/instrument-compass"
               path={`${path}.compass`}
-              hint="Lowest and highest pitch, as register and step."
+              hint={
+                instrument.percussion
+                  ? "Percussion instruments have no pitch range - REGISTER will always resolve to its percussion entry for this instrument."
+                  : "Lowest and highest pitch, as octave and step."
+              }
             >
-              <div className="field__row">
+              <label className="field__row" style={{ marginBottom: 8 }}>
                 <input
-                  type="number"
-                  className="input--tiny"
-                  value={instrument.compassLow.register}
-                  onChange={(e) => set((i) => (i.compassLow.register = Number(e.target.value)))}
-                  title="Lowest register"
+                  type="checkbox"
+                  checked={instrument.percussion}
+                  onChange={(e) => set((i) => (i.percussion = e.target.checked))}
                 />
-                <input
-                  type="number"
-                  className="input--tiny"
-                  value={instrument.compassLow.pitch}
-                  onChange={(e) => set((i) => (i.compassLow.pitch = Number(e.target.value)))}
-                  title="Lowest step"
-                />
-                <span className="faint">to</span>
-                <input
-                  type="number"
-                  className="input--tiny"
-                  value={instrument.compassHigh.register}
-                  onChange={(e) => set((i) => (i.compassHigh.register = Number(e.target.value)))}
-                  title="Highest register"
-                />
-                <input
-                  type="number"
-                  className="input--tiny"
-                  value={instrument.compassHigh.pitch}
-                  onChange={(e) => set((i) => (i.compassHigh.pitch = Number(e.target.value)))}
-                  title="Highest step"
-                />
-              </div>
+                <span>Percussion (no fixed pitch)</span>
+              </label>
+
+              {!instrument.percussion && (
+                <div className="field__row">
+                  <input
+                    type="number"
+                    className="input--tiny"
+                    value={instrument.compassLow.octave}
+                    onChange={(e) => set((i) => (i.compassLow.octave = Number(e.target.value)))}
+                    title="Lowest octave"
+                  />
+                  <input
+                    type="number"
+                    className="input--tiny"
+                    value={instrument.compassLow.pitch}
+                    onChange={(e) => set((i) => (i.compassLow.pitch = Number(e.target.value)))}
+                    title="Lowest step"
+                  />
+                  <span className="faint">to</span>
+                  <input
+                    type="number"
+                    className="input--tiny"
+                    value={instrument.compassHigh.octave}
+                    onChange={(e) => set((i) => (i.compassHigh.octave = Number(e.target.value)))}
+                    title="Highest octave"
+                  />
+                  <input
+                    type="number"
+                    className="input--tiny"
+                    value={instrument.compassHigh.pitch}
+                    onChange={(e) => set((i) => (i.compassHigh.pitch = Number(e.target.value)))}
+                    title="Highest step"
+                  />
+                </div>
+              )}
             </Field>
 
             <Field

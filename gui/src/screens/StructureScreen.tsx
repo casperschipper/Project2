@@ -55,7 +55,7 @@ export function StructureScreen() {
         <Field
           label="Octave division"
           helpKey="fields/octave-division"
-          hint="Steps per octave. The engine does not yet use this."
+          hint="Tones per octave (tr). Relative pitches in the row and register steps both go 1..tr."
         >
           <input
             type="number"

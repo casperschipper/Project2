@@ -55,3 +55,40 @@ let () =
   |> Seq.map Pr26.Selection.get_value
   |> Seq.iter (fun i -> Printf.printf "%d " i);
   print_endline "group to_seq: done"
+
+(* [resolve_pitch] combines REGISTER + HARMONY's row value into a final
+   pitch (or [Percussion], as a real value rather than PR-2's (0,0)/0
+   sentinel). *)
+let () =
+  let open Pr26.Parameters in
+  let ap o s = absolute (Octave o) (Step s) in
+  (* EMR-3 §7.1's own worked example: register (401,512), relative pitch 5,
+     can occupy 405 or 505 - the lowest match (405) is taken. *)
+  let reg_4_5 = Result.get_ok (mk_register (ap 4 1) (ap 5 12)) in
+  assert (resolve_pitch reg_4_5 (Tone (Step 5)) = (Pitched (ap 4 5), true));
+  (* register (401,504): relative pitch 5 can only occupy 405. *)
+  let reg_4_4 = Result.get_ok (mk_register (ap 4 1) (ap 4 4)) in
+  assert (resolve_pitch reg_4_4 (Tone (Step 5)) = (Pitched (ap 4 1), false));
+  (* percussion register/row value agree -> a real [Percussion], never a
+     (0,0)/0 sentinel. *)
+  assert (resolve_pitch PercussionRegister RowPercussion = (Percussion, true));
+  (* mismatches: flagged not-ok rather than silently accepted. *)
+  assert (resolve_pitch PercussionRegister (Tone (Step 3)) = (Percussion, false));
+  assert (resolve_pitch reg_4_5 RowPercussion = (Pitched (ap 4 1), false));
+  print_endline "resolve_pitch: all tests passed"
+
+(* [register_compatible_with_compass] mirrors instrument/register
+   conditioning (EMR-3 fig 7-6): percussion only pairs with percussion,
+   pitched only with an overlapping range. *)
+let () =
+  let open Pr26.Parameters in
+  let ap o s = absolute (Octave o) (Step s) in
+  let compass = Result.get_ok (mk_pitch_compass (ap 3 1) (ap 5 12) Pitch_set.empty) in
+  let reg_overlap = Result.get_ok (mk_register (ap 4 1) (ap 6 12)) in
+  let reg_no_overlap = Result.get_ok (mk_register (ap 6 1) (ap 7 12)) in
+  assert (register_compatible_with_compass compass reg_overlap);
+  assert (not (register_compatible_with_compass compass reg_no_overlap));
+  assert (register_compatible_with_compass PercussionCompass PercussionRegister);
+  assert (not (register_compatible_with_compass PercussionCompass reg_overlap));
+  assert (not (register_compatible_with_compass compass PercussionRegister));
+  print_endline "register_compatible_with_compass: all tests passed"

@@ -1,0 +1,15 @@
+# Row
+
+> The fixed sequence of relative pitches HARMONY distributes over entry points, one per note (or per chord - see [mode](fields/harmony-mode)). 0 marks a percussion event.
+
+This is Project Two's ROW principle for HARMONY (the manual's HARMONY parameter has three principles - CHORD, ROW and INTERVAL - and this interface implements only ROW, the simplest of the three). The row is written once, as relative pitches from 1 to the [octave division](fields/octave-division), and gets used up in order; once every value has been distributed, the whole row is transposed as a unit and the cycle begins again - see [transposition](fields/harmony-transposition).
+
+A `0` in the row is a genuine percussion event written directly into the sequence, distinct from a register's own [percussion entry](fields/register-list): whichever comes first in the [hierarchy](fields/hierarchy) between REGISTER and HARMONY decides which one forces the other. If HARMONY runs first and produces `0` here, the note must resolve to the percussion register; if REGISTER runs first and picks its percussion entry, HARMONY is forced to `0` regardless of what the row would otherwise have given.
+
+The relative pitch alone does not fix an absolute pitch - it only fixes the *step within an octave*. Which octave it lands in is REGISTER's job (see [registers](fields/register-list)): the same row value can end up at different absolute pitches depending on which register is active when the note is resolved.
+
+## Related
+
+- [transposition](fields/harmony-transposition)
+- [harmony mode](fields/harmony-mode)
+- [registers](fields/register-list)

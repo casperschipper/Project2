@@ -5,11 +5,100 @@ import { HIERARCHY_LABELS } from "../schema/types";
 import type { HierarchyElem } from "../schema/types";
 
 /**
+ * Reusable pointer-driven drag reordering, shared by every list in the GUI
+ * that has a meaningful order (the hierarchy, a parameter's own value list, a
+ * register list, ...).
+ *
+ * Pointer events rather than the HTML5 drag-and-drop API, for the same
+ * reason [HierarchyEditor] originally chose them: WebKitGTK/Wayland's drop
+ * event is unreliable, pointer events are not. Position is found by nearest
+ * bounding-rect *center* rather than a simple vertical band, so this also
+ * works for a wrapping horizontal layout (the token list) and not just a
+ * single-column vertical stack (the hierarchy).
+ */
+export function useDragReorder<T>(items: T[], onChange: (next: T[]) => void) {
+  const [dragging, setDragging] = useState<number | null>(null);
+  const dragIndex = useRef<number | null>(null);
+  const itemRefs = useRef<(HTMLElement | null)[]>([]);
+
+  const move = (from: number, to: number) => {
+    if (from === to) return;
+    const next = [...items];
+    const [item] = next.splice(from, 1);
+    next.splice(to, 0, item);
+    onChange(next);
+  };
+
+  const setRef = (i: number) => (el: HTMLElement | null) => {
+    itemRefs.current[i] = el;
+  };
+
+  const beginDrag = (e: React.PointerEvent, index: number) => {
+    if (e.button !== 0) return;
+    // Stops the press turning into a text selection while dragging.
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dragIndex.current = index;
+    setDragging(index);
+  };
+
+  const onDragMove = (e: React.PointerEvent) => {
+    const from = dragIndex.current;
+    if (from === null) return;
+    const rects = itemRefs.current.map((el) => el?.getBoundingClientRect() ?? null);
+    const target = nearestIndex(rects, e.clientX, e.clientY);
+    if (target !== null && target !== from) {
+      move(from, target);
+      dragIndex.current = target;
+      setDragging(target);
+    }
+  };
+
+  const endDrag = (e: React.PointerEvent) => {
+    if (dragIndex.current === null) return;
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+    dragIndex.current = null;
+    setDragging(null);
+  };
+
+  return { dragging, setRef, beginDrag, onDragMove, endDrag, move };
+}
+
+/** The item whose bounding-rect center is nearest the pointer. */
+function nearestIndex(rects: (DOMRect | null)[], x: number, y: number): number | null {
+  let best: number | null = null;
+  let bestDist = Infinity;
+  rects.forEach((r, i) => {
+    if (!r) return;
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    const dist = (cx - x) ** 2 + (cy - y) ** 2;
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = i;
+    }
+  });
+  return best;
+}
+
+/**
  * A parameter's list: the raw supply of values everything else indexes into.
  *
  * Each entry shows its index, because the index is what the tables refer to.
  * Seeing "3 → mf" here and "3" in the table is what connects the two halves
- * of the chain.
+ * of the chain. Order is meaningful (e.g. for the `sequence` principle, or
+ * simply for the composer's own bookkeeping), so entries can be dragged by
+ * their grip to reorder them - this changes which index each *other* value
+ * has, so double-check any table that already refers to this list by index
+ * after reordering it.
+ *
+ * Values that appear more than once are marked, not blocked: a repeated
+ * value is never invalid here (a table row's *indices* are what a duplicate
+ * check should actually gate, since that is where repetition changes
+ * meaning under some principles), but it is easy to type by accident, so
+ * it's worth a quiet visual note.
  */
 export function TokenListEditor({
   values,
@@ -27,6 +116,11 @@ export function TokenListEditor({
 }) {
   const { project } = useStore();
   const offset = project.startIndex;
+  const { dragging, setRef, beginDrag, onDragMove, endDrag } = useDragReorder(
+    values,
+    (next) => onChange?.(next),
+  );
+  const duplicates = duplicateValues(values);
 
   if (readOnly) {
     return (
@@ -48,7 +142,28 @@ export function TokenListEditor({
   return (
     <div className="token-list">
       {values.map((v, i) => (
-        <span className={`token${invalid?.(v, i) ? " is-error" : ""}`} key={i}>
+        <span
+          ref={setRef(i)}
+          className={
+            "token" +
+            (invalid?.(v, i) ? " is-error" : "") +
+            (v !== "" && duplicates.has(v) ? " token--duplicate" : "") +
+            (dragging === i ? " token--dragging" : "")
+          }
+          key={i}
+          title={v !== "" && duplicates.has(v) ? `"${v}" appears more than once in this list` : undefined}
+        >
+          <span
+            className="token__grip"
+            onPointerDown={(e) => beginDrag(e, i)}
+            onPointerMove={onDragMove}
+            onPointerUp={endDrag}
+            onPointerCancel={endDrag}
+            title="Drag to reorder"
+            aria-hidden
+          >
+            ⣿
+          </span>
           <span className="token__index">{i + offset}</span>
           <input
             className="token__input"
@@ -85,6 +200,18 @@ export function TokenListEditor({
   );
 }
 
+/** Values (ignoring blanks) that occur more than once. */
+export function duplicateValues<T>(values: T[]): Set<T> {
+  const seen = new Set<T>();
+  const dupes = new Set<T>();
+  for (const v of values) {
+    if (v === "") continue;
+    if (seen.has(v)) dupes.add(v);
+    seen.add(v);
+  }
+  return dupes;
+}
+
 /**
  * The hierarchy: a total ordering of the five parameters, reordered by
  * dragging.
@@ -113,54 +240,17 @@ export function HierarchyEditor({
   hierarchy: HierarchyElem[];
   onChange: (h: HierarchyElem[]) => void;
 }) {
-  const [dragging, setDragging] = useState<number | null>(null);
-  const dragIndex = useRef<number | null>(null);
-  const rowRefs = useRef<(HTMLDivElement | null)[]>([]);
-
-  const move = (from: number, to: number) => {
-    if (from === to) return;
-    const next = [...hierarchy];
-    const [item] = next.splice(from, 1);
-    next.splice(to, 0, item);
-    onChange(next);
-  };
-
-  const beginDrag = (e: React.PointerEvent<HTMLDivElement>, index: number) => {
-    if (e.button !== 0) return;
-    // Stops the press turning into a text selection while dragging.
-    e.preventDefault();
-    e.currentTarget.setPointerCapture(e.pointerId);
-    dragIndex.current = index;
-    setDragging(index);
-  };
-
-  const onDragMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    const from = dragIndex.current;
-    if (from === null) return;
-
-    const target = indexAt(rowRefs.current, e.clientY, hierarchy.length);
-    if (target !== null && target !== from) {
-      move(from, target);
-      dragIndex.current = target;
-      setDragging(target);
-    }
-  };
-
-  const endDrag = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (dragIndex.current === null) return;
-    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    }
-    dragIndex.current = null;
-    setDragging(null);
-  };
+  const { dragging, setRef, beginDrag, onDragMove, endDrag, move } = useDragReorder(
+    hierarchy,
+    onChange,
+  );
 
   return (
     <div className="hierarchy">
       {hierarchy.map((elem, i) => (
         <div
           key={elem}
-          ref={(el) => (rowRefs.current[i] = el)}
+          ref={setRef(i)}
           className={
             "hierarchy__item" + (dragging === i ? " hierarchy__item--dragging" : "")
           }
@@ -203,34 +293,6 @@ export function HierarchyEditor({
       ))}
     </div>
   );
-}
-
-/**
- * Which row the pointer is currently over.
- *
- * Past either end the nearest row is used, so dragging beyond the list still
- * moves the row to the top or bottom rather than stalling.
- */
-function indexAt(
-  rows: (HTMLDivElement | null)[],
-  clientY: number,
-  count: number,
-): number | null {
-  let first: DOMRect | null = null;
-  let last: DOMRect | null = null;
-
-  for (let i = 0; i < count; i += 1) {
-    const el = rows[i];
-    if (!el) continue;
-    const rect = el.getBoundingClientRect();
-    if (first === null) first = rect;
-    last = rect;
-    if (clientY >= rect.top && clientY <= rect.bottom) return i;
-  }
-
-  if (first && clientY < first.top) return 0;
-  if (last && clientY > last.bottom) return count - 1;
-  return null;
 }
 
 /** A short statement of what this parameter's position currently implies. */

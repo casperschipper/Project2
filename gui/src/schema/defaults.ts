@@ -13,6 +13,7 @@ function instrument(
   chordSizeMax: number,
   performance: string[],
   dynamics: string[],
+  percussion = false,
 ): Instrument {
   return {
     name,
@@ -20,8 +21,9 @@ function instrument(
     chordSizeMax,
     performance,
     dynamics,
-    compassLow: { register: 1, pitch: 1 },
-    compassHigh: { register: 5, pitch: 12 },
+    percussion,
+    compassLow: { octave: 1, pitch: 1 },
+    compassHigh: { octave: 5, pitch: 12 },
     durationMin: "0.1",
     durationMax: "4.0",
   };
@@ -34,7 +36,7 @@ export function defaultProject(): Project {
     seed: 3,
     variantDuration: "30.0",
     octaveDivision: 12,
-    hierarchy: ["Ins", "Per", "Dyn", "Ent", "Dur"],
+    hierarchy: ["Ins", "Reg", "Har", "Per", "Dyn", "Ent", "Dur"],
     union: "none",
     density: {
       kind: "autonomous",
@@ -65,15 +67,14 @@ export function defaultProject(): Project {
         "ff",
         "fff",
       ]),
-      instrument("basedrum", 1, 1, ["normal", "bowing"], [
-        "ppp",
-        "pp",
-        "p",
-        "mf",
-        "f",
-        "ff",
-        "fff",
-      ]),
+      instrument(
+        "basedrum",
+        1,
+        1,
+        ["normal", "bowing"],
+        ["ppp", "pp", "p", "mf", "f", "ff", "fff"],
+        true,
+      ),
       instrument("marimba", 1, 4, ["normal", "bowing"], ["mf", "f", "ff", "fff"]),
     ],
     instrumentTable: [
@@ -133,6 +134,24 @@ export function defaultProject(): Project {
     performanceEnsemble: { kind: "sequence", values: [2] },
     performancePrinciple: { kind: "alea" },
     performanceMode: "per-note",
+
+    registers: [
+      { kind: "percussion" },
+      { kind: "pitch", low: { octave: 1, pitch: 1 }, high: { octave: 3, pitch: 12 } },
+      { kind: "pitch", low: { octave: 3, pitch: 1 }, high: { octave: 5, pitch: 12 } },
+    ],
+    registerTable: [
+      [0, 1, 2],
+      [1, 2],
+      [0, 2],
+    ],
+    registerEnsemble: { kind: "series" },
+    registerPrinciple: { kind: "series" },
+    registerMode: "per-chord",
+
+    row: [1, 2, 3, 0, 5, 7, 9, 11, 12, 4, 6, 8, 10],
+    transposition: 0,
+    harmonyMode: "per-chord",
   };
 }
 

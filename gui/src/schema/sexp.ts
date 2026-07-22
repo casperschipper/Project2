@@ -3,8 +3,10 @@ import type {
   DurationRelation,
   Ensemble,
   Instrument,
+  Pitch,
   Principle,
   Project,
+  Register,
   Table,
 } from "./types";
 
@@ -106,13 +108,16 @@ function emitRelation(r: DurationRelation): string {
 }
 
 function emitInstrument(i: Instrument): string {
+  const compass = i.percussion
+    ? "(compass percussion)"
+    : `(compass (${i.compassLow.octave} ${pad2(i.compassLow.pitch)}) ` +
+      `(${i.compassHigh.octave} ${pad2(i.compassHigh.pitch)}))`;
   return [
     `    (instrument ${i.name || "unnamed"}`,
     `      (chordsize ${i.chordSizeMin} ${i.chordSizeMax})`,
     `      (performance (${i.performance.join(" ")}))`,
     `      (dynamics (${i.dynamics.join(" ")}))`,
-    `      (compass (${i.compassLow.register} ${pad2(i.compassLow.pitch)}) ` +
-      `(${i.compassHigh.register} ${pad2(i.compassHigh.pitch)}))`,
+    `      ${compass}`,
     `      (durations ${i.durationMin} ${i.durationMax}))`,
   ].join("\n");
 }
@@ -120,6 +125,14 @@ function emitInstrument(i: Instrument): string {
 /** Pitch positions are conventionally two digits in the manual's notation. */
 function pad2(n: number): string {
   return String(n).padStart(2, "0");
+}
+
+function emitPitch(p: Pitch): string {
+  return `(${p.octave} ${pad2(p.pitch)})`;
+}
+
+function emitRegister(r: Register): string {
+  return r.kind === "percussion" ? "(percussion)" : `(${emitPitch(r.low)} ${emitPitch(r.high)})`;
 }
 
 /** Trim trailing zeros but always keep a decimal point, as OCaml expects. */
@@ -168,6 +181,20 @@ export function toSexp(p: Project): string {
   parts.push(emitTable("duration-table", p.durationTable));
   parts.push("");
 
+  parts.push(
+    `  (registers (\n` + p.registers.map((r) => `    ${emitRegister(r)}`).join("\n") + `))`,
+  );
+  parts.push(emitTable("register-table", p.registerTable));
+  parts.push("");
+
+  parts.push(
+    `  (harmony\n` +
+      `    (row (${p.row.join(" ")}))\n` +
+      `    (transposition ${p.transposition})\n` +
+      `    (mode ${p.harmonyMode}))`,
+  );
+  parts.push("");
+
   // The principles block. Note the per-parameter asymmetry: instrument takes
   // no mode and no relation (and may not use `combination`); performance and
   // dynamics require a mode; duration requires a relation instead.
@@ -205,6 +232,13 @@ export function toSexp(p: Project): string {
       `(ensemble ${emitEnsemble(p.durationEnsemble)}) (order ${emitPrinciple(
         p.durationPrinciple,
       )}) (relation ${emitRelation(p.durationRelation)})`,
+      2,
+    ),
+    sexpList(
+      "register ",
+      `(ensemble ${emitEnsemble(p.registerEnsemble)}) (order ${emitPrinciple(
+        p.registerPrinciple,
+      )}) (mode ${p.registerMode})`,
       2,
     ),
   ].join("\n");

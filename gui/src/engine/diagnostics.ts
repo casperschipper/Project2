@@ -17,6 +17,8 @@ export type ScreenId =
   | "duration"
   | "dynamics"
   | "performance"
+  | "register"
+  | "harmony"
   | "output";
 
 export const SCREENS: { id: ScreenId; label: string }[] = [
@@ -26,6 +28,8 @@ export const SCREENS: { id: ScreenId; label: string }[] = [
   { id: "duration", label: "Duration" },
   { id: "dynamics", label: "Dynamics" },
   { id: "performance", label: "Performance" },
+  { id: "register", label: "Register" },
+  { id: "harmony", label: "Harmony" },
   { id: "output", label: "Output" },
 ];
 
@@ -61,6 +65,10 @@ export function screenOf(d: Diagnostic): ScreenId {
       return "dynamics";
     case "performance":
       return "performance";
+    case "register":
+      return "register";
+    case "harmony":
+      return "harmony";
     default:
       return "structure";
   }

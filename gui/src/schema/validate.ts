@@ -351,6 +351,28 @@ export function validateProject(p: Project): Diagnostic[] {
     );
   }
 
+  if (p.registers.length === 0) {
+    out.push(diag("empty-list", "error", [key("register"), key("list")], "the register list is empty"));
+  }
+
+  // ROW: relative pitches must be 0 (percussion) or 1..tr.
+  p.row.forEach((n, i) => {
+    if (!Number.isInteger(n) || n < 0 || n > p.octaveDivision) {
+      out.push(
+        diag(
+          "invalid-relative-pitch",
+          "error",
+          [key("harmony"), key("row"), idx(i)],
+          `relative pitch ${n} is out of range 0..${p.octaveDivision} (0 marks a percussion event)`,
+          { n, tr: p.octaveDivision },
+        ),
+      );
+    }
+  });
+  if (p.row.length === 0) {
+    out.push(diag("empty-list", "error", [key("harmony"), key("row")], "the row is empty"));
+  }
+
   // --- tables ---------------------------------------------------------
   checkTable(
     { paramKey: "instrument", table: p.instrumentTable, listLength: p.instruments.length, listName: "instrument" },
@@ -372,6 +394,10 @@ export function validateProject(p: Project): Diagnostic[] {
     { paramKey: "performance", table: p.performanceTable, listLength: p.performance.length, listName: "performance" },
     out,
   );
+  checkTable(
+    { paramKey: "register", table: p.registerTable, listLength: p.registers.length, listName: "register" },
+    out,
+  );
 
   // --- principles and ensembles ---------------------------------------
   checkPrinciple("instrument", p.instrumentPrinciple, p.instruments.length, out);
@@ -379,12 +405,14 @@ export function validateProject(p: Project): Diagnostic[] {
   checkPrinciple("duration", p.durationPrinciple, p.durations.length, out);
   checkPrinciple("dynamics", p.dynamicsPrinciple, p.dynamics.length, out);
   checkPrinciple("performance", p.performancePrinciple, p.performance.length, out);
+  checkPrinciple("register", p.registerPrinciple, p.registers.length, out);
 
   checkEnsemble("instrument", p.instrumentEnsemble, p.instrumentTable.length, out);
   checkEnsemble("entrydelay", p.entrydelayEnsemble, p.entrydelayTable.length, out);
   checkEnsemble("duration", p.durationEnsemble, p.durationTable.length, out);
   checkEnsemble("dynamics", p.dynamicsEnsemble, p.dynamicsTable.length, out);
   checkEnsemble("performance", p.performanceEnsemble, p.performanceTable.length, out);
+  checkEnsemble("register", p.registerEnsemble, p.registerTable.length, out);
 
   // The engine parses the instrument ensemble with a selector that has no
   // `combination` case, so this would be a bare parse error with no
@@ -408,6 +436,7 @@ export function validateProject(p: Project): Diagnostic[] {
     ["duration", p.durationEnsemble, p.durationTable],
     ["dynamics", p.dynamicsEnsemble, p.dynamicsTable],
     ["performance", p.performanceEnsemble, p.performanceTable],
+    ["register", p.registerEnsemble, p.registerTable],
   ];
   for (const [name, ens, table] of combinationParams) {
     if (ens.kind === "combination" && table.length !== p.instrumentTable.length) {
@@ -463,12 +492,14 @@ export function validateProject(p: Project): Diagnostic[] {
       );
     }
 
-    const low = inst.compassLow.register * 100 + inst.compassLow.pitch;
-    const high = inst.compassHigh.register * 100 + inst.compassHigh.pitch;
-    if (low > high) {
-      out.push(
-        diag("invalid-pitch-compass", "error", [...base, key("compass")], "the lowest pitch is above the highest"),
-      );
+    if (!inst.percussion) {
+      const low = inst.compassLow.octave * 100 + inst.compassLow.pitch;
+      const high = inst.compassHigh.octave * 100 + inst.compassHigh.pitch;
+      if (low > high) {
+        out.push(
+          diag("invalid-pitch-compass", "error", [...base, key("compass")], "the lowest pitch is above the highest"),
+        );
+      }
     }
 
     for (const [field, raw] of [
@@ -627,6 +658,26 @@ export function validateProject(p: Project): Diagnostic[] {
         "error",
         [key("duration"), key("relation")],
         "durations are set per note, so Instrument must come before Duration in the hierarchy",
+      ),
+    );
+  }
+  if (p.registerMode === "per-note" && insPos > posOf("Reg")) {
+    out.push(
+      diag(
+        "per-note-requires-ins-first",
+        "error",
+        [key("register"), key("mode")],
+        "register is set per note, so Instrument must come before Register in the hierarchy",
+      ),
+    );
+  }
+  if (p.harmonyMode === "per-note" && insPos > posOf("Har")) {
+    out.push(
+      diag(
+        "per-note-requires-ins-first",
+        "error",
+        [key("harmony"), key("mode")],
+        "harmony is set per note, so Instrument must come before Harmony in the hierarchy",
       ),
     );
   }

@@ -3,13 +3,27 @@
    score.projekt2, so this can never drift out of sync with the writer for
    that file. Pure Stdlib, no external dependencies.
 
-   Pitch/register aren't modelled yet (see caspernotes.md), so each
-   instrument is simply pinned to its own fixed MIDI note number, one
-   semitone apart, purely so distinct instruments are at least audibly and
-   visually distinguishable once imported. Timing/duration/dynamics come
-   straight from the score. *)
+   Each note's own resolved [pitch] (REGISTER + HARMONY, see
+   [Parameters.resolve_pitch]) becomes its MIDI note number; [Percussion]
+   notes are pinned to one fixed note. *)
 
 open Parameters
+
+(* Fixed "no pitch" MIDI note for [Percussion] notes - an arbitrary but
+   recognizable choice (GM 42 = closed hi-hat), not a full GM drum-kit
+   mapping. *)
+let percussion_midi_note = 42
+
+(* [tr] (tones per octave) is composer-set and may not be 12, so this is
+   necessarily lossy for a fixed-pitch format like MIDI: each relative
+   pitch (1..tr) is scaled to the nearest 12-tone-equal-tempered semitone. *)
+let midi_note_of_pitch ~tr = function
+  | Percussion -> percussion_midi_note
+  | Pitched { octave = Octave o; step = Step s } ->
+      let semitone =
+        int_of_float (Float.round (float_of_int (s - 1) *. 12.0 /. float_of_int tr))
+      in
+      max 0 (min 127 ((12 * o) + semitone))
 
 let ticks_per_quarter = 480
 let microseconds_per_quarter = 500_000 (* fixed 120bpm - the score has no tempo of its own *)
@@ -94,26 +108,30 @@ let tempo_track () =
   add_meta_end_of_track buf;
   track_chunk buf
 
-(* One instrument's notes -> one track, on its own channel, fixed pitch.
-   Every note becomes a Note On followed by a Note Off; ties at the same
-   tick are ordered Off-before-On so an instrument that reuses this fixed
-   pitch back-to-back doesn't leave a hanging note. *)
-let instrument_track ~channel ~pitch ~name (notes : Score_generation.note list) =
+(* One instrument's notes -> one track, on its own channel. Every note
+   becomes a Note On followed by a Note Off at its own resolved pitch; ties
+   at the same tick are ordered Off-before-On so a note that reuses the
+   previous one's pitch back-to-back doesn't leave a hanging note. *)
+let instrument_track ~channel ~tr ~name (notes : Score_generation.note list) =
   let events =
     notes
     |> List.concat_map (fun (n : Score_generation.note) ->
         let (Duration dur) = n.duration in
         let start = tick_of_seconds n.time in
         let stop = max (start + 1) (tick_of_seconds (n.time +. dur)) in
-        [ (start, true, velocity_of_dynamic n.dynamic); (stop, false, 0) ])
-    |> List.stable_sort (fun (t1, on1, _) (t2, on2, _) ->
+        let pitch = midi_note_of_pitch ~tr n.pitch in
+        [
+          (start, true, pitch, velocity_of_dynamic n.dynamic);
+          (stop, false, pitch, 0);
+        ])
+    |> List.stable_sort (fun (t1, on1, _, _) (t2, on2, _, _) ->
         if t1 <> t2 then compare t1 t2 else compare on1 on2)
   in
   let buf = Buffer.create 256 in
   add_meta_track_name buf name;
   let (_ : int) =
     List.fold_left
-      (fun last_tick (tick, on, velocity) ->
+      (fun last_tick (tick, on, pitch, velocity) ->
         add_vlq buf (tick - last_tick);
         Buffer.add_char buf (Char.chr ((if on then 0x90 else 0x80) lor (channel land 0x0f)));
         Buffer.add_char buf (Char.chr (pitch land 0x7f));
@@ -131,8 +149,8 @@ let distinct_instruments (notes : Score_generation.note list) =
     [] notes
 
 (* One layer -> one file: one track per instrument that actually plays in
-   this layer, each pinned to its own semitone (starting at C3) and channel. *)
-let write_layer_midi filename (entries : Score_generation.entry list) =
+   this layer, each on its own channel. *)
+let write_layer_midi ~tr filename (entries : Score_generation.entry list) =
   let notes = entries |> List.concat_map (fun (e : Score_generation.entry) -> e.notes) in
   let instruments = distinct_instruments notes in
   let tracks =
@@ -140,9 +158,8 @@ let write_layer_midi filename (entries : Score_generation.entry list) =
     |> List.mapi (fun i instr ->
         let (InstrumentName name) = instr in
         let channel = i mod 16 in
-        let pitch = 48 + (i mod 80) in
         let notes_for_instr = notes |> List.filter (fun (n : Score_generation.note) -> n.instrument = instr) in
-        instrument_track ~channel ~pitch ~name notes_for_instr)
+        instrument_track ~channel ~tr ~name notes_for_instr)
   in
   let oc = open_out_bin filename in
   Buffer.output_buffer oc (header_chunk ~ntracks:(1 + List.length tracks));
@@ -152,6 +169,7 @@ let write_layer_midi filename (entries : Score_generation.entry list) =
 
 (* Each layer becomes its own file ([prefix]_layer0.mid, [prefix]_layer1.mid,
    ...) so they can be imported into a DAW as separate parts. *)
-let write_layers_midi ~prefix (layers : Score_generation.entry list list) =
+let write_layers_midi ~prefix ~tr (layers : Score_generation.entry list list) =
   layers
-  |> List.iteri (fun i entries -> write_layer_midi (Printf.sprintf "%s_layer%d.mid" prefix i) entries)
+  |> List.iteri (fun i entries ->
+      write_layer_midi ~tr (Printf.sprintf "%s_layer%d.mid" prefix i) entries)

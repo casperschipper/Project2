@@ -20,7 +20,8 @@ let generate sf =
   write_notes_score (in_out_dir "score.projekt2") instrs layers;
   write_entries_score (in_out_dir "score_entries.projekt2") instrs
     ~density:sf.density layers;
-  Pr26.Midi_export.write_layers_midi ~prefix:(in_out_dir "score") layers;
+  Pr26.Midi_export.write_layers_midi ~prefix:(in_out_dir "score") ~tr:sf.tr
+    layers;
   (instrs, layers)
 
 (* ------------------------------------------------------------------ *)

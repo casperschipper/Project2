@@ -5,7 +5,7 @@
 
   (seed 3) ;; random seed; same seed + same formula always produces the same score
   (variant-duration 30.0)
-  (octave-division 12) ;; ignored for the moment
+  (octave-division 12) ;; tr: relative pitches in the row and register digits go 1..12
 
   (dynamics (ppp pp p mf f ff fff))
 
@@ -44,7 +44,7 @@
       (chordsize 1 1)
       (performance (normal bowing))
       (dynamics    (ppp pp p mf f ff fff))
-      (compass (1 01) (1 01))
+      (compass percussion)
       (durations 0.1 4.0))
 
     (instrument marimba
@@ -81,6 +81,26 @@
     (2 3 4)
     (0 6))
 
+  ;; REGISTER (EMR-3 7.1): a list of ranges between two absolute pitches
+  ;; (octave step), plus an explicit 'percussion' entry - unlike EMR-3's own
+  ;; (0,0) sentinel, percussion is its own real value here.
+  (registers
+    ((percussion)
+     ((1 1) (3 12))
+     ((3 1) (5 12))))
+
+  (register-table
+    (0 1 2)
+    (1 2)
+    (0 2))
+
+  ;; HARMONY (EMR-3 8.2): ROW only. Relative pitches 1..tr, 0 marks a
+  ;; percussion event in the row itself (mirrors REGISTER's own convention).
+  (harmony
+    (row (1 2 3 0 5 7 9 11 12 4 6 8 10))
+    (transposition 0)
+    (mode per-chord))
+
   ;; selection principles reference:
   ;;   alea
   ;;   series
@@ -113,8 +133,11 @@
 
 ;; Ins precedes Per (per-note) and Dur (per-note, shorter-than-entry) so
 ;; chord size is known before either resolves; Ent precedes Dur so DUR-ENTRY
-;; has an entry delay to constrain duration against.
-  (hierarchy (Ins Per Dyn Ent Dur))
+;; has an entry delay to constrain duration against. Reg right after Ins so
+;; register is chosen compatible with the instrument's own compass; Har
+;; right after Reg so a percussion register forces a percussion row value
+;; (EMR-3 fig 7-6).
+  (hierarchy (Ins Reg Har Per Dyn Ent Dur))
 
   (principles
     (instrument (ensemble series) (order series)) ;; two selection principles, one for the ensemble, one for the actual score constructions from the ensemble
@@ -145,7 +168,11 @@
     (duration
       (ensemble series)
       (order series)
-      (relation (independent per-note))))
+      (relation (independent per-note)))
+    (register
+      (ensemble series)
+      (order series)
+      (mode per-chord)))
 
 ;; none means a layer per instrument group!
   (union none)

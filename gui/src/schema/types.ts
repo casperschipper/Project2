@@ -20,9 +20,17 @@
  *     engine reads.
  */
 
-export type HierarchyElem = "Ins" | "Per" | "Dyn" | "Ent" | "Dur";
+export type HierarchyElem = "Ins" | "Per" | "Dyn" | "Ent" | "Dur" | "Reg" | "Har";
 
-export const HIERARCHY_ELEMS: HierarchyElem[] = ["Ins", "Per", "Dyn", "Ent", "Dur"];
+export const HIERARCHY_ELEMS: HierarchyElem[] = [
+  "Ins",
+  "Per",
+  "Dyn",
+  "Ent",
+  "Dur",
+  "Reg",
+  "Har",
+];
 
 export const HIERARCHY_LABELS: Record<HierarchyElem, string> = {
   Ins: "Instrument",
@@ -30,6 +38,8 @@ export const HIERARCHY_LABELS: Record<HierarchyElem, string> = {
   Dyn: "Dynamics",
   Ent: "Entry delay",
   Dur: "Duration",
+  Reg: "Register",
+  Har: "Harmony",
 };
 
 export type NoteMode = "per-chord" | "per-note";
@@ -88,7 +98,8 @@ export type Density =
   | { kind: "instrument-density" }
   | { kind: "autonomous"; low: number; high: number; principle: Principle };
 
-export type Pitch = { register: number; pitch: number };
+/** An absolute pitch: an octave digit (1-9) plus a relative pitch/step within it. */
+export type Pitch = { octave: number; pitch: number };
 
 export type Instrument = {
   name: string;
@@ -98,17 +109,44 @@ export type Instrument = {
   performance: string[];
   /** Must all be members of the master dynamics list. */
   dynamics: string[];
+  /** A percussion instrument has no pitch range at all - `compassLow`/`compassHigh` are ignored. */
+  percussion: boolean;
   compassLow: Pitch;
   compassHigh: Pitch;
   durationMin: string;
   durationMax: string;
 };
 
+/**
+ * REGISTER (EMR-3 7.1): a range between two absolute pitches, or an explicit
+ * percussion entry - never PR-2's (0,0) sentinel.
+ */
+export type Register =
+  | { kind: "percussion" }
+  | { kind: "pitch"; low: Pitch; high: Pitch };
+
+/** TRANSP-ROW (EMR-3 8.2, entry 20): how the row is transposed once exhausted. */
+export type Transposition = 0 | 1 | 2 | 3 | 4;
+
+/** Display string for one register entry, e.g. in the table/principle editors. */
+export function registerLabel(r: Register): string {
+  if (r.kind === "percussion") return "percussion";
+  return `${r.low.octave}.${String(r.low.pitch).padStart(2, "0")}–${r.high.octave}.${String(
+    r.high.pitch,
+  ).padStart(2, "0")}`;
+}
+
 /** Rows are groups; cells are 0-based indices into the parameter's own list. */
 export type Table = number[][];
 
-/** The five parameters that carry a principles block. */
-export type ParamId = "instrument" | "entrydelay" | "performance" | "dynamics" | "duration";
+/** The six parameters that carry a principles block. */
+export type ParamId =
+  | "instrument"
+  | "entrydelay"
+  | "performance"
+  | "dynamics"
+  | "duration"
+  | "register";
 
 export type Project = {
   formatVersion: 1;
@@ -167,6 +205,19 @@ export type Project = {
   performanceEnsemble: Ensemble;
   performancePrinciple: Principle;
   performanceMode: NoteMode;
+
+  // --- register ---------------------------------------------------------
+  registers: Register[];
+  registerTable: Table;
+  registerEnsemble: Ensemble;
+  registerPrinciple: Principle;
+  registerMode: NoteMode;
+
+  // --- harmony (ROW only - see harmony.md) -------------------------------
+  /** Relative pitches 1..octaveDivision; 0 marks a percussion event in the row itself. */
+  row: number[];
+  transposition: Transposition;
+  harmonyMode: NoteMode;
 };
 
 // ---------------------------------------------------------------------

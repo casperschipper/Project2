@@ -4,6 +4,8 @@ import { SCREENS, countsByScreen, type ScreenId } from "./engine/diagnostics";
 import { HelpPanel } from "./help/HelpPanel";
 import { StructureScreen } from "./screens/StructureScreen";
 import { InstrumentsScreen } from "./screens/InstrumentsScreen";
+import { RegisterScreen } from "./screens/RegisterScreen";
+import { HarmonyScreen } from "./screens/HarmonyScreen";
 import { OutputScreen } from "./screens/OutputScreen";
 import {
   ParameterScreen,
@@ -153,6 +155,8 @@ export function App() {
           {screen === "duration" && <ParameterScreen config={DURATION} />}
           {screen === "dynamics" && <ParameterScreen config={DYNAMICS} />}
           {screen === "performance" && <ParameterScreen config={PERFORMANCE} />}
+          {screen === "register" && <RegisterScreen />}
+          {screen === "harmony" && <HarmonyScreen />}
           {screen === "output" && <OutputScreen />}
         </main>
 
