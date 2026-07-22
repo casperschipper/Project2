@@ -99,6 +99,7 @@ export function RegisterScreen() {
             values={labels}
             path="register.table"
             valueLabel="register"
+            readOnlyRowLabels={project.instrumentGroupNames}
           />
         </Field>
       </Section>

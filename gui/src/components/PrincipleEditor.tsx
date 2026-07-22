@@ -172,12 +172,17 @@ export function EnsembleEditor({
   onChange,
   groupCount,
   allowCombination = true,
+  groupNames,
 }: {
   ensemble: Ensemble;
   onChange: (e: Ensemble) => void;
   groupCount: number;
   /** Instruments may not combine: they are what the others would follow. */
   allowCombination?: boolean;
+  /** Names for each group, by index - only meaningful for the instrument's
+   * own ensemble (a SEQUENCE here picks instrument-table rows directly; any
+   * other parameter's SEQUENCE picks its own table's rows instead). */
+  groupNames?: string[];
 }) {
   const { project } = useStore();
   const offset = project.startIndex;
@@ -207,7 +212,10 @@ export function EnsembleEditor({
         <IndexSequenceEditor
           values={ensemble.values}
           onChange={(v) => onChange({ kind: "sequence", values: v })}
-          list={Array.from({ length: groupCount }, (_, i) => `group ${i + offset}`)}
+          list={Array.from(
+            { length: groupCount },
+            (_, i) => groupNames?.[i] || `group ${i + offset}`,
+          )}
           valueLabel="group"
           offset={offset}
         />

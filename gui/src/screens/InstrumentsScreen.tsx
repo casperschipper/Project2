@@ -103,6 +103,8 @@ export function InstrumentsScreen() {
             values={project.instruments.map((i) => i.name || "unnamed")}
             path="instrument.table"
             valueLabel="instrument"
+            rowNames={project.instrumentGroupNames}
+            onRowNamesChange={(v) => update((p) => (p.instrumentGroupNames = v))}
           />
         </Field>
       </Section>
@@ -119,6 +121,7 @@ export function InstrumentsScreen() {
             onChange={(v) => update((p) => (p.instrumentEnsemble = v))}
             groupCount={project.instrumentTable.length}
             allowCombination={false}
+            groupNames={project.instrumentGroupNames}
           />
         </Field>
 

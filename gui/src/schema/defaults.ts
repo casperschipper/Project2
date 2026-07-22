@@ -82,6 +82,7 @@ export function defaultProject(): Project {
       [0],
       [2, 3],
     ],
+    instrumentGroupNames: ["", "", ""],
     instrumentEnsemble: { kind: "series" },
     instrumentPrinciple: { kind: "series" },
 

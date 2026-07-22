@@ -24,6 +24,9 @@ export function TableEditor({
   values,
   path,
   valueLabel,
+  rowNames,
+  onRowNamesChange,
+  readOnlyRowLabels,
 }: {
   table: Table;
   onChange: (next: Table) => void;
@@ -32,6 +35,17 @@ export function TableEditor({
   path: string;
   /** What one element is called, for tooltips: "dynamic", "entry delay", ... */
   valueLabel: string;
+  /**
+   * Editable group names, one per row (the instrument table only - other
+   * parameters' groups only ever borrow a name via [readOnlyRowLabels]).
+   * Kept index-aligned with `table` by this component: every row add/
+   * remove/duplicate below also splices `rowNames` the same way.
+   */
+  rowNames?: string[];
+  onRowNamesChange?: (next: string[]) => void;
+  /** A read-only name to show next to a row, e.g. the instrument group name
+   * this row corresponds to under `combination` - never editable here. */
+  readOnlyRowLabels?: string[];
 }) {
   const { project, diagnostics } = useStore();
   const offset = project.startIndex;
@@ -41,10 +55,25 @@ export function TableEditor({
     onChange(next);
   };
 
-  const addRow = () => onChange([...table, []]);
-  const removeRow = (r: number) => onChange(table.filter((_, i) => i !== r));
-  const duplicateRow = (r: number) =>
+  const setRowName = (r: number, name: string) => {
+    if (!rowNames) return;
+    onRowNamesChange?.(rowNames.map((existing, i) => (i === r ? name : existing)));
+  };
+
+  const addRow = () => {
+    onChange([...table, []]);
+    if (rowNames) onRowNamesChange?.([...rowNames, ""]);
+  };
+  const removeRow = (r: number) => {
+    onChange(table.filter((_, i) => i !== r));
+    if (rowNames) onRowNamesChange?.(rowNames.filter((_, i) => i !== r));
+  };
+  const duplicateRow = (r: number) => {
     onChange([...table.slice(0, r + 1), [...table[r]], ...table.slice(r + 1)]);
+    if (rowNames) {
+      onRowNamesChange?.([...rowNames.slice(0, r + 1), rowNames[r] ?? "", ...rowNames.slice(r + 1)]);
+    }
+  };
 
   if (table.length === 0) {
     return (
@@ -74,8 +103,27 @@ export function TableEditor({
             key={r}
             className={`table-editor__row${rowHasError ? " table-editor__row--error" : ""}`}
           >
-            <div className="table-editor__group-label">
-              Group {r + offset}
+            <div
+              className={
+                "table-editor__group-label" +
+                (rowNames || readOnlyRowLabels?.[r] ? " table-editor__group-label--named" : "")
+              }
+            >
+              <span className="table-editor__group-index">Group {r + offset}</span>
+              {rowNames && (
+                <input
+                  className="table-editor__group-name"
+                  type="text"
+                  value={rowNames[r] ?? ""}
+                  placeholder="Name this group"
+                  onChange={(e) => setRowName(r, e.target.value)}
+                />
+              )}
+              {!rowNames && readOnlyRowLabels?.[r] && (
+                <span className="faint table-editor__group-name-readonly">
+                  — {readOnlyRowLabels[r]}
+                </span>
+              )}
             </div>
 
             <div className="table-editor__cells">

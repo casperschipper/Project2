@@ -168,6 +168,8 @@ export type Project = {
   numberOfInstrumentGroups: number;
   instruments: Instrument[];
   instrumentTable: Table;
+  /** GUI-only: one label per instrumentTable row, shown wherever that row's group is referenced elsewhere. Never emitted. */
+  instrumentGroupNames: string[];
   instrumentEnsemble: Ensemble;
   instrumentPrinciple: Principle;
 

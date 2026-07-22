@@ -95,6 +95,7 @@ export function ParameterScreen({ config }: { config: ParameterConfig }) {
             values={list}
             path={`${paramId}.table`}
             valueLabel={config.valueLabel}
+            readOnlyRowLabels={project.instrumentGroupNames}
           />
         </Field>
       </Section>

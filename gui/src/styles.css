@@ -642,6 +642,31 @@ select {
   font-variant-numeric: tabular-nums;
 }
 
+.table-editor__group-label--named {
+  width: 150px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.table-editor__group-index {
+  white-space: nowrap;
+}
+
+.table-editor__group-name {
+  width: 100%;
+  font-size: 12px;
+  text-transform: none;
+  letter-spacing: normal;
+  padding: 2px 4px;
+}
+
+.table-editor__group-name-readonly {
+  text-transform: none;
+  letter-spacing: normal;
+  word-break: break-word;
+}
+
 .table-editor__cells {
   display: flex;
   flex-wrap: wrap;
