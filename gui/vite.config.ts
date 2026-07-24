@@ -46,8 +46,8 @@ function backendPlugin(): Plugin {
         // --- run the engine on a formula -----------------------------------
         if (url.pathname === "/api/run" && req.method === "POST") {
           try {
-            const { sexp } = JSON.parse(await readBody(req));
-            json(res, 200, await runEngine(sexp));
+            const { sexp, outDir } = JSON.parse(await readBody(req));
+            json(res, 200, await runEngine(sexp, outDir));
           } catch (err) {
             json(res, 500, { ok: false, engineError: String(err), errors: [], warnings: [] });
           }
@@ -101,8 +101,19 @@ async function readHelp(key: string): Promise<string | null> {
   }
 }
 
-async function runEngine(sexp: string) {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "pr2-run-"));
+/**
+ * Mirrors the Tauri `run_engine` command (see src-tauri/src/lib.rs): when
+ * `outDir` is given (an explicit Run) the score/entries/MIDI files are
+ * written there and kept, with the produced `.mid` filenames added to the
+ * response as `midiFiles`; when omitted (live validate-as-you-type) a
+ * scratch temp directory is used and removed once the engine finishes.
+ */
+async function runEngine(sexp: string, outDir?: string) {
+  const persistent = Boolean(outDir);
+  const dir = persistent
+    ? outDir!
+    : await fs.mkdtemp(path.join(os.tmpdir(), "pr2-run-"));
+  if (persistent) await fs.mkdir(dir, { recursive: true });
   const formula = path.join(dir, "formula.sexp");
   await fs.writeFile(formula, sexp, "utf8");
 
@@ -121,10 +132,18 @@ async function runEngine(sexp: string) {
     child.on("error", (e) =>
       resolve({ ok: false, errors: [], warnings: [], engineError: String(e) }),
     );
-    child.on("close", () => {
-      fs.rm(dir, { recursive: true, force: true }).catch(() => {});
+    child.on("close", async () => {
+      if (!persistent) await fs.rm(dir, { recursive: true, force: true }).catch(() => {});
       try {
-        resolve(JSON.parse(out));
+        const result = JSON.parse(out);
+        if (persistent) {
+          const entries = await fs.readdir(dir).catch(() => [] as string[]);
+          result.midiFiles = entries
+            .filter((f) => f.endsWith(".mid"))
+            .sort()
+            .map((f) => path.join(dir, f));
+        }
+        resolve(result);
       } catch {
         resolve({
           ok: false,

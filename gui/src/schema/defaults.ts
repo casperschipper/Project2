@@ -53,6 +53,7 @@ export function defaultProject(): Project {
     durationRelation: { kind: "independent", mode: "per-note" },
     startIndex: 0,
     comment: "",
+    outputDir: null,
 
     numberOfInstrumentGroups: 2,
     instruments: [

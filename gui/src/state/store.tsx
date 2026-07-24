@@ -11,7 +11,7 @@ import { defaultProject, derivePerformanceList } from "../schema/defaults";
 import { toSexp } from "../schema/sexp";
 import { validateProject } from "../schema/validate";
 import type { Diagnostic, EngineResult, Project } from "../schema/types";
-import { runEngine } from "../engine/backend";
+import { runEngine, chooseOutputDir } from "../engine/backend";
 import type { ScreenId } from "../engine/diagnostics";
 
 type HelpTarget = { key: string; title: string } | null;
@@ -112,31 +112,62 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   // Sequence numbers guard against a slow run overwriting a newer one.
   const runToken = useRef(0);
 
-  const run = useCallback(() => {
+  const runWith = useCallback(
+    (outDir: string | undefined) => {
+      const token = ++runToken.current;
+      setRunning(true);
+      runEngine(sexp, outDir)
+        .then((result) => {
+          if (token === runToken.current) setEngineResult(result);
+        })
+        .catch((err) => {
+          if (token === runToken.current) {
+            setEngineResult({
+              ok: false,
+              errors: [],
+              warnings: [],
+              engineError: String(err),
+            });
+          }
+        })
+        .finally(() => {
+          if (token === runToken.current) setRunning(false);
+        });
+    },
+    [sexp],
+  );
+
+  // Live background validation: always ephemeral (see runEngine/run_engine),
+  // so typing never touches a real file.
+  const runLive = useCallback(() => {
     if (blocked) {
       setEngineResult(null);
       return;
     }
-    const token = ++runToken.current;
-    setRunning(true);
-    runEngine(sexp)
-      .then((result) => {
-        if (token === runToken.current) setEngineResult(result);
-      })
-      .catch((err) => {
-        if (token === runToken.current) {
-          setEngineResult({
-            ok: false,
-            errors: [],
-            warnings: [],
-            engineError: String(err),
-          });
-        }
-      })
-      .finally(() => {
-        if (token === runToken.current) setRunning(false);
-      });
-  }, [sexp, blocked]);
+    runWith(undefined);
+  }, [blocked, runWith]);
+
+  /**
+   * The explicit Run button: persists score/entries/MIDI output to a real
+   * folder, rather than the throwaway one live validation uses. The folder
+   * is chosen once (a native picker) and then remembered on the project -
+   * saving the project remembers it too, so reopening the same formula
+   * later keeps writing to the same place without asking again.
+   */
+  const run = useCallback(async () => {
+    if (blocked) {
+      setEngineResult(null);
+      return;
+    }
+    let dir = project.outputDir;
+    if (!dir) {
+      const chosen = await chooseOutputDir();
+      if (!chosen) return;
+      dir = chosen;
+      update((p) => (p.outputDir = chosen));
+    }
+    runWith(dir);
+  }, [blocked, project.outputDir, update, runWith]);
 
   // Validate continuously in the background. The engine is fast and cheap, so
   // the composer sees consequences as they type rather than on demand; the
@@ -146,9 +177,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setEngineResult(null);
       return;
     }
-    const timer = setTimeout(run, 400);
+    const timer = setTimeout(runLive, 400);
     return () => clearTimeout(timer);
-  }, [run, blocked]);
+  }, [runLive, blocked]);
 
   const diagnostics = useMemo(() => {
     const engine = engineResult

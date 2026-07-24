@@ -106,6 +106,7 @@ export function TokenListEditor({
   placeholder,
   readOnly = false,
   invalid,
+  bulkPlaceholder,
 }: {
   values: string[];
   onChange?: (v: string[]) => void;
@@ -113,6 +114,8 @@ export function TokenListEditor({
   readOnly?: boolean;
   /** Returns true when this entry is malformed, e.g. an unparseable number. */
   invalid?: (value: string, index: number) => boolean;
+  /** Example text for the bulk-entry box, e.g. "1 2 3 p 5 7 9 11 12". */
+  bulkPlaceholder?: string;
 }) {
   const { project } = useStore();
   const offset = project.startIndex;
@@ -121,6 +124,7 @@ export function TokenListEditor({
     (next) => onChange?.(next),
   );
   const duplicates = duplicateValues(values);
+  const [bulkDraft, setBulkDraft] = useState("");
 
   if (readOnly) {
     return (
@@ -139,9 +143,46 @@ export function TokenListEditor({
   const set = (i: number, value: string) =>
     onChange?.(values.map((v, j) => (j === i ? value : v)));
 
+  // A one-shot bulk replace: never kept in sync with the pills between
+  // commits, so typing here can't fight with dragging/editing a pill.
+  // Whatever tokens come out just become the new list - the pills' own
+  // [invalid]/duplicate highlighting takes it from there, same as if each
+  // token had been typed by hand.
+  const commitBulk = () => {
+    const tokens = bulkDraft.trim().split(/\s+/).filter(Boolean);
+    if (tokens.length > 0) {
+      onChange?.(tokens);
+      setBulkDraft("");
+    }
+  };
+
   return (
-    <div className="token-list">
-      {values.map((v, i) => (
+    <div className="token-list-editor">
+      <div className="token-list-bulk">
+        <input
+          type="text"
+          className="token-list-bulk__input"
+          value={bulkDraft}
+          placeholder={bulkPlaceholder ?? "Type the whole list, space-separated"}
+          onChange={(e) => setBulkDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              commitBulk();
+            }
+          }}
+        />
+        <button
+          type="button"
+          className="btn btn--ghost btn--small"
+          onClick={commitBulk}
+          title="Replace the whole list with what's typed above"
+        >
+          Set list
+        </button>
+      </div>
+      <div className="token-list">
+        {values.map((v, i) => (
         <span
           ref={setRef(i)}
           className={
@@ -196,6 +237,7 @@ export function TokenListEditor({
       >
         + Add
       </button>
+      </div>
     </div>
   );
 }

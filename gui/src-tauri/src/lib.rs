@@ -62,14 +62,33 @@ fn engine_error(msg: impl Into<String>) -> Value {
     json!({ "ok": false, "errors": [], "warnings": [], "engineError": msg.into() })
 }
 
-/// Write the formula to a scratch directory, run the engine there with
-/// `--json`, and return its parsed output.
+/// List the `.mid` files sitting directly in `dir`, sorted, as absolute paths.
+fn midi_files_in(dir: &Path) -> Vec<String> {
+    let mut files: Vec<String> = std::fs::read_dir(dir)
+        .into_iter()
+        .flatten()
+        .filter_map(|entry| entry.ok())
+        .map(|entry| entry.path())
+        .filter(|p| p.extension().and_then(|e| e.to_str()) == Some("mid"))
+        .map(|p| p.display().to_string())
+        .collect();
+    files.sort();
+    files
+}
+
+/// Write the formula to a directory, run the engine there with `--json`, and
+/// return its parsed output.
 ///
-/// Generated scores and MIDI files go to the scratch directory via `--out-dir`
-/// so that validating on every keystroke doesn't churn files in the user's
-/// working directory. The directory is removed when `tmp` drops.
+/// When `out_dir` is `None` (the live, validate-as-you-type path) a scratch
+/// temp directory is used and removed the instant the engine finishes, so
+/// typing doesn't churn files anywhere real. When `out_dir` is `Some` (an
+/// explicit Run the composer asked for) the score/entries/MIDI files are
+/// written there directly and kept - the whole point of this branch. The
+/// returned JSON additionally carries `midiFiles`, the list of `.mid` files
+/// produced, but only in the `Some` case (the ephemeral path has nothing
+/// useful to point at once the temp directory is gone).
 #[tauri::command]
-fn run_engine(sexp: String) -> Value {
+fn run_engine(sexp: String, out_dir: Option<String>) -> Value {
     let Some(dir) = engine_dir() else {
         return engine_error(
             "could not find the engine directory (expected a 'pr26' folder \
@@ -85,11 +104,30 @@ fn run_engine(sexp: String) -> Value {
         ));
     }
 
-    let tmp = match tempfile::tempdir() {
-        Ok(t) => t,
-        Err(e) => return engine_error(format!("could not create a scratch directory: {e}")),
+    // Keeps the TempDir guard alive for the ephemeral case (it deletes on
+    // drop, at the end of this function) without needing one in the
+    // persistent case at all.
+    let _tmp_guard;
+    let run_dir: PathBuf = match &out_dir {
+        Some(p) => {
+            let pb = PathBuf::from(p);
+            if let Err(e) = std::fs::create_dir_all(&pb) {
+                return engine_error(format!("could not create the output directory: {e}"));
+            }
+            _tmp_guard = None;
+            pb
+        }
+        None => match tempfile::tempdir() {
+            Ok(t) => {
+                let p = t.path().to_path_buf();
+                _tmp_guard = Some(t);
+                p
+            }
+            Err(e) => return engine_error(format!("could not create a scratch directory: {e}")),
+        },
     };
-    let formula = tmp.path().join("formula.sexp");
+
+    let formula = run_dir.join("formula.sexp");
     if let Err(e) = std::fs::write(&formula, &sexp) {
         return engine_error(format!("could not write the formula: {e}"));
     }
@@ -98,7 +136,7 @@ fn run_engine(sexp: String) -> Value {
         .arg(&formula)
         .arg("--json")
         .arg("--out-dir")
-        .arg(tmp.path())
+        .arg(&run_dir)
         .current_dir(&dir)
         .output();
 
@@ -107,7 +145,17 @@ fn run_engine(sexp: String) -> Value {
         Ok(out) => {
             let stdout = String::from_utf8_lossy(&out.stdout);
             match serde_json::from_str::<Value>(stdout.trim()) {
-                Ok(v) => v,
+                Ok(mut v) => {
+                    if out_dir.is_some() {
+                        if let Value::Object(ref mut map) = v {
+                            map.insert(
+                                "midiFiles".to_string(),
+                                json!(midi_files_in(&run_dir)),
+                            );
+                        }
+                    }
+                    v
+                }
                 Err(_) => {
                     let stderr = String::from_utf8_lossy(&out.stderr);
                     engine_error(if !stderr.trim().is_empty() {

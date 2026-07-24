@@ -809,6 +809,25 @@ input.cell__input:focus {
 /* Token list (the parameter lists: dynamics, entry delays, ...)        */
 /* ------------------------------------------------------------------ */
 
+.token-list-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.token-list-bulk {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.token-list-bulk__input {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+}
+
 .token-list {
   display: flex;
   flex-wrap: wrap;

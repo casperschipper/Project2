@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useStore } from "../state/store";
 import { DiagnosticList } from "../components/Field";
 import { dedupeForDisplay } from "../engine/diagnostics";
+import { chooseOutputDir } from "../engine/backend";
 
 /**
  * The output screen.
@@ -23,10 +24,15 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 
 export function OutputScreen() {
-  const { engineResult, sexp, running, blocked, guiDiagnostics } = useStore();
+  const { project, update, engineResult, sexp, running, blocked, guiDiagnostics } = useStore();
   const [tab, setTab] = useState<Tab>("score");
 
   const errors = guiDiagnostics.filter((d) => d.severity === "error");
+
+  const changeOutputDir = async () => {
+    const dir = await chooseOutputDir();
+    if (dir) update((p) => (p.outputDir = dir));
+  };
 
   const content = (): { text: string | undefined; empty: string } => {
     switch (tab) {
@@ -59,6 +65,29 @@ export function OutputScreen() {
         What the engine generated from the current formula. More formats and ways of
         displaying this will follow.
       </p>
+
+      <div className="field" style={{ marginBottom: 20 }}>
+        <div className="field__row" style={{ flexWrap: "wrap" }}>
+          <span className="faint">
+            Run writes score, entries and MIDI files to:{" "}
+            {project.outputDir ? (
+              <code>{project.outputDir}</code>
+            ) : (
+              "not chosen yet — the first Run will ask"
+            )}
+          </span>
+          <button type="button" className="btn btn--ghost btn--small" onClick={changeOutputDir}>
+            {project.outputDir ? "Change folder…" : "Choose folder…"}
+          </button>
+        </div>
+        {engineResult?.midiFiles && engineResult.midiFiles.length > 0 && (
+          <div className="field__hint">
+            Wrote {engineResult.midiFiles.length} MIDI file
+            {engineResult.midiFiles.length === 1 ? "" : "s"}:{" "}
+            {engineResult.midiFiles.map((f) => f.split("/").pop()).join(", ")}
+          </div>
+        )}
+      </div>
 
       {blocked && (
         <div style={{ marginBottom: 20 }}>

@@ -163,6 +163,9 @@ export type Project = {
   startIndex: 0 | 1;
   /** GUI-only: the composer's own notes about this formula. */
   comment: string;
+  /** GUI-only: where an explicit Run persists score/entries/MIDI output.
+   * Chosen once (via a folder picker) and remembered from then on. */
+  outputDir: string | null;
 
   // --- instruments ----------------------------------------------------
   numberOfInstrumentGroups: number;
@@ -257,6 +260,8 @@ export type EngineResult = {
   log?: string;
   score?: string;
   entries?: string;
+  /** Set only for an explicit (persisted) Run - the `.mid` files produced. */
+  midiFiles?: string[];
   /** Set when the engine could not be started or produced unparseable output. */
   engineError?: string;
 };

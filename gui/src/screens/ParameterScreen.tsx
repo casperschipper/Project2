@@ -28,6 +28,8 @@ export type ParameterConfig = {
   /** Derived lists (performance) are shown but not edited. */
   listReadOnly?: boolean;
   numeric?: boolean;
+  /** Example text for the list's bulk-entry box, e.g. "0.1 0.2 1/4 0.5". */
+  bulkPlaceholder?: string;
   /** Present for parameters that choose per chord or per note. */
   mode?: {
     get: (p: Project) => NoteMode;
@@ -73,6 +75,7 @@ export function ParameterScreen({ config }: { config: ParameterConfig }) {
             readOnly={config.listReadOnly}
             onChange={(v) => update((p) => config.set.list(p, v))}
             placeholder={config.numeric ? "0.25" : "name"}
+            bulkPlaceholder={config.bulkPlaceholder}
             invalid={
               config.numeric
                 ? (value) => parseTimeValue(value) === null || (parseTimeValue(value) ?? 0) < 0
@@ -168,6 +171,7 @@ export const ENTRYDELAY: ParameterConfig = {
   listHelpKey: "fields/entrydelay-list",
   listHint: "Seconds. Decimals (0.25) and fractions (1/4) are both accepted.",
   numeric: true,
+  bulkPlaceholder: "0.1 0.2 1/4 0.5",
   get: {
     list: (p) => p.entrydelays,
     table: (p) => p.entrydelayTable,
@@ -192,6 +196,7 @@ export const DURATION: ParameterConfig = {
   listHelpKey: "fields/duration-list",
   listHint: "Seconds. Decimals (0.25) and fractions (1/4) are both accepted.",
   numeric: true,
+  bulkPlaceholder: "0.5 1.0 2.5",
   get: {
     list: (p) => p.durations,
     table: (p) => p.durationTable,
@@ -215,6 +220,7 @@ export const DYNAMICS: ParameterConfig = {
   listLabel: "Dynamics",
   listHelpKey: "fields/dynamics-list",
   listHint: "Any names you like — ppp, pp, p, mf, f, ff, fff by convention.",
+  bulkPlaceholder: "ppp mf ff",
   mode: {
     get: (p) => p.dynamicsMode,
     set: (p, v) => (p.dynamicsMode = v),

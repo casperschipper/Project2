@@ -34,6 +34,7 @@ export function HarmonyScreen() {
             values={project.row}
             onChange={(v) => update((p) => (p.row = v))}
             placeholder="p"
+            bulkPlaceholder="1 2 3 p 5 7 9 11 12"
             invalid={(v) => {
               if (v === "p") return false;
               const n = Number(v);

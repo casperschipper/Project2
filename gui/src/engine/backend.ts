@@ -19,15 +19,41 @@ async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T
   return invoke<T>(cmd, args);
 }
 
-export async function runEngine(sexp: string): Promise<EngineResult> {
-  if (isTauri()) return invoke<EngineResult>("run_engine", { sexp });
+/**
+ * Runs the engine. When `outDir` is given, the score/entries/MIDI files are
+ * written there and kept (the result's `midiFiles` lists what was produced);
+ * when omitted, output goes to a scratch directory that's discarded the
+ * instant the engine finishes - used for live validate-as-you-type, so
+ * typing never churns real files.
+ */
+export async function runEngine(sexp: string, outDir?: string): Promise<EngineResult> {
+  if (isTauri()) return invoke<EngineResult>("run_engine", { sexp, outDir });
 
   const res = await fetch("/api/run", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sexp }),
+    body: JSON.stringify({ sexp, outDir }),
   });
   return res.json();
+}
+
+/**
+ * Lets the composer pick a folder for persisted Run output. Only meaningful
+ * in the desktop app - a browser can't hand back a real filesystem path from
+ * a folder picker, so this always returns null when running as a plain
+ * dev-server preview.
+ */
+export async function chooseOutputDir(): Promise<string | null> {
+  if (!isTauri()) {
+    window.alert(
+      "Choosing a persistent output folder needs the desktop app - run `npm run app` " +
+        "(or a built binary) rather than the plain browser preview.",
+    );
+    return null;
+  }
+  const { open } = await import("@tauri-apps/plugin-dialog");
+  const path = await open({ directory: true, multiple: false });
+  return typeof path === "string" ? path : null;
 }
 
 /** Returns null when the document hasn't been written yet. */
