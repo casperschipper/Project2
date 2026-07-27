@@ -37,6 +37,46 @@ Should the composer be helped in some way to construct useful tables? If a param
 
 # TODOS
 
+[ ] Define input as a runtime prompt?
+[ ] Another question: how to deal with percussion? In manual both register and pitch can result in percussion.
+[/] Hierarchy as a thing that can be computed from the current structure formula
+[/] Hierarchy as defined by the user. 
+
+[x] Implement another parameter x 
+[ ] Total problems: be able to tell which user definition caused a problem.
+[ ] registers in instrument definitions are made up of octave and relative pitch
+(to be called like taht in the interface)
+[ ] Call compass "pitch range"
+[ ] register list, make either/or percussion/range visually clearer
+[ ] empty list field when saying "set list"
+[ ] maintingng state (selection cysles, harmony state etc) across layers and
+variants in the "variant group"
+[ ] multiple variants
+[ ] test row transposition modes
+[ ] interval principle
+
+chord 5 6 10
+
+you go in both directions through the chord as a cyclical structure
+
+5 to 6 -> 6 to 10
+6 to 10 -> 10 to 5
+10 to 5 -> 5 to 6
+10 to 6 -> 6 to 5
+6 to 5 -> 5 to 10
+5 to 10 -> 10 to 6
+
+interval matrix:
+from Y-axis to X-axis
+
+make circular interval visualization
+visualize interval matrix as graph
+auto consistency check for matrix
+
+Done
+
+[x] validation should collect as many errors as possible, not stop at first
+[x] Implement autonomous density
 [x] Union and combination
 [x] Any problem that may occur return it as result.
 [x] Implement autonomous density
@@ -53,19 +93,6 @@ instrument definition and performance parameter and simplifies entry
 (giving n values needed) and a function for getting possible next values (and
 being able to prohibit/filter), instead of unit seq, we give it a context, they
 output results, there may be no possible value
-
-[ ] Define input as a runtime prompt?
-[ ] Another question: how to deal with percussion? In manual both register and pitch can result in percussion.
-[/] Hierarchy as a thing that can be computed from the current structure formula
-[/] Hierarchy as defined by the user. 
-
-[x] Implement another parameter x 
-[ ] Total problems: be able to tell which user definition caused a problem.
-
-Done
-
-[x] validation should collect as many errors as possible, not stop at first
-[x] Implement autonomous density
 
 
 Motivation of fold:
