@@ -54,13 +54,13 @@ instrument definition and performance parameter and simplifies entry
 being able to prohibit/filter), instead of unit seq, we give it a context, they
 output results, there may be no possible value
 
-[ ] Define input as a runtime prompt?
-[ ] Another question: how to deal with percussion? In manual both register and pitch can result in percussion.
-[/] Hierarchy as a thing that can be computed from the current structure formula
-[/] Hierarchy as defined by the user. 
+[x] Define input as a runtime prompt?
+[x] Another question: how to deal with percussion? In manual both register and pitch can result in percussion.
+[x] Hierarchy as a thing that can be computed from the current structure formula
+[x] Hierarchy as defined by the user. 
 
 [x] Implement another parameter x 
-[ ] Total problems: be able to tell which user definition caused a problem.
+[x] Total problems: be able to tell which user definition caused a problem.
 
 Done
 

@@ -2,7 +2,7 @@
 (structure-formula
 
   (seed 3)
-  (variant-duration 30.0)
+  (variant-duration 120.0)
   (octave-division 12)
 
   (dynamics (ppp pp p mf f ff fff))
@@ -22,53 +22,53 @@
     (instrument guitar1
       (chordsize 6 6)
       (performance (normal muted overtone1))
-      (dynamics (p mf f ppp))
+      (dynamics (p mf f ppp pp ff fff))
       (compass (1 01) (5 12))
-      (durations 0.1 4.0))
+      (durations 0.0 4.0))
 
     (instrument guitar2
       (chordsize 1 6)
       (performance (normal muted overtone1))
-      (dynamics (p mf f ff))
+      (dynamics (p mf f ff ppp pp fff))
       (compass (1 01) (5 12))
-      (durations 0.1 4.0))
+      (durations 0.0 4.0))
 
     (instrument piano
       (chordsize 1 10)
       (performance (normal pizzicato))
       (dynamics (ppp pp p mf f ff fff))
       (compass (1 01) (5 12))
-      (durations 0.1 4.0))
+      (durations 0.0 4.0))
 
     (instrument basedrum
       (chordsize 1 1)
       (performance (normal bowing))
       (dynamics (ppp pp p mf f ff fff))
       (compass percussion)
-      (durations 0.1 4.0))
+      (durations 0.0 4.0))
 
     (instrument marimba
       (chordsize 1 4)
       (performance (normal bowing))
-      (dynamics (mf f ff fff))
+      (dynamics (mf f ff fff ppp pp p))
       (compass (1 01) (5 12))
-      (durations 0.1 4.0)))
+      (durations 0.0 4.0)))
   (instrument-table
     (0 1 2 3)
     (0)
     (2 3))
 
-  (entrydelays (0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8))
+  (entrydelays (0.01 0.02 0.03 0.2 0.5 0.6 1.7 3.7))
   (entrydelay-table
     (0 1 2)
     (3 4 5)
     (0 1 2 3 4 5 6 7))
 
-  (durations (0.1 0.2 0.3 0.5 0.8 5.0))
+  (durations (0.01 0.02 0.03 0.04 0.05 0.1 2.0 1.0 4.0))
   (duration-table
-    (0 1 2 3 4)
-    (2 3 4)
-    (0 1 2))
+    (0 1 2 3 4 5 6 7 8)
+    (2 3 4 8)
+    (0 1 2 8))
 
   (registers (
     (percussion)
@@ -81,18 +81,18 @@
 
   (harmony
     (row (1 2 3 p 5 7 9 11 12 4 6 8 10))
-    (transposition none)
-    (mode per-chord))
+    (transposition series)
+    (mode per-note))
 
   (principles
     (instrument (ensemble series) (order series))
     (entrydelay (ensemble series) (order (ratio ((0 1) (1 3) (2 1) (3 5) (4 2) (5 1) (6 1) (7 10)))))
     (performance (ensemble (sequence 2)) (order alea) (mode per-note))
     (dynamics (ensemble series) (order series) (mode per-chord))
-    (duration (ensemble series) (order series) (relation (independent per-note)))
+    (duration (ensemble series) (order (tendency (section 1.0 (start 0.0 1.0) (end 0.0 1.0)))) (relation (independent per-note)))
     (register (ensemble series) (order series) (mode per-chord)))
 
   (hierarchy (Ins Reg Har Per Dyn Ent Dur))
   (union none)
-  (density (autonomous (low 1) (high 2) (principle (group (element series) (repetition series) (repetitions 1 4)))))
+  (density (autonomous (low 1) (high 4) (principle (group (element series) (repetition series) (repetitions 1 4)))))
 )
