@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type React from "react";
 import { useStore } from "../state/store";
 import { HIERARCHY_LABELS } from "../schema/types";
@@ -124,7 +124,16 @@ export function TokenListEditor({
     (next) => onChange?.(next),
   );
   const duplicates = duplicateValues(values);
-  const [bulkDraft, setBulkDraft] = useState("");
+  const [bulkDraft, setBulkDraft] = useState(() => values.join(" "));
+  const bulkFocused = useRef(false);
+
+  // Keeps the bulk box showing the list's current serialization - so a drag
+  // reorder, an add/remove, or editing a pill's own value all show up here
+  // too - except while the composer is actively typing in it, so an edit in
+  // progress here is never clobbered by an edit happening elsewhere.
+  useEffect(() => {
+    if (!bulkFocused.current) setBulkDraft(values.join(" "));
+  }, [values]);
 
   if (readOnly) {
     return (
@@ -143,8 +152,6 @@ export function TokenListEditor({
   const set = (i: number, value: string) =>
     onChange?.(values.map((v, j) => (j === i ? value : v)));
 
-  // A one-shot bulk replace: never kept in sync with the pills between
-  // commits, so typing here can't fight with dragging/editing a pill.
   // Whatever tokens come out just become the new list - the pills' own
   // [invalid]/duplicate highlighting takes it from there, same as if each
   // token had been typed by hand.
@@ -152,7 +159,7 @@ export function TokenListEditor({
     const tokens = bulkDraft.trim().split(/\s+/).filter(Boolean);
     if (tokens.length > 0) {
       onChange?.(tokens);
-      setBulkDraft("");
+      setBulkDraft(tokens.join(" "));
     }
   };
 
@@ -164,6 +171,13 @@ export function TokenListEditor({
           className="token-list-bulk__input"
           value={bulkDraft}
           placeholder={bulkPlaceholder ?? "Type the whole list, space-separated"}
+          onFocus={() => {
+            bulkFocused.current = true;
+          }}
+          onBlur={() => {
+            bulkFocused.current = false;
+            setBulkDraft(values.join(" "));
+          }}
           onChange={(e) => setBulkDraft(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
