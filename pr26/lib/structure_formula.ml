@@ -600,48 +600,51 @@ module Parse = struct
         Ok (Tendency (TendencyMask sects))
     | _ -> fail "unknown or unsupported selection principle"
 
-  let parse_compass items =
+  (* Shared grammar rule for (pitch-range ...): the same sub-form appears
+     both as an instrument's own field and as each entry of REGISTER's own
+     list - one bounding an instrument's own range, the other bounding where
+     a tone may be placed. [items] is the body *after* the "pitch-range"
+     keyword has already been stripped by the caller. Returns [None] for
+     percussion so each call site maps onto its own percussion variant
+     ([PercussionPitchRange] / [PercussionRegister]). *)
+  let parse_pitch_range_body items =
     match items with
-    | [ Sexp.Atom "percussion" ] -> Ok PercussionCompass
-    | [
-     Sexp.List [ Sexp.Atom r1; Sexp.Atom p1 ];
-     Sexp.List [ Sexp.Atom r2; Sexp.Atom p2 ];
-    ] ->
-        let* r1 = require_int (Sexp.Atom r1) in
-        let* p1 = require_int (Sexp.Atom p1) in
-        let* r2 = require_int (Sexp.Atom r2) in
-        let* p2 = require_int (Sexp.Atom p2) in
-        let* o1 = lift (mk_octave r1) in
-        let* o2 = lift (mk_octave r2) in
-        lift
-          (mk_pitch_compass (absolute o1 (Step p1)) (absolute o2 (Step p2))
-             Pitch_set.empty)
+    | [ Sexp.Atom "percussion" ] -> Ok None
     | _ ->
-        fail
-          "compass expects 'percussion' or (register pitch) (register pitch)"
+        let parse_bound name =
+          let* args = require_field name items in
+          match args with
+          | [
+           Sexp.List [ Sexp.Atom "octave"; oct ];
+           Sexp.List [ Sexp.Atom "pitch"; p ];
+          ] ->
+              let* o = require_int oct in
+              let* p = require_int p in
+              let* o = lift (mk_octave o) in
+              Ok (absolute o (Step p))
+          | _ -> fail (Printf.sprintf "%s expects (octave N) (pitch N)" name)
+        in
+        let* low = parse_bound "low" in
+        let* high = parse_bound "high" in
+        Ok (Some (low, high))
 
-  (* REGISTER entries mirror compass' own (octave step) (octave step) shape
-     - the two concepts share the same underlying [absolute_pitch] pair, one
-     bounding an instrument's own range, the other bounding where a tone may
-     be placed - plus a 'percussion' marker for [PercussionRegister]. *)
-  let parse_register items =
-    match items with
-    | [ Sexp.Atom "percussion" ] -> Ok PercussionRegister
-    | [
-     Sexp.List [ Sexp.Atom r1; Sexp.Atom p1 ];
-     Sexp.List [ Sexp.Atom r2; Sexp.Atom p2 ];
-    ] ->
-        let* r1 = require_int (Sexp.Atom r1) in
-        let* p1 = require_int (Sexp.Atom p1) in
-        let* r2 = require_int (Sexp.Atom r2) in
-        let* p2 = require_int (Sexp.Atom p2) in
-        let* o1 = lift (mk_octave r1) in
-        let* o2 = lift (mk_octave r2) in
-        lift (mk_register (absolute o1 (Step p1)) (absolute o2 (Step p2)))
-    | _ ->
-        fail
-          "register expects 'percussion' or (register pitch) (register \
-           pitch)"
+  let parse_instrument_pitch_range items =
+    let* range = parse_pitch_range_body items in
+    match range with
+    | None -> Ok PercussionPitchRange
+    | Some (min, max) -> lift (mk_pitch_range min max Pitch_set.empty)
+
+  (* One REGISTER-list entry is a standalone (pitch-range ...) form (unlike
+     the instrument field, which lives inside a fields list), so this strips
+     the leading keyword itself before delegating to the shared body
+     parser above. *)
+  let parse_register_entry = function
+    | Sexp.List (Sexp.Atom "pitch-range" :: rest) ->
+        let* range = parse_pitch_range_body rest in
+        (match range with
+        | None -> Ok PercussionRegister
+        | Some (low, high) -> lift (mk_register low high))
+    | Sexp.List _ | Sexp.Atom _ -> fail "register entry expects (pitch-range ...)"
 
   (* One entry of HARMONY's row (EMR-3 8.2): either a relative pitch, or the
      literal atom "p" marking a percussion event - never PR-2's 0 sentinel,
@@ -694,11 +697,11 @@ module Parse = struct
                    (names |> List.map Dynamic.of_string |> Dynamic_modes.of_list)
              | _ -> fail "dynamics expects (dynamics (...))")
         in
-        let* compass =
+        let* pitchrange =
           in_loc
-            [ Key KInstrument; Index i; Key KCompass ]
-            (let* args = require_field "compass" fields in
-             parse_compass args)
+            [ Key KInstrument; Index i; Key KPitchRange ]
+            (let* args = require_field "pitch-range" fields in
+             parse_instrument_pitch_range args)
         in
         let* durations =
           in_loc
@@ -711,7 +714,7 @@ module Parse = struct
                  lift (mk_allowed_durations min_v max_v)
              | _ -> fail "durations expects two floats")
         in
-        Ok (inst instr cs perf dyns compass durations)
+        Ok (inst instr cs perf dyns pitchrange durations)
     | _ ->
         in_loc
           [ Key KInstrument; Index i ]
@@ -891,13 +894,7 @@ module Parse = struct
         (let* args = require_field "registers" items in
          match args with
          | [ Sexp.List inner ] ->
-             let* regs =
-               inner
-               |> List.map (function
-                    | Sexp.List entry -> parse_register entry
-                    | Sexp.Atom _ -> fail "expected list for register entry")
-               |> sequence
-             in
+             let* regs = inner |> List.map parse_register_entry |> sequence in
              Ok (ParameterList (Array.of_list regs))
          | _ -> fail "registers expects (registers (...))")
     in

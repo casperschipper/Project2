@@ -101,6 +101,14 @@ export type Density =
 /** An absolute pitch: an octave digit (1-9) plus a relative pitch/step within it. */
 export type Pitch = { octave: number; pitch: number };
 
+/**
+ * A range between two absolute pitches, or an explicit percussion entry -
+ * never PR-2's (0,0) sentinel. The same shape appears in two places in the
+ * sexp (the `(pitch-range ...)` grammar): an instrument's own range, and
+ * each entry of REGISTER's own list.
+ */
+export type PitchRange = { kind: "percussion" } | { kind: "pitch"; low: Pitch; high: Pitch };
+
 export type Instrument = {
   name: string;
   chordSizeMin: number;
@@ -109,21 +117,14 @@ export type Instrument = {
   performance: string[];
   /** Must all be members of the master dynamics list. */
   dynamics: string[];
-  /** A percussion instrument has no pitch range at all - `compassLow`/`compassHigh` are ignored. */
-  percussion: boolean;
-  compassLow: Pitch;
-  compassHigh: Pitch;
+  /** A percussion instrument has no pitch range at all. */
+  pitchRange: PitchRange;
   durationMin: string;
   durationMax: string;
 };
 
-/**
- * REGISTER (EMR-3 7.1): a range between two absolute pitches, or an explicit
- * percussion entry - never PR-2's (0,0) sentinel.
- */
-export type Register =
-  | { kind: "percussion" }
-  | { kind: "pitch"; low: Pitch; high: Pitch };
+/** REGISTER (EMR-3 7.1): structurally the same as an instrument's own pitch range. */
+export type Register = PitchRange;
 
 /** TRANSP-ROW (EMR-3 8.2, entry 20): how the row is transposed once exhausted. */
 export type Transposition = "none" | "alea" | "series" | "chromatic" | "serial";

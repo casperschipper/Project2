@@ -10,7 +10,7 @@ Each instrument has:
 
 - **name** — how it appears in the score.
 - **[chord size](fields/instrument-chordsize)** — minimum and maximum simultaneous tones.
-- **[compass](fields/instrument-compass)** — lowest and highest playable pitch.
+- **[pitch range](fields/instrument-pitch-range)** — lowest and highest playable pitch.
 - **[durations](fields/instrument-durations)** — the shortest and longest tone it can sustain.
 - **[performance](fields/instrument-performance)** — the modes of playing it commands.
 - **[dynamics](fields/instrument-dynamics)** — the intensities available to it.

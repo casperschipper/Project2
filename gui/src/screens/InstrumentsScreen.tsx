@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useStore } from "../state/store";
-import { Field, Section, DiagnosticList } from "../components/Field";
+import { Field, Section, DiagnosticList, PercussionSwitch } from "../components/Field";
 import { TableEditor } from "../components/TableEditor";
 import { EnsembleEditor, PrincipleEditor } from "../components/PrincipleEditor";
 import { diagnosticsFor, dedupeForDisplay } from "../engine/diagnostics";
@@ -24,9 +24,7 @@ export function InstrumentsScreen() {
         chordSizeMax: 1,
         performance: p.performance.slice(0, 1),
         dynamics: p.dynamics.slice(),
-        percussion: false,
-        compassLow: { octave: 1, pitch: 1 },
-        compassHigh: { octave: 5, pitch: 12 },
+        pitchRange: { kind: "pitch", low: { octave: 1, pitch: 1 }, high: { octave: 5, pitch: 12 } },
         durationMin: "0.1",
         durationMax: "4.0",
       });
@@ -229,53 +227,93 @@ function InstrumentCard({
 
           <div className="grid-2">
             <Field
-              label="Compass"
-              helpKey="fields/instrument-compass"
-              path={`${path}.compass`}
+              label="Pitch range"
+              helpKey="fields/instrument-pitch-range"
+              path={`${path}.pitch-range`}
               hint={
-                instrument.percussion
+                instrument.pitchRange.kind === "percussion"
                   ? "Percussion instruments have no pitch range - REGISTER will always resolve to its percussion entry for this instrument."
-                  : "Lowest and highest pitch, as octave and step."
+                  : "Lowest and highest pitch, as octave and relative pitch."
               }
             >
-              <label className="field__row" style={{ marginBottom: 8 }}>
-                <input
-                  type="checkbox"
-                  checked={instrument.percussion}
-                  onChange={(e) => set((i) => (i.percussion = e.target.checked))}
+              <div style={{ marginBottom: 8 }}>
+                <PercussionSwitch
+                  percussion={instrument.pitchRange.kind === "percussion"}
+                  onChange={(percussion) =>
+                    set((i) => {
+                      i.pitchRange = percussion
+                        ? { kind: "percussion" }
+                        : {
+                            kind: "pitch",
+                            low: { octave: 1, pitch: 1 },
+                            high: { octave: 5, pitch: 12 },
+                          };
+                    })
+                  }
                 />
-                <span>Percussion (no fixed pitch)</span>
-              </label>
+              </div>
 
-              {!instrument.percussion && (
+              {instrument.pitchRange.kind === "pitch" && (
                 <div className="field__row">
+                  <span className="faint" style={{ fontSize: 11.5 }}>
+                    Octave
+                  </span>
                   <input
                     type="number"
                     className="input--tiny"
-                    value={instrument.compassLow.octave}
-                    onChange={(e) => set((i) => (i.compassLow.octave = Number(e.target.value)))}
+                    value={instrument.pitchRange.low.octave}
+                    onChange={(e) =>
+                      set((i) => {
+                        if (i.pitchRange.kind === "pitch")
+                          i.pitchRange.low.octave = Number(e.target.value);
+                      })
+                    }
                     title="Lowest octave"
                   />
+                  <span className="faint" style={{ fontSize: 11.5 }}>
+                    Relative pitch
+                  </span>
                   <input
                     type="number"
                     className="input--tiny"
-                    value={instrument.compassLow.pitch}
-                    onChange={(e) => set((i) => (i.compassLow.pitch = Number(e.target.value)))}
+                    value={instrument.pitchRange.low.pitch}
+                    onChange={(e) =>
+                      set((i) => {
+                        if (i.pitchRange.kind === "pitch")
+                          i.pitchRange.low.pitch = Number(e.target.value);
+                      })
+                    }
                     title="Lowest step"
                   />
                   <span className="faint">to</span>
+                  <span className="faint" style={{ fontSize: 11.5 }}>
+                    Octave
+                  </span>
                   <input
                     type="number"
                     className="input--tiny"
-                    value={instrument.compassHigh.octave}
-                    onChange={(e) => set((i) => (i.compassHigh.octave = Number(e.target.value)))}
+                    value={instrument.pitchRange.high.octave}
+                    onChange={(e) =>
+                      set((i) => {
+                        if (i.pitchRange.kind === "pitch")
+                          i.pitchRange.high.octave = Number(e.target.value);
+                      })
+                    }
                     title="Highest octave"
                   />
+                  <span className="faint" style={{ fontSize: 11.5 }}>
+                    Relative pitch
+                  </span>
                   <input
                     type="number"
                     className="input--tiny"
-                    value={instrument.compassHigh.pitch}
-                    onChange={(e) => set((i) => (i.compassHigh.pitch = Number(e.target.value)))}
+                    value={instrument.pitchRange.high.pitch}
+                    onChange={(e) =>
+                      set((i) => {
+                        if (i.pitchRange.kind === "pitch")
+                          i.pitchRange.high.pitch = Number(e.target.value);
+                      })
+                    }
                     title="Highest step"
                   />
                 </div>

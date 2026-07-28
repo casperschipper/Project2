@@ -21,9 +21,9 @@ function instrument(
     chordSizeMax,
     performance,
     dynamics,
-    percussion,
-    compassLow: { octave: 1, pitch: 1 },
-    compassHigh: { octave: 5, pitch: 12 },
+    pitchRange: percussion
+      ? { kind: "percussion" }
+      : { kind: "pitch", low: { octave: 1, pitch: 1 }, high: { octave: 5, pitch: 12 } },
     durationMin: "0.1",
     durationMax: "4.0",
   };

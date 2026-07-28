@@ -495,12 +495,17 @@ export function validateProject(p: Project): Diagnostic[] {
       );
     }
 
-    if (!inst.percussion) {
-      const low = inst.compassLow.octave * 100 + inst.compassLow.pitch;
-      const high = inst.compassHigh.octave * 100 + inst.compassHigh.pitch;
+    if (inst.pitchRange.kind === "pitch") {
+      const low = inst.pitchRange.low.octave * 100 + inst.pitchRange.low.pitch;
+      const high = inst.pitchRange.high.octave * 100 + inst.pitchRange.high.pitch;
       if (low > high) {
         out.push(
-          diag("invalid-pitch-compass", "error", [...base, key("compass")], "the lowest pitch is above the highest"),
+          diag(
+            "invalid-pitch-range",
+            "error",
+            [...base, key("pitch-range")],
+            "the lowest pitch is above the highest",
+          ),
         );
       }
     }

@@ -219,6 +219,40 @@ textarea {
 }
 
 /* ------------------------------------------------------------------ */
+/* Kind switch (percussion vs. pitch range)                             */
+/* ------------------------------------------------------------------ */
+
+.kind-switch {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.kind-switch__option {
+  padding: 4px 10px;
+  border: none;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.kind-switch__option + .kind-switch__option {
+  border-left: 1px solid var(--border);
+}
+
+.kind-switch__option:hover {
+  color: var(--text);
+}
+
+.kind-switch__option--active {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 550;
+}
+
+/* ------------------------------------------------------------------ */
 /* Status badges                                                        */
 /* ------------------------------------------------------------------ */
 

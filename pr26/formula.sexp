@@ -23,35 +23,35 @@
       (chordsize 6 6)
       (performance (normal muted overtone1))
       (dynamics (p mf f ppp pp ff fff))
-      (compass (1 01) (5 12))
+      (pitch-range (low (octave 1) (pitch 1)) (high (octave 5) (pitch 12)))
       (durations 0.0 4.0))
 
     (instrument guitar2
       (chordsize 1 6)
       (performance (normal muted overtone1))
       (dynamics (p mf f ff ppp pp fff))
-      (compass (1 01) (5 12))
+      (pitch-range (low (octave 1) (pitch 1)) (high (octave 5) (pitch 12)))
       (durations 0.0 4.0))
 
     (instrument piano
       (chordsize 1 10)
       (performance (normal pizzicato))
       (dynamics (ppp pp p mf f ff fff))
-      (compass (1 01) (5 12))
+      (pitch-range (low (octave 1) (pitch 1)) (high (octave 5) (pitch 12)))
       (durations 0.0 4.0))
 
     (instrument basedrum
       (chordsize 1 1)
       (performance (normal bowing))
       (dynamics (ppp pp p mf f ff fff))
-      (compass percussion)
+      (pitch-range percussion)
       (durations 0.0 4.0))
 
     (instrument marimba
       (chordsize 1 4)
       (performance (normal bowing))
       (dynamics (mf f ff fff ppp pp p))
-      (compass (1 01) (5 12))
+      (pitch-range (low (octave 1) (pitch 1)) (high (octave 5) (pitch 12)))
       (durations 0.0 4.0)))
   (instrument-table
     (0 1 2 3)
@@ -71,9 +71,9 @@
     (0 1 2 8))
 
   (registers (
-    (percussion)
-    ((1 01) (3 12))
-    ((3 01) (5 12))))
+    (pitch-range percussion)
+    (pitch-range (low (octave 1) (pitch 1)) (high (octave 3) (pitch 12)))
+    (pitch-range (low (octave 3) (pitch 1)) (high (octave 5) (pitch 12)))))
   (register-table
     (0 1 2)
     (1 2)

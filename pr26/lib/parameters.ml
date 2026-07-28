@@ -41,7 +41,7 @@ type problem =
   | InvalidDensity of density_reason
   | UnknownPerformance of string
   | UnknownDynamic of string
-  | InvalidPitchCompass
+  | InvalidPitchRange
   | InvalidOctave of int
   | InvalidRegister
   | DuplicateHierarchy
@@ -85,7 +85,7 @@ let display_problem p =
       "invalid density definition: max should not be higher than min"
   | UnknownPerformance s -> "unknown performance mode: " ^ s
   | UnknownDynamic s -> "unknown dynamic mode: " ^ s
-  | InvalidPitchCompass -> "pitch compass minimum must not exceed maximum"
+  | InvalidPitchRange -> "pitch range minimum must not exceed maximum"
   | InvalidOctave n -> Printf.sprintf "octave %d is out of range 1-9" n
   | InvalidRegister -> "register low bound must not exceed high bound"
   | DuplicateHierarchy -> "each hierarchy level may only appear once"
@@ -135,7 +135,7 @@ type key =
   | KInstrumentCount
   | KName
   | KChordsize
-  | KCompass
+  | KPitchRange
   | KDurations
   | KList
   | KTable
@@ -183,7 +183,7 @@ let key_to_string = function
   | KInstrumentCount -> "number-of-instrument-groups"
   | KName -> "name"
   | KChordsize -> "chordsize"
-  | KCompass -> "compass"
+  | KPitchRange -> "pitch-range"
   | KDurations -> "durations"
   | KList -> "list"
   | KTable -> "table"
@@ -254,7 +254,7 @@ let problem_id = function
   | InvalidDensity DensityMaxBelowMin -> "density-max-below-min"
   | UnknownPerformance _ -> "unknown-performance"
   | UnknownDynamic _ -> "unknown-dynamic"
-  | InvalidPitchCompass -> "invalid-pitch-compass"
+  | InvalidPitchRange -> "invalid-pitch-range"
   | InvalidOctave _ -> "invalid-octave"
   | InvalidRegister -> "invalid-register"
   | DuplicateHierarchy -> "duplicate-hierarchy"
@@ -321,7 +321,7 @@ let json_of_problem_data p =
       json_obj [ ("n", string_of_int n); ("tr", string_of_int tr) ]
   | InvalidTranspositionName s -> json_obj [ ("name", json_string s) ]
   | InvalidInstrumentName | InvalidChordSize | InvalidDensity _
-  | InvalidPitchCompass | InvalidRegister | DuplicateHierarchy
+  | InvalidPitchRange | InvalidRegister | DuplicateHierarchy
   | InstrumentDensityRequiresInsFirst
   | InvalidDurationRange _ | PerNoteRequiresInsFirst ->
       json_obj []
@@ -508,21 +508,21 @@ let absolute_pitch_compare a b =
   let c = Int.compare (octave_to_int a.octave) (octave_to_int b.octave) in
   if c <> 0 then c else Int.compare (step_to_int a.step) (step_to_int b.step)
 
-(* [PercussionCompass] mirrors [PercussionRegister] below: a percussion
+(* [PercussionPitchRange] mirrors [PercussionRegister] below: a percussion
    instrument has no pitch range at all, rather than a degenerate (0,0) one
    - the same "make the sentinel a real variant" move applied to the
    instrument side of the pitch/register relationship. *)
-type pitch_compass =
-  | PitchCompass of {
+type pitch_range =
+  | PitchRange of {
       min : absolute_pitch;
       max : absolute_pitch;
       forbidden : Pitch_set.t;
     }
-  | PercussionCompass
+  | PercussionPitchRange
 
-let mk_pitch_compass min max forbidden =
-  if absolute_pitch_compare min max > 0 then Error InvalidPitchCompass
-  else Ok (PitchCompass { min; max; forbidden })
+let mk_pitch_range min max forbidden =
+  if absolute_pitch_compare min max > 0 then Error InvalidPitchRange
+  else Ok (PitchRange { min; max; forbidden })
 
 (* EMR-3 REGISTER (§7.1, fig 7-3): a range between two absolute pitches,
    which may span octaves - e.g. (401,512) spans octave 4 and octave 5, per
@@ -540,16 +540,16 @@ let mk_register low high =
 (* EMR-3 fig 7-6: REGISTER and INSTRUMENT condition each other regardless of
    which comes first in the hierarchy - a percussion instrument can only
    ever be paired with [PercussionRegister], a pitched instrument only with
-   a [PitchRegister] whose span overlaps its own compass (the instrument
+   a [PitchRegister] whose span overlaps its own pitch range (the instrument
    doesn't have to cover the whole register, just some of it - the actual
    pitch chosen still has to fit both, checked later by [resolve_pitch] and
    the instrument's own [forbidden] set). *)
-let register_compatible_with_compass compass reg =
-  match (compass, reg) with
-  | PercussionCompass, PercussionRegister -> true
-  | PitchCompass { min; max; _ }, PitchRegister { low; high } ->
+let register_compatible_with_pitch_range pitchrange reg =
+  match (pitchrange, reg) with
+  | PercussionPitchRange, PercussionRegister -> true
+  | PitchRange { min; max; _ }, PitchRegister { low; high } ->
       absolute_pitch_compare low max <= 0 && absolute_pitch_compare high min >= 0
-  | PercussionCompass, PitchRegister _ | PitchCompass _, PercussionRegister -> false
+  | PercussionPitchRange, PitchRegister _ | PitchRange _, PercussionRegister -> false
 
 type allowed_durations = AllowedDurations of { min : float; max : float }
 
@@ -569,7 +569,7 @@ type instrument =
       durations : allowed_durations;
       performance : Performance_modes.t;
       dynamics : Dynamic_modes.t;
-      pitchcompass : pitch_compass;
+      pitchrange : pitch_range;
     }
 
 (* both performance and dynamics have an explicit master list (parsed from
@@ -609,7 +609,7 @@ let print_instrument
          chordsize = Chordsize { minsize; maxsize };
          performance;
          dynamics;
-         pitchcompass;
+         pitchrange;
          durations;
        }) =
   let perfs =
@@ -621,10 +621,10 @@ let print_instrument
     Dynamic_modes.elements dynamics
     |> List.map Dynamic.to_string |> String.concat ","
   in
-  let compass_str =
-    match pitchcompass with
-    | PercussionCompass -> "percussion"
-    | PitchCompass
+  let pitch_range_str =
+    match pitchrange with
+    | PercussionPitchRange -> "percussion"
+    | PitchRange
         {
           min = { octave = Octave min_oct; step = Step min_rel };
           max = { octave = Octave max_oct; step = Step max_rel };
@@ -639,18 +639,18 @@ let print_instrument
   in
   Printf.printf
     "instrument: %s, chordsize: %d-%d, performance: [%s], dynamics: [%s], \
-     compass: %s, %s\n"
-    name minsize maxsize perfs dyns compass_str
+     pitch range: %s, %s\n"
+    name minsize maxsize perfs dyns pitch_range_str
     (print_allowed_durations durations)
 
-let inst instrument cs performance dynamics pitchcompass durations =
+let inst instrument cs performance dynamics pitchrange durations =
   Instrument
     {
       instrument;
       chordsize = cs;
       performance;
       dynamics;
-      pitchcompass;
+      pitchrange;
       durations;
     }
 

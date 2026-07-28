@@ -1,6 +1,6 @@
 import type React from "react";
 import { useStore } from "../state/store";
-import { Field, Section } from "../components/Field";
+import { Field, Section, PercussionSwitch } from "../components/Field";
 import { TableEditor } from "../components/TableEditor";
 import { useDragReorder, duplicateValues } from "../components/ListEditors";
 import { EnsembleEditor, PrincipleEditor } from "../components/PrincipleEditor";
@@ -200,27 +200,26 @@ function RegisterRow({
         ⣿
       </span>
       <span className="token__index">{index + project.startIndex}</span>
-      <label className="field__row">
-        <input
-          type="checkbox"
-          checked={isPercussion}
-          onChange={(e) =>
-            onChange(
-              e.target.checked
-                ? { kind: "percussion" }
-                : {
-                    kind: "pitch",
-                    low: { octave: 1, pitch: 1 },
-                    high: { octave: 5, pitch: 12 },
-                  },
-            )
-          }
-        />
-        <span>Percussion</span>
-      </label>
+      <PercussionSwitch
+        percussion={isPercussion}
+        onChange={(percussion) =>
+          onChange(
+            percussion
+              ? { kind: "percussion" }
+              : {
+                  kind: "pitch",
+                  low: { octave: 1, pitch: 1 },
+                  high: { octave: 5, pitch: 12 },
+                },
+          )
+        }
+      />
 
       {!isPercussion && register.kind === "pitch" && (
         <>
+          <span className="faint" style={{ fontSize: 11.5 }}>
+            Octave
+          </span>
           <input
             type="number"
             className="input--tiny"
@@ -230,6 +229,9 @@ function RegisterRow({
             }
             title="Lowest octave"
           />
+          <span className="faint" style={{ fontSize: 11.5 }}>
+            Relative pitch
+          </span>
           <input
             type="number"
             className="input--tiny"
@@ -240,6 +242,9 @@ function RegisterRow({
             title="Lowest step"
           />
           <span className="faint">to</span>
+          <span className="faint" style={{ fontSize: 11.5 }}>
+            Octave
+          </span>
           <input
             type="number"
             className="input--tiny"
@@ -249,6 +254,9 @@ function RegisterRow({
             }
             title="Highest octave"
           />
+          <span className="faint" style={{ fontSize: 11.5 }}>
+            Relative pitch
+          </span>
           <input
             type="number"
             className="input--tiny"

@@ -37,6 +37,51 @@ Should the composer be helped in some way to construct useful tables? If a param
 
 # TODOS
 
+
+
+[x] registers in instrument definitions are made up of octave and relative pitch
+(to be called like taht in the interface)
+[x] Call compass "pitch range"
+[x] register list, make either/or percussion/range visually clearer
+[ ] empty list field when saying "set list"
+[ ] maintingng state (selection cycles, harmony state etc) across layers and
+variants in the "variant group"
+[ ] multiple variants
+[ ] test row transposition modes
+[ ] interval principle
+
+# DONE
+
+[x] Total problems: be able to tell which user definition caused a problem.
+[x] Implement another parameter x 
+[x] Define input as a runtime prompt?
+[x] Another question: how to deal with percussion? In manual both register and pitch can result in percussion.
+[x] Hierarchy as a thing that can be computed from the current structure formula
+[x] Hierarchy as defined by the user. 
+
+
+chord 5 6 10
+
+you go in both directions through the chord as a cyclical structure
+
+5 to 6 -> 6 to 10
+6 to 10 -> 10 to 5
+10 to 5 -> 5 to 6
+10 to 6 -> 6 to 5
+6 to 5 -> 5 to 10
+5 to 10 -> 10 to 6
+
+interval matrix:
+from Y-axis to X-axis
+
+make circular interval visualization
+visualize interval matrix as graph
+auto consistency check for matrix
+
+Done
+
+[x] validation should collect as many errors as possible, not stop at first
+[x] Implement autonomous density
 [x] Union and combination
 [x] Any problem that may occur return it as result.
 [x] Implement autonomous density
@@ -62,27 +107,6 @@ output results, there may be no possible value
 [x] Implement another parameter x 
 [x] Total problems: be able to tell which user definition caused a problem.
 
-Done
-
 [x] validation should collect as many errors as possible, not stop at first
 [x] Implement autonomous density
 
-
-Motivation of fold:
-Outer fold (calculate_layer_hierarchical): List.fold_left apply_step (protos, init_states) hierarchy walks the 3-element hierarchy list (e.g. [Ins; Dyn; Per]). Each step processes all proto-events for the layer before moving to the next hierarchy element. So the hierarchy order determines which field gets filled in across the whole layer first.
-
-Inner fold (inside each apply_step case): List.fold_left_map walks over every proto_event in the layer, threading the relevant sel_state (here dyn_state) through each draw — this is what makes Series/Sequence-style principles advance correctly across the whole layer rather than resetting per event.
-
-For the selected Dyn case specifically:
-
-For each proto pe, build a predicate d : Dynamic.t -> bool:
-
-If pe.instrument is already Some (meaning Ins ran before Dyn in the hierarchy) → restrict d to that specific instrument's dynamics set. This is the "conditioning" — the dynamic must be playable by the instrument already chosen for this event.
-If pe.instrument is None (meaning Dyn runs before Ins) → restrict d to dynamics playable by at least one instrument in states.instr_arr (the instrument pool for this layer). This is a weaker, "achievability" constraint — it just ensures that whatever dynamic gets picked, some instrument later could still satisfy it.
-sel_draw_pred pred st draws a value from dyn_state (initialized from dyn_arr/dyn_principle) restricted to pred, returning (v, st').
-
-The proto is updated to { pe with dynamic = Some v }, and st' becomes the new threaded dyn_state for the next proto.
-
-After the fold, (filled, { states with dyn_state = dyn_state' }) is returned — filled is the layer's protos with dynamic now set, and the updated dyn_state' carries forward into the next hierarchy step (though Dyn's own step doesn't need to be revisited).
-
-With the new [Ins; Dyn; Per] order in main.ml: Ins runs first (unconstrained, since pe.performance and pe.dynamic are both None at that point — apply_step's Ins predicate is Fun.const true). Then Dyn runs with pe.instrument = Some _, so it's tightly constrained to that instrument's allowed dynamics. Then Per runs similarly, constrained to that instrument's allowed performances. So instrument selection drives both performance and dynamic selection — the opposite of the earlier [Dyn; Per; Ins] order, where Dyn/Per were picked first under the looser "achievable by some instrument" predicate, and Ins then had to satisfy both.

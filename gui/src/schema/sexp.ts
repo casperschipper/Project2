@@ -4,9 +4,9 @@ import type {
   Ensemble,
   Instrument,
   Pitch,
+  PitchRange,
   Principle,
   Project,
-  Register,
   Table,
 } from "./types";
 
@@ -108,31 +108,26 @@ function emitRelation(r: DurationRelation): string {
 }
 
 function emitInstrument(i: Instrument): string {
-  const compass = i.percussion
-    ? "(compass percussion)"
-    : `(compass (${i.compassLow.octave} ${pad2(i.compassLow.pitch)}) ` +
-      `(${i.compassHigh.octave} ${pad2(i.compassHigh.pitch)}))`;
   return [
     `    (instrument ${i.name || "unnamed"}`,
     `      (chordsize ${i.chordSizeMin} ${i.chordSizeMax})`,
     `      (performance (${i.performance.join(" ")}))`,
     `      (dynamics (${i.dynamics.join(" ")}))`,
-    `      ${compass}`,
+    `      ${emitPitchRange(i.pitchRange)}`,
     `      (durations ${i.durationMin} ${i.durationMax}))`,
   ].join("\n");
 }
 
-/** Pitch positions are conventionally two digits in the manual's notation. */
-function pad2(n: number): string {
-  return String(n).padStart(2, "0");
-}
-
-function emitPitch(p: Pitch): string {
-  return `(${p.octave} ${pad2(p.pitch)})`;
-}
-
-function emitRegister(r: Register): string {
-  return r.kind === "percussion" ? "(percussion)" : `(${emitPitch(r.low)} ${emitPitch(r.high)})`;
+/**
+ * Shared with REGISTER's own list entries below - same `(pitch-range ...)`
+ * grammar rule in two contexts, an instrument field and a standalone list
+ * entry, so one function emits both verbatim.
+ */
+function emitPitchRange(pr: PitchRange): string {
+  if (pr.kind === "percussion") return "(pitch-range percussion)";
+  const bound = (label: "low" | "high", p: Pitch) =>
+    `(${label} (octave ${p.octave}) (pitch ${p.pitch}))`;
+  return `(pitch-range ${bound("low", pr.low)} ${bound("high", pr.high)})`;
 }
 
 /** Trim trailing zeros but always keep a decimal point, as OCaml expects. */
@@ -182,7 +177,7 @@ export function toSexp(p: Project): string {
   parts.push("");
 
   parts.push(
-    `  (registers (\n` + p.registers.map((r) => `    ${emitRegister(r)}`).join("\n") + `))`,
+    `  (registers (\n` + p.registers.map((r) => `    ${emitPitchRange(r)}`).join("\n") + `))`,
   );
   parts.push(emitTable("register-table", p.registerTable));
   parts.push("");

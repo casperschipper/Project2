@@ -77,18 +77,18 @@ let () =
   assert (resolve_pitch reg_4_5 RowPercussion = (Pitched (ap 4 1), false));
   print_endline "resolve_pitch: all tests passed"
 
-(* [register_compatible_with_compass] mirrors instrument/register
+(* [register_compatible_with_pitch_range] mirrors instrument/register
    conditioning (EMR-3 fig 7-6): percussion only pairs with percussion,
    pitched only with an overlapping range. *)
 let () =
   let open Pr26.Parameters in
   let ap o s = absolute (Octave o) (Step s) in
-  let compass = Result.get_ok (mk_pitch_compass (ap 3 1) (ap 5 12) Pitch_set.empty) in
+  let pitch_range = Result.get_ok (mk_pitch_range (ap 3 1) (ap 5 12) Pitch_set.empty) in
   let reg_overlap = Result.get_ok (mk_register (ap 4 1) (ap 6 12)) in
   let reg_no_overlap = Result.get_ok (mk_register (ap 6 1) (ap 7 12)) in
-  assert (register_compatible_with_compass compass reg_overlap);
-  assert (not (register_compatible_with_compass compass reg_no_overlap));
-  assert (register_compatible_with_compass PercussionCompass PercussionRegister);
-  assert (not (register_compatible_with_compass PercussionCompass reg_overlap));
-  assert (not (register_compatible_with_compass compass PercussionRegister));
-  print_endline "register_compatible_with_compass: all tests passed"
+  assert (register_compatible_with_pitch_range pitch_range reg_overlap);
+  assert (not (register_compatible_with_pitch_range pitch_range reg_no_overlap));
+  assert (register_compatible_with_pitch_range PercussionPitchRange PercussionRegister);
+  assert (not (register_compatible_with_pitch_range PercussionPitchRange reg_overlap));
+  assert (not (register_compatible_with_pitch_range pitch_range PercussionRegister));
+  print_endline "register_compatible_with_pitch_range: all tests passed"

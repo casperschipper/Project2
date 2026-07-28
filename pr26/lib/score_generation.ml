@@ -365,12 +365,12 @@ let ins_pred_from proto =
     | Some (Shared d) -> duration_range_ok durations d
     | Some (PerNote ds) -> List.for_all (duration_range_ok durations) ds
   in
-  let from_reg (Instrument { pitchcompass; _ }) =
+  let from_reg (Instrument { pitchrange; _ }) =
     match proto.register with
     | None -> true
-    | Some (Shared r) -> register_compatible_with_compass pitchcompass r
+    | Some (Shared r) -> register_compatible_with_pitch_range pitchrange r
     | Some (PerNote rs) ->
-        List.for_all (register_compatible_with_compass pitchcompass) rs
+        List.for_all (register_compatible_with_pitch_range pitchrange) rs
   in
   fun i -> from_perf i && from_dyn i && from_dur i && from_reg i
 
@@ -426,7 +426,7 @@ let row_value_is_percussion = function
   | Tone _ -> false
 
 (* [Reg]'s predicate (EMR-3 fig 7-6): conditioned on both [Ins] (via the
-   instrument's compass, mirroring [mode_pred_from_instrument]) and [Har]
+   instrument's pitch range, mirroring [mode_pred_from_instrument]) and [Har]
    (percussion-agreement with the already-resolved relative pitch, when
    [Har] ran first). When the *other* side is [PerNote] this requires
    agreement with every one of its values rather than the one at the
@@ -437,13 +437,13 @@ let row_value_is_percussion = function
 let reg_pred_from ~instr_arr proto =
   let instr_pred =
     match proto.instrument with
-    | Some (Instrument { pitchcompass; _ }) ->
-        register_compatible_with_compass pitchcompass
+    | Some (Instrument { pitchrange; _ }) ->
+        register_compatible_with_pitch_range pitchrange
     | None ->
         fun r ->
           Array.exists
-            (fun (Instrument { pitchcompass; _ }) ->
-              register_compatible_with_compass pitchcompass r)
+            (fun (Instrument { pitchrange; _ }) ->
+              register_compatible_with_pitch_range pitchrange r)
             instr_arr
   in
   let harmony_pred =

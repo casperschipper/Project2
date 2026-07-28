@@ -92,6 +92,43 @@ export function DiagnosticList({ diagnostics }: { diagnostics: Diagnostic[] }) {
   );
 }
 
+/**
+ * An explicit two-way switch between "percussion" (no pitch at all) and
+ * "pitch range" (an actual low/high pair) - deliberately not a single
+ * checkbox. A lone "Percussion" checkbox only ever names one of the two
+ * states, leaving the other to be inferred from it being unchecked; putting
+ * both options on screen, always labelled, means the current choice reads
+ * at a glance instead of being read backwards from a checkbox's absence.
+ */
+export function PercussionSwitch({
+  percussion,
+  onChange,
+}: {
+  percussion: boolean;
+  onChange: (percussion: boolean) => void;
+}) {
+  return (
+    <div className="kind-switch" role="radiogroup">
+      <button
+        type="button"
+        className={`kind-switch__option${!percussion ? " kind-switch__option--active" : ""}`}
+        aria-pressed={!percussion}
+        onClick={() => onChange(false)}
+      >
+        Pitch range
+      </button>
+      <button
+        type="button"
+        className={`kind-switch__option${percussion ? " kind-switch__option--active" : ""}`}
+        aria-pressed={percussion}
+        onClick={() => onChange(true)}
+      >
+        Percussion
+      </button>
+    </div>
+  );
+}
+
 /** A labelled section heading within a screen. */
 export function Section({
   title,
