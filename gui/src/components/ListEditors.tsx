@@ -126,6 +126,7 @@ export function TokenListEditor({
   const duplicates = duplicateValues(values);
   const [bulkDraft, setBulkDraft] = useState(() => values.join(" "));
   const bulkFocused = useRef(false);
+  const commitButtonRef = useRef<HTMLButtonElement>(null);
 
   // Keeps the bulk box showing the list's current serialization - so a drag
   // reorder, an add/remove, or editing a pill's own value all show up here
@@ -174,8 +175,15 @@ export function TokenListEditor({
           onFocus={() => {
             bulkFocused.current = true;
           }}
-          onBlur={() => {
+          onBlur={(e) => {
             bulkFocused.current = false;
+            // Tabbing to the commit button also blurs the input first, same
+            // as a mouse click does - but here focus genuinely does move (a
+            // keyboard Tab can't be blocked the way the button's own
+            // mousedown is, without breaking normal tab order). relatedTarget
+            // says where focus is headed, so a reset is skipped exactly when
+            // it's headed for the button about to read this same draft.
+            if (e.relatedTarget === commitButtonRef.current) return;
             setBulkDraft(values.join(" "));
           }}
           onChange={(e) => setBulkDraft(e.target.value)}
@@ -187,8 +195,18 @@ export function TokenListEditor({
           }}
         />
         <button
+          ref={commitButtonRef}
           type="button"
           className="btn btn--ghost btn--small"
+          // A plain mouse click blurs the input first (focus moves to the
+          // button before the click fires), which would run the blur handler
+          // above and reset the draft to the *old* list before commitBulk
+          // ever sees it. Blocking the mousedown's default keeps focus - and
+          // the just-typed draft - in the input until commitBulk has read it.
+          // (Keyboard Tab-then-Enter is handled separately, via the blur
+          // handler's relatedTarget check above, since a Tab's focus change
+          // can't be blocked the same way without breaking tab order.)
+          onMouseDown={(e) => e.preventDefault()}
           onClick={commitBulk}
           title="Replace the whole list with what's typed above"
         >
