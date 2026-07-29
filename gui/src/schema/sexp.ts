@@ -152,6 +152,7 @@ export function toSexp(p: Project): string {
 
   parts.push(`  (seed ${p.seed})`);
   parts.push(`  (variant-duration ${p.variantDuration})`);
+  parts.push(`  (n-variants ${p.numberOfVariants})`);
   parts.push(`  (octave-division ${p.octaveDivision})`);
   parts.push("");
 
@@ -185,8 +186,7 @@ export function toSexp(p: Project): string {
   parts.push(
     `  (harmony\n` +
       `    (row (${p.row.join(" ")}))\n` +
-      `    (transposition ${p.transposition})\n` +
-      `    (mode ${p.harmonyMode}))`,
+      `    (transposition ${p.transposition}))`,
   );
   parts.push("");
 

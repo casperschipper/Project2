@@ -14,15 +14,35 @@ let read_whole_file path =
     ~finally:(fun () -> close_in_noerr ic)
     (fun () -> really_input_string ic (in_channel_length ic))
 
+(* One [score.projekt2]/[score_entries.projekt2]/[score_layer<N>.mid] set per
+   variant. With a single variant (by far the common case, and every formula
+   written before N-VARIANTS existed) the names are exactly what they always
+   were - no variant-numbered file appears at all. Only with more than one
+   variant do the per-variant names show up, alongside the existing ones. *)
+let variant_score_name n v =
+  if n = 1 then "score.projekt2" else Printf.sprintf "score_variant%d.projekt2" v
+
+let variant_entries_name n v =
+  if n = 1 then "score_entries.projekt2"
+  else Printf.sprintf "score_variant%d_entries.projekt2" v
+
+let variant_midi_prefix n v =
+  if n = 1 then "score" else Printf.sprintf "score_variant%d" v
+
 let generate sf =
   let instrs = match sf.instr_list with ParameterList arr -> Array.to_list arr in
-  let layers = build_score sf in
-  write_notes_score (in_out_dir "score.projekt2") instrs layers;
-  write_entries_score (in_out_dir "score_entries.projekt2") instrs
-    ~density:sf.density layers;
-  Pr26.Midi_export.write_layers_midi ~prefix:(in_out_dir "score") ~tr:sf.tr
-    layers;
-  (instrs, layers)
+  let variants = build_score sf in
+  let n = List.length variants in
+  variants
+  |> List.iteri (fun v layers ->
+      write_notes_score (in_out_dir (variant_score_name n v)) instrs layers;
+      write_entries_score
+        (in_out_dir (variant_entries_name n v))
+        instrs ~density:sf.density layers;
+      Pr26.Midi_export.write_layers_midi
+        ~prefix:(in_out_dir (variant_midi_prefix n v))
+        ~tr:sf.tr layers);
+  (instrs, variants)
 
 (* ------------------------------------------------------------------ *)
 (* Human-readable mode (unchanged behaviour, plus exit codes).         *)
@@ -35,13 +55,20 @@ let render file =
       false
   | Ok (sf, warnings) ->
       if warnings <> [] then print_diagnostics (file ^ " warnings") warnings;
-      let instrs, layers = generate sf in
-      print_layers instrs layers;
-      Printf.printf
-        "Score written to %s, %s and %s\n"
-        (in_out_dir "score.projekt2")
-        (in_out_dir "score_entries.projekt2")
-        (in_out_dir "score_layer<N>.mid");
+      let instrs, variants = generate sf in
+      let n = List.length variants in
+      variants
+      |> List.iteri (fun v layers ->
+          if n > 1 then Printf.printf "\n=== variant %d ===\n" v;
+          print_layers instrs layers);
+      if n = 1 then
+        Printf.printf "Score written to %s, %s and %s\n"
+          (in_out_dir "score.projekt2")
+          (in_out_dir "score_entries.projekt2")
+          (in_out_dir "score_layer<N>.mid")
+      else
+        Printf.printf "%d variants written to %s (score_variant0.. through score_variant%d..)\n"
+          n !out_dir (n - 1);
       true
 
 (* ------------------------------------------------------------------ *)
@@ -105,18 +132,32 @@ let render_json file =
             (json_of_diagnostics ~ok:false ~errors:[ crash_diagnostic exn ]
                ~warnings ~extra:[ ("log", log) ]);
           false
-      | Ok (_instrs, _layers) ->
+      | Ok (_instrs, variants) ->
+          let n = List.length variants in
           let file_field name key =
             match read_whole_file (in_out_dir name) with
             | contents -> [ (key, json_string contents) ]
             | exception _ -> []
           in
+          (* A single variant (the common case) keeps the flat "score"/
+             "entries" fields the GUI has always read. More than one
+             variant reports an array instead - there's no longer one
+             score/entries pair to flatten. *)
+          let result_fields =
+            if n = 1 then
+              file_field "score.projekt2" "score"
+              @ file_field "score_entries.projekt2" "entries"
+            else
+              let variant_obj v =
+                json_obj
+                  (file_field (variant_score_name n v) "score"
+                  @ file_field (variant_entries_name n v) "entries")
+              in
+              [ ("variants", json_array (List.init n variant_obj)) ]
+          in
           emit
             (json_of_diagnostics ~ok:true ~errors:[] ~warnings
-               ~extra:
-                 (("log", log)
-                 :: (file_field "score.projekt2" "score"
-                    @ file_field "score_entries.projekt2" "entries")));
+               ~extra:(("log", log) :: result_fields));
           true)
 
 let watch file json =

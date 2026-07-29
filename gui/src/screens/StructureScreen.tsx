@@ -53,6 +53,21 @@ export function StructureScreen() {
         </Field>
 
         <Field
+          label="Number of variants"
+          helpKey="fields/n-variants"
+          path="global.n-variants"
+          hint="How many variants to calculate in this run. All of them share one continuing selection-cycle state - the same principles simply keep drawing, uninterrupted, from one variant into the next."
+        >
+          <input
+            type="number"
+            className="input--narrow"
+            min={1}
+            value={project.numberOfVariants}
+            onChange={(e) => update((p) => (p.numberOfVariants = Number(e.target.value)))}
+          />
+        </Field>
+
+        <Field
           label="Octave division"
           helpKey="fields/octave-division"
           hint="Tones per octave (tr). Relative pitches in the row and register steps both go 1..tr."

@@ -185,41 +185,54 @@ function RegisterRow({
     <div
       ref={setRef}
       className={
-        "field__row token" +
+        "token register-row" +
         (dragging ? " token--dragging" : "") +
         (duplicate ? " token--duplicate" : "")
       }
       title={duplicate ? "This register is identical to another one in the list" : undefined}
     >
-      <span
-        className="token__grip"
-        title="Drag to reorder"
-        aria-hidden
-        {...onDragHandlers}
-      >
-        ⣿
-      </span>
-      <span className="token__index">{index + project.startIndex}</span>
-      <PercussionSwitch
-        percussion={isPercussion}
-        onChange={(percussion) =>
-          onChange(
-            percussion
-              ? { kind: "percussion" }
-              : {
-                  kind: "pitch",
-                  low: { octave: 1, pitch: 1 },
-                  high: { octave: 5, pitch: 12 },
-                },
-          )
-        }
-      />
+      <div className="field__row">
+        <span
+          className="token__grip"
+          title="Drag to reorder"
+          aria-hidden
+          {...onDragHandlers}
+        >
+          ⣿
+        </span>
+        <span className="token__index">{index + project.startIndex}</span>
+        <PercussionSwitch
+          percussion={isPercussion}
+          onChange={(percussion) =>
+            onChange(
+              percussion
+                ? { kind: "percussion" }
+                : {
+                    kind: "pitch",
+                    low: { octave: 1, pitch: 1 },
+                    high: { octave: 5, pitch: 12 },
+                  },
+            )
+          }
+        />
+        <button
+          type="button"
+          className="token__remove"
+          onClick={onRemove}
+          title="Remove"
+          style={{ marginLeft: "auto" }}
+        >
+          ×
+        </button>
+      </div>
 
       {!isPercussion && register.kind === "pitch" && (
-        <>
-          <span className="faint" style={{ fontSize: 11.5 }}>
-            Octave
-          </span>
+        <div className="pitch-range-grid">
+          <span />
+          <span className="faint">Octave</span>
+          <span className="faint">Relative pitch</span>
+
+          <span className="faint">Low</span>
           <input
             type="number"
             className="input--tiny"
@@ -229,9 +242,6 @@ function RegisterRow({
             }
             title="Lowest octave"
           />
-          <span className="faint" style={{ fontSize: 11.5 }}>
-            Relative pitch
-          </span>
           <input
             type="number"
             className="input--tiny"
@@ -241,10 +251,8 @@ function RegisterRow({
             }
             title="Lowest step"
           />
-          <span className="faint">to</span>
-          <span className="faint" style={{ fontSize: 11.5 }}>
-            Octave
-          </span>
+
+          <span className="faint">High</span>
           <input
             type="number"
             className="input--tiny"
@@ -254,9 +262,6 @@ function RegisterRow({
             }
             title="Highest octave"
           />
-          <span className="faint" style={{ fontSize: 11.5 }}>
-            Relative pitch
-          </span>
           <input
             type="number"
             className="input--tiny"
@@ -266,12 +271,8 @@ function RegisterRow({
             }
             title="Highest step"
           />
-        </>
+        </div>
       )}
-
-      <button type="button" className="token__remove" onClick={onRemove} title="Remove">
-        ×
-      </button>
     </div>
   );
 }

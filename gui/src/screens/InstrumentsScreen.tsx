@@ -254,10 +254,12 @@ function InstrumentCard({
               </div>
 
               {instrument.pitchRange.kind === "pitch" && (
-                <div className="field__row">
-                  <span className="faint" style={{ fontSize: 11.5 }}>
-                    Octave
-                  </span>
+                <div className="pitch-range-grid">
+                  <span />
+                  <span className="faint">Octave</span>
+                  <span className="faint">Relative pitch</span>
+
+                  <span className="faint">Low</span>
                   <input
                     type="number"
                     className="input--tiny"
@@ -270,9 +272,6 @@ function InstrumentCard({
                     }
                     title="Lowest octave"
                   />
-                  <span className="faint" style={{ fontSize: 11.5 }}>
-                    Relative pitch
-                  </span>
                   <input
                     type="number"
                     className="input--tiny"
@@ -285,10 +284,8 @@ function InstrumentCard({
                     }
                     title="Lowest step"
                   />
-                  <span className="faint">to</span>
-                  <span className="faint" style={{ fontSize: 11.5 }}>
-                    Octave
-                  </span>
+
+                  <span className="faint">High</span>
                   <input
                     type="number"
                     className="input--tiny"
@@ -301,9 +298,6 @@ function InstrumentCard({
                     }
                     title="Highest octave"
                   />
-                  <span className="faint" style={{ fontSize: 11.5 }}>
-                    Relative pitch
-                  </span>
                   <input
                     type="number"
                     className="input--tiny"

@@ -35,6 +35,7 @@ export function defaultProject(): Project {
 
     seed: 3,
     variantDuration: "30.0",
+    numberOfVariants: 1,
     octaveDivision: 12,
     hierarchy: ["Ins", "Reg", "Har", "Per", "Dyn", "Ent", "Dur"],
     union: "none",
@@ -153,7 +154,6 @@ export function defaultProject(): Project {
 
     row: ["1", "2", "3", "p", "5", "7", "9", "11", "12", "4", "6", "8", "10"],
     transposition: "none",
-    harmonyMode: "per-chord",
   };
 }
 

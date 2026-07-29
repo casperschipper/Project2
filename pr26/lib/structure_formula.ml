@@ -43,6 +43,10 @@ selected duration are rejected. If such "allowed" entry delays Chord duration al
 type structure_formula = {
   seed : int;
   variant_duration : float;
+  (* N-VARIANTS (EMR-3 9.8): how many variants to calculate in this run
+     ("variant group"), all sharing one continuing selection-cycle state -
+     see [Score_generation.build_score]. *)
+  n_variants : int;
   instr_list : instrument parameter_list;
   instr_table : ptable;
   number_of_instrument_groups : int;
@@ -78,11 +82,12 @@ type structure_formula = {
   (* HARMONY (EMR-3 8.2): ROW only (CHORD/INTERVAL are out of scope, see
      harmony.md) - a fixed sequence of relative pitches, transposed as a
      whole once exhausted; no ensemble machinery, since it's its own
-     bespoke stream rather than an Alea/Series/Tendency draw. *)
+     bespoke stream rather than an Alea/Series/Tendency draw. Per entry 19,
+     ROW always distributes one value per chord tone - there is no "per
+     chord" mode for it, unlike performance/dynamics/duration/register. *)
   row : row;
   tr : int;
   transposition : transposition;
-  harmony_mode : note_mode;
   union : union;
   density : vertical_density;
   hierarchy : hierarchy;
@@ -134,14 +139,14 @@ let mk portion smin smax emin emax =
       end_max = uf emax;
     }
 
-let mk_structure_formula ~seed ~variant_duration ~instr_list ~instr_table
-    ~instr_ensemble_group_selection ~ed_list ~ed_table
+let mk_structure_formula ~seed ~variant_duration ~n_variants ~instr_list
+    ~instr_table ~instr_ensemble_group_selection ~ed_list ~ed_table
     ~number_of_instrument_groups ~perf_list ~performance_table ~dyn_list
     ~dynamics_table ~entrydelay_combination ~instrument_principle
     ~entrydelay_principle ~performance_principle ~performance_combination
     ~performance_mode ~dynamics_principle ~dynamics_combination ~dynamics_mode
     ~reg_list ~register_table ~register_principle ~register_combination
-    ~register_mode ~row ~tr ~transposition ~harmony_mode ~union ~hierarchy
+    ~register_mode ~row ~tr ~transposition ~union ~hierarchy
     ~density ~dur_list ~dur_table ~duration_combination
     ~duration_relation_mode ~duration_principle =
   let hierarchy_errors =
@@ -236,19 +241,21 @@ let mk_structure_formula ~seed ~variant_duration ~instr_list ~instr_table
     |> Option.map fst
   in
   let per_note_ordering_errors =
+    let needs_ins_first_always location elem =
+      match (hierarchy_index Ins, hierarchy_index elem) with
+      | Some ins_i, Some elem_i when elem_i < ins_i ->
+          [
+            {
+              location;
+              severity = Severity.Error;
+              problem = PerNoteRequiresInsFirst;
+            };
+          ]
+      | _ -> []
+    in
     let needs_ins_first location elem = function
       | PerChord -> []
-      | PerNote -> (
-          match (hierarchy_index Ins, hierarchy_index elem) with
-          | Some ins_i, Some elem_i when elem_i < ins_i ->
-              [
-                {
-                  location;
-                  severity = Severity.Error;
-                  problem = PerNoteRequiresInsFirst;
-                };
-              ]
-          | _ -> [])
+      | PerNote -> needs_ins_first_always location elem
     in
     let dur_note_mode =
       match duration_relation_mode with
@@ -259,7 +266,10 @@ let mk_structure_formula ~seed ~variant_duration ~instr_list ~instr_table
     @ needs_ins_first [ Key KDynamics; Key KMode ] Dyn dynamics_mode
     @ needs_ins_first [ Key KDuration; Key KRelation ] Dur dur_note_mode
     @ needs_ins_first [ Key KRegister; Key KMode ] Reg register_mode
-    @ needs_ins_first [ Key KHarmony; Key KMode ] Har harmony_mode
+    (* ROW always distributes per chord tone (no "per chord" mode of its
+       own), so it always needs the chord's instrument - and thus its note
+       count - resolved first. *)
+    @ needs_ins_first_always [ Key KHarmony ] Har
   in
   let all_diags =
     hierarchy_errors @ combination_errors @ performance_membership_errors
@@ -276,6 +286,7 @@ let mk_structure_formula ~seed ~variant_duration ~instr_list ~instr_table
         ( {
             seed;
             variant_duration;
+            n_variants;
             instr_list;
             instr_table;
             instr_ensemble_group_selection;
@@ -303,7 +314,6 @@ let mk_structure_formula ~seed ~variant_duration ~instr_list ~instr_table
             row;
             tr;
             transposition;
-            harmony_mode;
             union;
             density;
             hierarchy;
@@ -785,6 +795,28 @@ module Parse = struct
     let* () =
       in_loc [ Key KGlobal; Key KTr ] (lift (if tr < 1 then Error (InvalidTr tr) else Ok ()))
     in
+    (* N-VARIANTS (EMR-3 9.8): optional, defaulting to 1 - existing formulas
+       written before this field existed still mean exactly what they always
+       meant, one variant. *)
+    let* n_variants =
+      in_loc [ Key KGlobal; Key KNVariants ]
+        (match
+           List.find_opt
+             (function
+               | Sexp.List (Sexp.Atom k :: _) -> k = "n-variants"
+               | _ -> false)
+             items
+         with
+        | None -> Ok 1
+        | Some (Sexp.List [ _; x ]) -> require_int x
+        | Some _ -> fail "n-variants expects one integer")
+    in
+    let* () =
+      in_loc [ Key KGlobal; Key KNVariants ]
+        (lift
+           (if n_variants < 1 then Error (InvalidNVariants n_variants)
+            else Ok ()))
+    in
     let* number_of_instrument_groups =
       in_loc
         [ Key KInstrument; Key KInstrumentCount ]
@@ -907,7 +939,7 @@ module Parse = struct
         (let* args = require_field "register-table" items in
          parse_table args)
     in
-    let* row, transposition, harmony_mode =
+    let* row, transposition =
       let* args = in_loc [ Key KHarmony ] (require_field "harmony" items) in
       let* row =
         in_loc
@@ -931,13 +963,10 @@ module Parse = struct
                  "transposition expects one of: none, alea, series, \
                   chromatic, serial")
       in
-      let* harmony_mode =
-        in_loc
-          [ Key KHarmony; Key KMode ]
-          (let* m_args = require_field "mode" args in
-           parse_note_mode m_args)
-      in
-      Ok (row, transposition, harmony_mode)
+      (* ROW always distributes per chord tone - see the [note_mode] comment
+         on [structure_formula.row] - so a lingering (mode ...) field from an
+         older file is simply ignored rather than parsed. *)
+      Ok (row, transposition)
     in
     let instr_names =
       let (ParameterList instr_arr) = instr_list in
@@ -1087,14 +1116,15 @@ module Parse = struct
          in
          lift (mk_hierarchy elems))
     in
-    mk_structure_formula ~seed ~variant_duration ~instr_list ~instr_table
-      ~instr_ensemble_group_selection ~number_of_instrument_groups ~ed_list
+    mk_structure_formula ~seed ~variant_duration ~n_variants ~instr_list
+      ~instr_table ~instr_ensemble_group_selection ~number_of_instrument_groups
+      ~ed_list
       ~ed_table ~perf_list ~performance_table ~dyn_list ~dynamics_table
       ~entrydelay_combination ~instrument_principle ~entrydelay_principle
       ~performance_principle ~performance_combination ~performance_mode
       ~dynamics_principle ~dynamics_combination ~dynamics_mode ~reg_list
       ~register_table ~register_principle ~register_combination
-      ~register_mode ~row ~tr ~transposition ~harmony_mode ~union ~density
+      ~register_mode ~row ~tr ~transposition ~union ~density
       ~hierarchy ~dur_list ~dur_table ~duration_combination
       ~duration_relation_mode ~duration_principle
 

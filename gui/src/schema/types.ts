@@ -155,6 +155,9 @@ export type Project = {
   // --- structure ------------------------------------------------------
   seed: number;
   variantDuration: string;
+  /** N-VARIANTS (EMR-3 9.8): how many variants to calculate in this run, all
+   * sharing one continuing selection-cycle state. */
+  numberOfVariants: number;
   octaveDivision: number;
   hierarchy: HierarchyElem[];
   union: "none" | "union";
@@ -227,7 +230,6 @@ export type Project = {
    */
   row: string[];
   transposition: Transposition;
-  harmonyMode: NoteMode;
 };
 
 // ---------------------------------------------------------------------
@@ -259,8 +261,13 @@ export type EngineResult = {
   errors: Diagnostic[];
   warnings: Diagnostic[];
   log?: string;
+  /** Set when there's exactly one variant (the common case) - a flat
+   * score/entries pair. With more than one, `variants` is set instead. */
   score?: string;
   entries?: string;
+  /** Set only when more than one variant was requested - one score/entries
+   * pair per variant, in order. */
+  variants?: { score: string; entries: string }[];
   /** Set only for an explicit (persisted) Run - the `.mid` files produced. */
   midiFiles?: string[];
   /** Set when the engine could not be started or produced unparseable output. */

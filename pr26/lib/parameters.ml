@@ -55,6 +55,7 @@ type problem =
   | InvalidTr of int
   | InvalidRelativePitch of { n : int; tr : int }
   | InvalidTranspositionName of string
+  | InvalidNVariants of int
 
 (* The hierarchy must be a permutation of [all_hierarchy_elems]: every
    parameter controls exactly one resolution step, so a missing one would
@@ -116,6 +117,8 @@ let display_problem p =
         "%S is not a valid transposition (expected none, alea, series, \
          chromatic, or serial)"
         s
+  | InvalidNVariants n ->
+      Printf.sprintf "number of variants must be at least 1, got %d" n
 
 (* Closed vocabulary of path components identifying where in a
    structure_formula (and, one level down, in the composer's sexp) a
@@ -155,6 +158,7 @@ type key =
   | KHarmony
   | KTr
   | KTransposition
+  | KNVariants
 
 type segment = Key of key | Index of int
 type location = segment list
@@ -203,6 +207,7 @@ let key_to_string = function
   | KHarmony -> "harmony"
   | KTr -> "tr"
   | KTransposition -> "transposition"
+  | KNVariants -> "n-variants"
 
 let segment_to_string = function
   | Key k -> key_to_string k
@@ -269,6 +274,7 @@ let problem_id = function
   | InvalidTr _ -> "invalid-tr"
   | InvalidRelativePitch _ -> "invalid-relative-pitch"
   | InvalidTranspositionName _ -> "invalid-transposition-name"
+  | InvalidNVariants _ -> "invalid-n-variants"
 
 (* Minimal JSON writing. Only what the diagnostic shape needs - there is no
    json library in this project's dependencies and pulling one in for three
@@ -320,6 +326,7 @@ let json_of_problem_data p =
   | InvalidRelativePitch { n; tr } ->
       json_obj [ ("n", string_of_int n); ("tr", string_of_int tr) ]
   | InvalidTranspositionName s -> json_obj [ ("name", json_string s) ]
+  | InvalidNVariants n -> json_obj [ ("n", string_of_int n) ]
   | InvalidInstrumentName | InvalidChordSize | InvalidDensity _
   | InvalidPitchRange | InvalidRegister | DuplicateHierarchy
   | InstrumentDensityRequiresInsFirst
@@ -1066,8 +1073,7 @@ let transposition_intervals ~tr transposition (Row elements) : int Seq.t =
   | NoTransposition -> Seq.repeat 0
   | TransposeAlea -> choose (List.init tr (fun i -> i + 1))
   | TransposeSeries -> series_over_range tr
-  | TransposeChromatic ->
-      Seq.cycle (List.to_seq (List.init tr (fun i -> i + 1)))
+  | TransposeChromatic -> Seq.repeat 1
   | TransposeSerial ->
       Seq.cycle (Array.to_seq (Array.map row_value_to_int elements))
 

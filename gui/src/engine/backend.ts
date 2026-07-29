@@ -11,7 +11,7 @@ import type { EngineResult } from "../schema/types";
  * always installed.
  */
 
-const isTauri = (): boolean =>
+export const isTauri = (): boolean =>
   typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
 async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
@@ -109,6 +109,28 @@ export async function saveProjectFile(contents: string, suggestedName: string): 
   a.click();
   URL.revokeObjectURL(url);
   return suggestedName;
+}
+
+/**
+ * Writes straight to an already-known path - no dialog. This is what makes
+ * "Save" (as opposed to "Save As") silent after the first save: once a path
+ * exists, subsequent saves reuse it instead of asking again.
+ */
+export async function writeProjectFile(path: string, contents: string): Promise<void> {
+  if (isTauri()) {
+    await invoke("write_text_file", { path, contents });
+    return;
+  }
+
+  // The browser has no real filesystem to write back into - fall back to
+  // the same download behaviour as a fresh save.
+  const blob = new Blob([contents], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = path.split("/").pop() ?? path;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export async function openProjectFile(): Promise<{ path: string; contents: string } | null> {

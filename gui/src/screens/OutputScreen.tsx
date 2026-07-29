@@ -26,6 +26,7 @@ const TABS: { id: Tab; label: string }[] = [
 export function OutputScreen() {
   const { project, update, engineResult, sexp, running, blocked, guiDiagnostics } = useStore();
   const [tab, setTab] = useState<Tab>("score");
+  const [variant, setVariant] = useState(0);
 
   const errors = guiDiagnostics.filter((d) => d.severity === "error");
 
@@ -34,16 +35,23 @@ export function OutputScreen() {
     if (dir) update((p) => (p.outputDir = dir));
   };
 
+  // More than one variant reports an array instead of a flat score/entries
+  // pair - clamped in case a previous run had more variants than this one.
+  const variants = engineResult?.variants;
+  const activeVariant = variants ? Math.min(variant, variants.length - 1) : 0;
+  const variantScore = variants ? variants[activeVariant]?.score : engineResult?.score;
+  const variantEntries = variants ? variants[activeVariant]?.entries : engineResult?.entries;
+
   const content = (): { text: string | undefined; empty: string } => {
     switch (tab) {
       case "score":
         return {
-          text: engineResult?.score,
+          text: variantScore,
           empty: "No score yet — the engine has not produced one for this formula.",
         };
       case "entries":
         return {
-          text: engineResult?.entries,
+          text: variantEntries,
           empty: "No entry list yet.",
         };
       case "formula":
@@ -107,6 +115,21 @@ export function OutputScreen() {
               <span className="diagnostic__message">{engineResult.engineError}</span>
             </span>
           </div>
+        </div>
+      )}
+
+      {variants && variants.length > 1 && (tab === "score" || tab === "entries") && (
+        <div className="kind-switch" style={{ marginBottom: 12 }} role="radiogroup">
+          {variants.map((_, i) => (
+            <button
+              key={i}
+              type="button"
+              className={`kind-switch__option${i === activeVariant ? " kind-switch__option--active" : ""}`}
+              onClick={() => setVariant(i)}
+            >
+              Variant {i + project.startIndex}
+            </button>
+          ))}
         </div>
       )}
 

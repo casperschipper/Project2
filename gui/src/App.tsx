@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useStore } from "./state/store";
 import { SCREENS, countsByScreen, type ScreenId } from "./engine/diagnostics";
 import { HelpPanel } from "./help/HelpPanel";
@@ -14,7 +14,7 @@ import {
   DYNAMICS,
   PERFORMANCE,
 } from "./screens/ParameterScreen";
-import { openProjectFile, saveProjectFile } from "./engine/backend";
+import { isTauri, openProjectFile, saveProjectFile, writeProjectFile } from "./engine/backend";
 import { defaultProject } from "./schema/defaults";
 import type { Project } from "./schema/types";
 
@@ -37,20 +37,34 @@ export function App() {
     markSaved,
   } = useStore();
 
-  const [fileName, setFileName] = useState<string | null>(null);
+  // The full path, not just the display name - what makes a plain "Save"
+  // silent (write straight back here) rather than always asking "Save As"
+  // would.
+  const [filePath, setFilePath] = useState<string | null>(null);
+  const fileName = filePath?.split("/").pop() ?? null;
   const counts = countsByScreen(diagnostics);
 
   const totalErrors = diagnostics.filter((d) => d.severity === "error").length;
   const totalWarnings = diagnostics.filter((d) => d.severity === "warning").length;
 
-  const save = async () => {
+  /** Always asks where to save, even if the project already has a path. */
+  const saveAs = useCallback(async (): Promise<string | null> => {
     const name = fileName ?? "formula.pr2proj";
     const saved = await saveProjectFile(JSON.stringify(project, null, 2), name);
     if (saved) {
-      setFileName(saved.split("/").pop() ?? saved);
+      setFilePath(saved);
       markSaved();
     }
-  };
+    return saved;
+  }, [fileName, project, markSaved]);
+
+  /** Writes straight back to the known path; asks only the first time. */
+  const save = useCallback(async (): Promise<string | null> => {
+    if (!filePath) return saveAs();
+    await writeProjectFile(filePath, JSON.stringify(project, null, 2));
+    markSaved();
+    return filePath;
+  }, [filePath, project, markSaved, saveAs]);
 
   const open = async () => {
     const file = await openProjectFile();
@@ -58,7 +72,7 @@ export function App() {
     try {
       const parsed = JSON.parse(file.contents) as Project;
       replaceProject({ ...defaultProject(), ...parsed });
-      setFileName(file.path.split("/").pop() ?? file.path);
+      setFilePath(file.path);
     } catch {
       // A malformed project file is the one thing here with nowhere sensible
       // to report to, since the whole editor state depends on it loading.
@@ -68,6 +82,74 @@ export function App() {
 
   const exportSexp = () =>
     saveProjectFile(sexp, (fileName?.replace(/\.pr2proj$/, "") ?? "formula") + ".sexp");
+
+  // Cmd+S (or Ctrl+S) saves without reaching for the mouse, exactly like
+  // `save` above: silent once a path is known, a dialog only the first time.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        save();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [save]);
+
+  // `save`/`dirty` are read from inside a listener that's registered once
+  // (below) - refs keep it reading the current values rather than whatever
+  // was true at registration time.
+  const saveRef = useRef(save);
+  saveRef.current = save;
+  const dirtyRef = useRef(dirty);
+  dirtyRef.current = dirty;
+
+  // Closing the window with unsaved changes asks first, exactly like any
+  // desktop app's Save/Don't Save/Cancel prompt. Browser preview mode (no
+  // Tauri window to intercept) falls back to the browser's own "leave site"
+  // confirmation instead.
+  useEffect(() => {
+    if (!isTauri()) {
+      const handler = (e: BeforeUnloadEvent) => {
+        if (!dirtyRef.current) return;
+        e.preventDefault();
+        e.returnValue = "";
+      };
+      window.addEventListener("beforeunload", handler);
+      return () => window.removeEventListener("beforeunload", handler);
+    }
+
+    let unlisten: (() => void) | undefined;
+    let cancelled = false;
+    (async () => {
+      const [{ getCurrentWindow }, { message }] = await Promise.all([
+        import("@tauri-apps/api/window"),
+        import("@tauri-apps/plugin-dialog"),
+      ]);
+      if (cancelled) return;
+      unlisten = await getCurrentWindow().onCloseRequested(async (event) => {
+        if (!dirtyRef.current) return;
+        const choice = await message("You have unsaved changes. Save them before closing?", {
+          title: "Unsaved changes",
+          kind: "warning",
+          buttons: { yes: "Save", no: "Don't Save", cancel: "Cancel" },
+        });
+        if (choice === "Cancel") {
+          event.preventDefault();
+          return;
+        }
+        if (choice === "Yes") {
+          const saved = await saveRef.current();
+          if (!saved) event.preventDefault(); // the save dialog was cancelled - stay open
+        }
+        // choice === "No": don't prevent it, the window closes right after.
+      });
+    })();
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, []);
 
   return (
     <div className="app">
@@ -93,8 +175,21 @@ export function App() {
         <button type="button" className="btn btn--ghost btn--small" onClick={open}>
           Open
         </button>
-        <button type="button" className="btn btn--ghost btn--small" onClick={save}>
+        <button
+          type="button"
+          className="btn btn--ghost btn--small"
+          onClick={save}
+          title={filePath ? `Save to ${filePath}` : "Save (choose a location)"}
+        >
           Save
+        </button>
+        <button
+          type="button"
+          className="btn btn--ghost btn--small"
+          onClick={saveAs}
+          title="Save to a new location"
+        >
+          Save As…
         </button>
         <button type="button" className="btn btn--ghost btn--small" onClick={exportSexp}>
           Export formula

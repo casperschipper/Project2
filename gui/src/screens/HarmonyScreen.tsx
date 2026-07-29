@@ -1,7 +1,7 @@
 import { useStore } from "../state/store";
 import { Field, Section } from "../components/Field";
 import { TokenListEditor } from "../components/ListEditors";
-import type { NoteMode, Transposition } from "../schema/types";
+import type { Transposition } from "../schema/types";
 
 /**
  * HARMONY (EMR-3 8.2): ROW only (CHORD and INTERVAL are out of scope - see
@@ -10,6 +10,12 @@ import type { NoteMode, Transposition } from "../schema/types";
  * octave that relative pitch lands in - that is REGISTER's job, on its own
  * screen. Their relative order in the Structure screen's hierarchy decides
  * which one constrains the other for a given note.
+ *
+ * Unlike performance/dynamics/duration/register, ROW has no "per chord"
+ * mode: every note in a chord always takes its own next value from the row,
+ * ignoring the entry point entirely (EMR-3 entry 19 defines no MOD-HARM call
+ * number). A genuinely shared-per-chord harmony is a distinct CHORD
+ * principle, not built yet.
  */
 export function HarmonyScreen() {
   const { project, update } = useStore();
@@ -44,7 +50,7 @@ export function HarmonyScreen() {
         </Field>
       </Section>
 
-      <Section title="Transposition and mode">
+      <Section title="Transposition">
         <Field
           label="Transposition"
           helpKey="fields/harmony-transposition"
@@ -61,24 +67,8 @@ export function HarmonyScreen() {
             <option value="none">None — the row repeats unchanged</option>
             <option value="alea">Alea — a random interval each pass</option>
             <option value="series">Series — each interval once before repeating</option>
-            <option value="chromatic">Chromatic — an ascending sequence of intervals</option>
+            <option value="chromatic">Chromatic — up one more semitone with every pass</option>
             <option value="serial">Serial — the row itself reused as transposition intervals</option>
-          </select>
-        </Field>
-
-        <Field
-          label="Chord or note"
-          helpKey="fields/harmony-mode"
-          path="harmony.mode"
-          hint="Whether one relative pitch covers a whole chord, or each note gets its own."
-        >
-          <select
-            style={{ width: 340 }}
-            value={project.harmonyMode}
-            onChange={(e) => update((p) => (p.harmonyMode = e.target.value as NoteMode))}
-          >
-            <option value="per-chord">Per chord — one value shared by every note</option>
-            <option value="per-note">Per note — drawn again for each note</option>
           </select>
         </Field>
       </Section>

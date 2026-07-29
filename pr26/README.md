@@ -43,15 +43,17 @@ Should the composer be helped in some way to construct useful tables? If a param
 (to be called like taht in the interface)
 [x] Call compass "pitch range"
 [x] register list, make either/or percussion/range visually clearer
-[ ] empty list field when saying "set list"
-[ ] maintingng state (selection cycles, harmony state etc) across layers and
+[x] empty list field when saying "set list"
+[x] maintaining state (selection cycles, harmony state etc) across layers and
 variants in the "variant group"
-[ ] multiple variants
-[ ] test row transposition modes
+[x] multiple variants
+[x] test row transposition modes
 [ ] interval principle
 
 # DONE
 
+[x] Fixed transposition in ROW mode
+[x] Fixed performance per chord
 [x] Total problems: be able to tell which user definition caused a problem.
 [x] Implement another parameter x 
 [x] Define input as a runtime prompt?

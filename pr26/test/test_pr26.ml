@@ -92,3 +92,125 @@ let () =
   assert (not (register_compatible_with_pitch_range PercussionPitchRange reg_overlap));
   assert (not (register_compatible_with_pitch_range pitch_range PercussionRegister));
   print_endline "register_compatible_with_pitch_range: all tests passed"
+
+(* Shared fixture for the Stage 1/Stage 2 continuity regressions below: one
+   instrument, "union none" with 2 instrument groups (=> 2 layers per
+   variant), and an uncombined entry-delay parameter whose 9-element list is
+   deliberately partitioned into three *disjoint* 3-element table rows. With
+   "ensemble series" (a cycle that cannot repeat a row until all three have
+   been used), any three consecutive layers - whether they span only layers
+   within one variant, or a variant boundary too - are *guaranteed* to draw
+   all three distinct rows, whatever the seed: 9 distinct entry-delay values
+   in total. A bug that broadcasts/restarts instead of continuing the cycle
+   would confine some of those layers to a repeated row, giving fewer than 9
+   distinct values overall - regardless of seed, since a repeat can only
+   happen if the cycle failed to continue. *)
+let test_formula_sexp ~n_variants =
+  Printf.sprintf
+    {|(structure-formula
+  (seed 7)
+  (variant-duration 20.0)
+  (n-variants %d)
+  (octave-division 12)
+
+  (dynamics (mf))
+  (dynamics-table (0))
+
+  (performance (normal))
+  (performance-table (0))
+
+  (number-of-instrument-groups 2)
+  (instruments
+    (instrument only
+      (chordsize 1 1)
+      (performance (normal))
+      (dynamics (mf))
+      (pitch-range percussion)
+      (durations 0.1 1.0)))
+  (instrument-table (0) (0))
+
+  (entrydelays (0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9))
+  (entrydelay-table (0 1 2) (3 4 5) (6 7 8))
+
+  (durations (0.2))
+  (duration-table (0))
+
+  (registers ((pitch-range percussion)))
+  (register-table (0))
+
+  (harmony
+    (row (p))
+    (transposition none))
+
+  (principles
+    (instrument (ensemble series) (order series))
+    (entrydelay (ensemble series) (order series))
+    (performance (ensemble series) (order series) (mode per-chord))
+    (dynamics (ensemble series) (order series) (mode per-chord))
+    (duration (ensemble series) (order series) (relation (independent per-chord)))
+    (register (ensemble series) (order series) (mode per-chord)))
+
+  (hierarchy (Ins Reg Har Per Dyn Ent Dur))
+  (union none)
+  (density instrument-density)
+)|}
+    n_variants
+
+let build_test_formula ~n_variants =
+  let open Pr26.Structure_formula in
+  match Pr26.Sexp.of_string (test_formula_sexp ~n_variants) with
+  | Error e -> failwith ("test formula failed to parse: " ^ e)
+  | Ok sexps -> (
+      match Parse.of_sexp sexps with
+      | Error (errors, _) ->
+          failwith
+            (Printf.sprintf "test formula failed to build: %d error(s)"
+               (List.length errors))
+      | Ok (sf, _warnings) -> sf)
+
+let entrydelays_of layer =
+  layer |> List.map (fun (e : Pr26.Score_generation.entry) -> e.entrydelay)
+
+(* Stage 1 regression (EMR-3 p.130-132): an uncombined parameter's group
+   selection draws a fresh group *every layer*, continuing one selection
+   cycle across the whole run - it must not broadcast a single group to
+   every layer, as the old code did. Exercised end to end through the real
+   parser and [build_score], not just the isolated helper, since the bug was
+   in how [build_score] requested groups from [construct_ensemble] as much as
+   in how state was threaded between layers. *)
+let () =
+  let sf = build_test_formula ~n_variants:1 in
+  let variants = Pr26.Score_generation.build_score sf in
+  assert (List.length variants = 1);
+  let layers = List.hd variants in
+  assert (List.length layers = 2);
+  let distinct =
+    List.nth layers 0 |> entrydelays_of
+    |> ( @ ) (List.nth layers 1 |> entrydelays_of)
+    |> List.sort_uniq compare
+  in
+  assert (List.length distinct > 3);
+  print_endline "cross-layer group-selection continuity: test passed"
+
+(* Stage 2 regression: the same continuing selection cycle spans a variant
+   boundary too, not just a layer boundary within one variant - it resets
+   only with a new variant *group* (EMR-3 9.8: "in the variant group each
+   new variant simply continues..."). 2 variants x 2 layers = 4 total group
+   draws from the same 3-row cycle; the first 3 of those (variant 0's two
+   layers, then variant 1's first) must be all 3 distinct rows. *)
+let () =
+  let sf = build_test_formula ~n_variants:2 in
+  let variants = Pr26.Score_generation.build_score sf in
+  assert (List.length variants = 2);
+  List.iter (fun layers -> assert (List.length layers = 2)) variants;
+  let variant0 = List.nth variants 0 in
+  let variant1 = List.nth variants 1 in
+  let first_three_layers =
+    [ List.nth variant0 0; List.nth variant0 1; List.nth variant1 0 ]
+  in
+  let distinct =
+    first_three_layers |> List.concat_map entrydelays_of
+    |> List.sort_uniq compare
+  in
+  assert (List.length distinct = 9);
+  print_endline "cross-variant group-selection continuity: test passed"

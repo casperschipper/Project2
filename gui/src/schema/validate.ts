@@ -679,13 +679,13 @@ export function validateProject(p: Project): Diagnostic[] {
       ),
     );
   }
-  if (p.harmonyMode === "per-note" && insPos > posOf("Har")) {
+  if (insPos > posOf("Har")) {
     out.push(
       diag(
         "per-note-requires-ins-first",
         "error",
-        [key("harmony"), key("mode")],
-        "harmony is set per note, so Instrument must come before Harmony in the hierarchy",
+        [key("harmony")],
+        "harmony is always set per note, so Instrument must come before Harmony in the hierarchy",
       ),
     );
   }
@@ -738,6 +738,16 @@ export function validateProject(p: Project): Diagnostic[] {
   }
   if (!Number.isInteger(p.seed) || p.seed < 0) {
     out.push(diag("invalid-seed", "error", [key("global"), key("seed")], "the seed must be a whole number, zero or above"));
+  }
+  if (!Number.isInteger(p.numberOfVariants) || p.numberOfVariants < 1) {
+    out.push(
+      diag(
+        "invalid-n-variants",
+        "error",
+        [key("global"), key("n-variants")],
+        "the number of variants must be a whole number, at least 1",
+      ),
+    );
   }
 
   return out;
