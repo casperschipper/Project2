@@ -716,24 +716,53 @@ let resolve_layer_instrument_density ~n_events ~hierarchy ~perf_mode ~dyn_mode
   in
   (List.rev groups, final_states)
 
+(* Whole-chord ([PerChord]) values already fixed before a sub-pick's own
+   hierarchy fold runs, for whichever of performance/dynamics/register the
+   composer's hierarchy puts before [Ins] (see [resolve_layer_autonomous]).
+   Duration is handled separately (inline in [fill_group]) since its own
+   extraction also depends on entry delay's timing, not just [Ins]'s -
+   [register]/[duration] additionally carry their "_ok" flag alongside the
+   value, since (unlike performance/dynamic) [proto] tracks whether each was
+   an [Impossible] fallback. *)
+type chord_seeds = {
+  cs_perf : Performance.t note_value option;
+  cs_dyn : Dynamic.t note_value option;
+  cs_reg : (register note_value * bool note_value) option;
+  cs_dur : (duration note_value * bool note_value) option;
+}
+
+let no_chord_seeds = { cs_perf = None; cs_dyn = None; cs_reg = None; cs_dur = None }
+
 (** With [Autonomous] density, each timepoint samples a target density and keeps
     resolving sub-picks (each independently picking its own instrument,
     conditioned the same way as any other) until the target is reached. If the
     last pick's chordsize would overshoot the target, its extra voices are cut -
     [nr_of_notes] is capped down to however many are still needed, so the
-    group's total lands exactly on the target. (Any per-note
-    performance/dynamic/duration values already drawn for the trimmed voices are
-    simply never read.)
+    group's total lands exactly on the target.
 
     Unlike [InstrumentDensity], a timepoint here may need several sub-picks to
-    "score" the chord (EMR-3 8.16), and the whole chord shares exactly one entry
-    delay - so [Ent] is deliberately excluded from each sub-pick's own hierarchy
-    fold ([hierarchy_no_ent]) and resolved once per group instead, positioned
-    relative to the sub-pick loop by wherever the composer put [Ent] relative to
-    [Dur] in [hierarchy]. This preserves both possible conditioning directions
-    via the exact same predicates [resolve_step] already uses for a single
-    sub-pick ([dur_pred_from]/[ed_pred_from]) - just fed a value that's fixed
-    for the whole group instead of one proto:
+    "score" the chord (EMR-3 8.16), and several of the chord-wide parameters -
+    entry delay always, and performance/dynamics/duration/register whenever
+    their own mode is [PerChord] - must each end up as exactly *one* shared
+    value for the whole chord, not one independent draw per sub-pick. Each is
+    therefore excluded from every sub-pick's own hierarchy fold
+    ([subpick_hierarchy]) and resolved once per group instead - via
+    [fill_subpicks]'s [~seed]/[~seeds] (values already fixed before the loop,
+    seeded into every sub-pick's [start] proto so its own still-in-the-fold
+    steps condition on them exactly as they would for a single sub-pick - e.g.
+    [Ins]'s [ins_pred_from] already reads every one of these fields) or by
+    aggregating over the finished group afterward (values that depend on
+    something only known *after* the loop, such as which instruments actually
+    got picked - constrained to agree with all of them, mirroring the
+    conservative "must satisfy every one" choice [resolve_step] already makes
+    for a single proto's own per-note values).
+
+    Entry delay's own before/after split is the simplest case, and the
+    template every other extraction below follows: it's governed by wherever
+    the composer put [Ent] relative to [Dur] ([ent_before_dur]), using the
+    exact same predicates [resolve_step] already uses for a single sub-pick
+    ([dur_pred_from]/[ed_pred_from]) - just fed a value that's fixed for the
+    whole group instead of one proto:
     - [Ent] before [Dur]: the group's entry delay is drawn once, up front, and
       every sub-pick's [Dur] step conditions on it exactly as it would if [Ent]
       had run first for that one sub-pick (seeded via [resolve_entry]'s
@@ -741,19 +770,34 @@ let resolve_layer_instrument_density ~n_events ~hierarchy ~perf_mode ~dyn_mode
     - [Dur] before [Ent]: every sub-pick's [Dur] resolves unconstrained (no
       entry delay exists yet), and the group's entry delay is drawn once *after*
       the loop, either unconstrained ([DurIndependent]) or bounded by the
-      longest duration seen anywhere in the group ([DurShorterThanEntry]
-    - generalizing [ed_pred_from]'s own per-proto max-over-per-note-values check
+      longest duration seen anywhere in the group ([DurShorterThanEntry] -
+      generalizing [ed_pred_from]'s own per-proto max-over-per-note-values check
       to a max over the whole group). [DurEqualsEntry] is the one relation where
       this ordering still settles the shared value mid-loop: the first
       sub-pick's freely-drawn duration *becomes* the group's entry delay, and
       every later sub-pick is then forced to copy it (mirroring the original
       single-sub-pick "[Dur] before [Ent]" case, just decided once for the whole
-      chord instead of once per sub-pick).
+      chord instead of once per sub-pick) - so [DurEqualsEntry] (always
+      [PerChord] already, by definition) needs no further extraction below.
 
-    A whole-chord ([PerChord]) [Per] gets the same "resolve once per group"
-    treatment - see [fill_group_with_perf] below for how it additionally
-    handles depending on the instrument, which (unlike duration/entry delay)
-    can genuinely differ between the sub-picks making up one chord. *)
+    [Per]/[Dyn] each depend on nothing but the instrument, so their own
+    extraction ([fill_group_with_note_modes]) is a direct copy of the same
+    before/after-[Ins] idea. [Reg] depends on the instrument *and* on harmony -
+    but harmony is always per-note (never extracted, EMR-3 entry 19 has no
+    "per chord" reading) and [Ins] always precedes [Har] (enforced at
+    formula-load time), so by the time a sub-pick's own fold reaches [Har] (if
+    it's still in [subpick_hierarchy]), [Ins] has necessarily already run for
+    that sub-pick too - meaning "before or after [Ins]" is still the only
+    question that matters for [Reg]'s own extraction: either nothing has run
+    for anyone yet (seed forward, unconstrained by harmony, letting every
+    sub-pick's own harmony draw agree with the now-fixed register instead), or
+    the *entire* group - including every note's harmony - is already known
+    (aggregate over both). [Dur] (when [DurIndependent]/[DurShorterThanEntry]
+    and [PerChord]) has the same [Ins] dependency as [Per]/[Dyn], plus entry
+    delay's own dependency - so its extraction combines both splits, and stays
+    inline in [fill_group] rather than joining [fill_group_with_note_modes],
+    since it needs branch-local knowledge of whether entry delay is already
+    fixed. *)
 let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
     ~dur_relation ~reg_mode ~low ~high ~selection_principle states0 =
   let dens_arr =
@@ -769,27 +813,49 @@ let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
     go 0 hierarchy
   in
   let ent_before_dur = index_of Ent < index_of Dur in
-  (* Like [Ent], a whole-chord ([PerChord]) performance is one shared value
-     for the group, not one draw per sub-pick - so it's excluded from each
-     sub-pick's own hierarchy fold too, and resolved once by [fill_group]
-     below (see [fill_group_with_perf]). [PerNote] is unaffected: it already
-     means "one independent draw per note", which the per-sub-pick fold
-     already gives correctly (each sub-pick draws for its own notes). *)
+  let dur_note_mode = duration_note_mode dur_relation in
+  (* [DurEqualsEntry] is always [PerChord] already and already fully handled
+     below (the drawn value becomes the group's one entry delay directly) -
+     nothing further to extract for it. *)
+  let dur_extracted = dur_relation <> DurEqualsEntry && dur_note_mode = PerChord in
+  let perf_extracted = perf_mode = PerChord in
+  let dyn_extracted = dyn_mode = PerChord in
+  let reg_extracted = reg_mode = PerChord in
   let perf_before_ins = index_of Per < index_of Ins in
+  let dyn_before_ins = index_of Dyn < index_of Ins in
+  let reg_before_ins = index_of Reg < index_of Ins in
+  let dur_before_ins = index_of Dur < index_of Ins in
   let subpick_hierarchy =
     hierarchy
     |> List.filter (fun e -> e <> Ent)
-    |> List.filter (fun e -> not (e = Per && perf_mode = PerChord))
+    |> List.filter (fun e -> not (e = Per && perf_extracted))
+    |> List.filter (fun e -> not (e = Dyn && dyn_extracted))
+    |> List.filter (fun e -> not (e = Reg && reg_extracted))
+    |> List.filter (fun e -> not (e = Dur && dur_extracted))
   in
-  let resolve_subpick ?seed_entrydelay ~seed_performance states =
+  let resolve_subpick ?seed_entrydelay ~seeds states =
     let start =
-      { empty_proto with
+      {
+        empty_proto with
         entrydelay = seed_entrydelay;
-        performance = seed_performance;
+        performance = seeds.cs_perf;
+        dynamic = seeds.cs_dyn;
+        register = Option.map fst seeds.cs_reg;
+        register_ok = Option.map snd seeds.cs_reg;
+        duration = Option.map fst seeds.cs_dur;
+        duration_ok = Option.map snd seeds.cs_dur;
       }
     in
     resolve_entry ~start ~hierarchy:subpick_hierarchy ~perf_mode ~dyn_mode
       ~dur_relation ~reg_mode states
+  in
+  (* Every sub-pick's own instrument, once the group is fully resolved -
+     needed by whichever of performance/dynamics/register/duration must
+     aggregate over the whole group *after* the loop (see below). *)
+  let instruments_of group =
+    List.map
+      (fun p -> match p.instrument with Some i -> i | None -> assert false)
+      group
   in
   let max_duration_of proto =
     match proto.duration with
@@ -816,7 +882,7 @@ let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
      sub-pick from what's fixed so far and the sub-pick just resolved - used
      only by [DurEqualsEntry]'s "settle from the first sub-pick" case below,
      a no-op everywhere else. *)
-  let fill_subpicks states target ~seed ~next_seed ~seed_performance =
+  let fill_subpicks states target ~seed ~next_seed ~seeds =
     (* [used] carries every instrument already picked earlier in this same
        chord, so a later pick that lands on one of them - the orchestra
        running out of distinct instruments before the target density is
@@ -825,7 +891,7 @@ let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
        repeated instrument is provided with a comment"). *)
     let rec loop states total used acc settled =
       let states', proto =
-        resolve_subpick ?seed_entrydelay:settled ~seed_performance states
+        resolve_subpick ?seed_entrydelay:settled ~seeds states
       in
       let picked =
         match proto.instrument with
@@ -847,10 +913,78 @@ let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
     loop states 0 [] [] seed
   in
   let keep_seed settled _ = settled in
-  (* [seed_performance] is constant for the whole chord (see
-     [fill_group_with_perf]) - just threaded through unchanged, orthogonal to
-     the entry-delay/duration branching below. *)
-  let fill_group ~seed_performance states target =
+  (* Draws duration's own whole-chord value using whatever of its two
+     dependencies (the instrument, entry delay) is fixed at the point in
+     [fill_group] this is called from - [ed_opt] carries whichever is true of
+     entry delay ([None] when it isn't decided yet in this branch). Reuses
+     [dur_pred_from] exactly as a single sub-pick's own [Dur] step would,
+     just fed a placeholder proto with only [entrydelay] (maybe) set. *)
+  let draw_duration_before ~ed_opt states =
+    let pred =
+      dur_pred_from ~instr_arr:states.instr_arr
+        { empty_proto with entrydelay = ed_opt }
+        dur_relation
+    in
+    let v, dur_state' = sel_sample_pred_tagged pred states.dur_state in
+    let ok = result_ok v in
+    let d = get_value v in
+    ({ states with dur_state = dur_state' }, Some (Shared d, Shared ok))
+  in
+  (* The [Ins]-after-[Dur] counterpart: the group is already fully resolved
+     (so every sub-pick's instrument is known), constrained to whatever of
+     [ed_opt] is already fixed - mirrors [fill_group_with_note_modes]'s own
+     aggregate-after-the-loop cases below. *)
+  let stamp_duration_after ~ed_opt group states' =
+    let instruments = instruments_of group in
+    let pred (Duration d as dv) =
+      List.for_all
+        (fun (Instrument { durations; _ }) -> duration_range_ok durations dv)
+        instruments
+      &&
+      match (dur_relation, ed_opt) with
+      | DurShorterThanEntry _, Some (Entrydelay ed) -> d <= ed
+      | _ -> true
+    in
+    let v, dur_state' = sel_sample_pred_tagged pred states'.dur_state in
+    let ok = result_ok v in
+    let d = get_value v in
+    let group' =
+      List.map
+        (fun p ->
+          { p with duration = Some (Shared d); duration_ok = Some (Shared ok) })
+        group
+    in
+    (group', { states' with dur_state = dur_state' })
+  in
+  (* Shared tail of the two [Dur]-before-[Ent] branches: draw the group's
+     entry delay from whatever duration(s) ended up in the (by now fully
+     resolved, including duration) group - unchanged by [dur_extracted],
+     since a [PerChord]-extracted duration just means every proto already
+     carries the same repeated value, which [max_duration_of] reduces to
+     correctly either way. *)
+  let finish_with_computed_entrydelay group states' =
+    let max_dur =
+      group
+      |> List.fold_left (fun acc p -> Float.max acc (max_duration_of p)) 0.0
+    in
+    let pred =
+      match dur_relation with
+      | DurShorterThanEntry _ -> fun (Entrydelay ed) -> ed >= max_dur
+      | DurIndependent _ | DurEqualsEntry -> Fun.const true
+    in
+    let v, ed_state' = sel_sample_pred_tagged pred states'.ed_state in
+    let ok = result_ok v in
+    let ed = get_value v in
+    let group = List.map (mark_group_ok ok) group in
+    (ed, group, { states' with ed_state = ed_state' })
+  in
+  (* [seeds] carries whichever of performance/dynamics/register are already
+     fixed for the whole chord - constant throughout, just threaded through
+     unchanged, orthogonal to the entry-delay/duration branching below.
+     Duration's own extraction (when applicable) is handled inline in each
+     branch instead, since - unlike the other three - it needs to know
+     locally whether entry delay is already fixed. *)
+  let fill_group ~seeds states target =
     match (dur_relation, ent_before_dur) with
     | DurEqualsEntry, true ->
         (* the drawn value becomes every sub-pick's duration verbatim (below),
@@ -866,7 +1000,7 @@ let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
         let states = { states with ed_state = ed_state' } in
         let _, group, states' =
           fill_subpicks states target ~seed:(Some ed) ~next_seed:keep_seed
-            ~seed_performance
+            ~seeds
         in
         (ed, List.map (stamp_ok ok) group, states')
     | DurEqualsEntry, false ->
@@ -879,7 +1013,7 @@ let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
               | _ -> None)
         in
         let settled, group, states' =
-          fill_subpicks states target ~seed:None ~next_seed ~seed_performance
+          fill_subpicks states target ~seed:None ~next_seed ~seeds
         in
         (* [duration_note_mode DurEqualsEntry] is always [PerChord], so the
            first sub-pick always settles [settled] to [Some _] via [next_seed]
@@ -898,89 +1032,168 @@ let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
         in
         let ed = get_value v in
         let states = { states with ed_state = ed_state' } in
-        let _, group, states' =
-          fill_subpicks states target ~seed:(Some ed) ~next_seed:keep_seed
-            ~seed_performance
-        in
-        (ed, group, states')
-    | (DurIndependent _ | DurShorterThanEntry _), false ->
-        let _, group, states' =
-          fill_subpicks states target ~seed:None ~next_seed:keep_seed
-            ~seed_performance
-        in
-        let max_dur =
-          group
-          |> List.fold_left (fun acc p -> Float.max acc (max_duration_of p)) 0.0
-        in
-        let pred =
-          match dur_relation with
-          | DurShorterThanEntry _ -> fun (Entrydelay ed) -> ed >= max_dur
-          | DurIndependent _ | DurEqualsEntry -> Fun.const true
-        in
-        let v, ed_state' = sel_sample_pred_tagged pred states'.ed_state in
-        let ok = result_ok v in
-        let ed = get_value v in
-        let group = List.map (mark_group_ok ok) group in
-        (ed, group, { states' with ed_state = ed_state' })
-  in
-  (* Wraps [fill_group] with whole-chord ([PerChord]) performance resolution
-     - the group-level analogue of [Ent]'s own extraction above, but with an
-     extra wrinkle: unlike entry delay, performance depends on the
-     instrument, and under [Autonomous] density each sub-pick may pick a
-     *different* one. So which side of the fold the shared draw happens on
-     depends on where the composer put [Per] relative to [Ins]:
-     - [Per] before [Ins]: draw one value now, using the same "no instrument
-       decided yet" existential predicate [resolve_step]'s own [Per] case
-       already uses when [Ins] hasn't run - then seed it into every
-       sub-pick's [start] proto, so each sub-pick's own [Ins] draw is
-       naturally filtered to compatible instruments via [ins_pred_from],
-       exactly as it would be for a single sub-pick.
-     - [Ins] before [Per]: every sub-pick picks its own instrument first,
-       unconstrained by performance (matching what would happen per
-       sub-pick if this weren't extracted at all); only afterwards is one
-       value drawn, constrained to a mode every picked instrument can
-       actually play, and stamped onto every proto in the group. *)
-  let fill_group_with_perf states target =
-    match perf_mode with
-    | PerNote -> fill_group ~seed_performance:None states target
-    | PerChord ->
-        if perf_before_ins then
-          let pred =
-            mode_pred_from_instrument ~instr_arr:states.instr_arr
-              ~mem:Performance_modes.mem None
-              (fun (Instrument { performance; _ }) -> performance)
+        if dur_extracted && dur_before_ins then
+          let states, dur_seed = draw_duration_before ~ed_opt:(Some ed) states in
+          let _, group, states' =
+            fill_subpicks states target ~seed:(Some ed) ~next_seed:keep_seed
+              ~seeds:{ seeds with cs_dur = dur_seed }
           in
-          let v, perf_state' = sel_sample_pred pred states.perf_state in
-          let states = { states with perf_state = perf_state' } in
-          fill_group ~seed_performance:(Some (Shared v)) states target
+          (ed, group, states')
         else
-          let ed, group, states' =
-            fill_group ~seed_performance:None states target
+          let _, group, states' =
+            fill_subpicks states target ~seed:(Some ed) ~next_seed:keep_seed
+              ~seeds
           in
-          let instruments =
-            List.map
-              (fun p ->
-                match p.instrument with Some i -> i | None -> assert false)
-              group
+          if dur_extracted then
+            let group, states' =
+              stamp_duration_after ~ed_opt:(Some ed) group states'
+            in
+            (ed, group, states')
+          else (ed, group, states')
+    | (DurIndependent _ | DurShorterThanEntry _), false ->
+        if dur_extracted && dur_before_ins then
+          let states, dur_seed = draw_duration_before ~ed_opt:None states in
+          let _, group, states' =
+            fill_subpicks states target ~seed:None ~next_seed:keep_seed
+              ~seeds:{ seeds with cs_dur = dur_seed }
           in
-          let pred v =
+          finish_with_computed_entrydelay group states'
+        else
+          let _, group, states' =
+            fill_subpicks states target ~seed:None ~next_seed:keep_seed ~seeds
+          in
+          let group, states' =
+            if dur_extracted then stamp_duration_after ~ed_opt:None group states'
+            else (group, states')
+          in
+          finish_with_computed_entrydelay group states'
+  in
+  (* Wraps [fill_group] with whole-chord ([PerChord]) performance/dynamics/
+     register resolution - the group-level analogue of [Ent]'s own
+     extraction above, but with an extra wrinkle: unlike entry delay, all
+     three depend on the instrument, and under [Autonomous] density each
+     sub-pick may pick a *different* one. So which side of the fold each
+     shared draw happens on depends on where the composer put it relative to
+     [Ins]:
+     - before [Ins]: draw one value now, using the same "no instrument
+       decided yet" existential predicate [resolve_step]'s own case already
+       uses when [Ins] hasn't run - then seed it into every sub-pick's
+       [start] proto, so each sub-pick's own [Ins] draw is naturally
+       filtered to compatible instruments via [ins_pred_from], exactly as it
+       would be for a single sub-pick. [Reg]'s predicate also covers
+       harmony ([reg_pred_from]), but seeded this early nothing has run for
+       anyone yet (including harmony) - so it's simply unconstrained by it,
+       same as a single sub-pick's own [Reg] step would be with [Har] still
+       unresolved; every sub-pick's own (still in-the-fold) [Har] step then
+       agrees with the now-fixed register instead, via [har_pred_from].
+     - after [Ins]: every sub-pick picks its own instrument (and, for
+       [Reg], resolves its own per-note harmony too - [Ins] always precedes
+       [Har], so by the time the whole loop finishes both are known for
+       every sub-pick) unconstrained by the not-yet-decided shared value,
+       matching what would happen per sub-pick if this weren't extracted at
+       all; only afterwards is one value drawn, constrained to agree with
+       every picked instrument (and, for [Reg], every already-resolved
+       harmony value too), and stamped onto every proto in the group. *)
+  let fill_group_with_note_modes states target =
+    let states, perf_seed =
+      if perf_extracted && perf_before_ins then
+        let pred =
+          mode_pred_from_instrument ~instr_arr:states.instr_arr
+            ~mem:Performance_modes.mem None
+            (fun (Instrument { performance; _ }) -> performance)
+        in
+        let v, perf_state' = sel_sample_pred pred states.perf_state in
+        ({ states with perf_state = perf_state' }, Some (Shared v))
+      else (states, None)
+    in
+    let states, dyn_seed =
+      if dyn_extracted && dyn_before_ins then
+        let pred =
+          mode_pred_from_instrument ~instr_arr:states.instr_arr
+            ~mem:Dynamic_modes.mem None
+            (fun (Instrument { dynamics; _ }) -> dynamics)
+        in
+        let v, dyn_state' = sel_sample_pred pred states.dyn_state in
+        ({ states with dyn_state = dyn_state' }, Some (Shared v))
+      else (states, None)
+    in
+    let states, reg_seed =
+      if reg_extracted && reg_before_ins then
+        let pred = reg_pred_from ~instr_arr:states.instr_arr empty_proto in
+        let v, reg_state' = sel_sample_pred_tagged pred states.reg_state in
+        let ok = result_ok v in
+        let r = get_value v in
+        ( { states with reg_state = reg_state' },
+          Some (Shared r, Shared ok) )
+      else (states, None)
+    in
+    let seeds =
+      { no_chord_seeds with cs_perf = perf_seed; cs_dyn = dyn_seed; cs_reg = reg_seed }
+    in
+    let ed, group, states' = fill_group ~seeds states target in
+    let group, states' =
+      if perf_extracted && not perf_before_ins then
+        let pred v =
+          List.for_all
+            (fun (Instrument { performance = modes; _ }) ->
+              Performance_modes.mem v modes)
+            (instruments_of group)
+        in
+        let v, perf_state' = sel_sample_pred pred states'.perf_state in
+        ( List.map (fun p -> { p with performance = Some (Shared v) }) group,
+          { states' with perf_state = perf_state' } )
+      else (group, states')
+    in
+    let group, states' =
+      if dyn_extracted && not dyn_before_ins then
+        let pred v =
+          List.for_all
+            (fun (Instrument { dynamics = modes; _ }) -> Dynamic_modes.mem v modes)
+            (instruments_of group)
+        in
+        let v, dyn_state' = sel_sample_pred pred states'.dyn_state in
+        ( List.map (fun p -> { p with dynamic = Some (Shared v) }) group,
+          { states' with dyn_state = dyn_state' } )
+      else (group, states')
+    in
+    let group, states' =
+      if reg_extracted && not reg_before_ins then
+        let pred v =
+          let instr_ok =
             List.for_all
-              (fun (Instrument { performance = modes; _ }) ->
-                Performance_modes.mem v modes)
-              instruments
+              (fun (Instrument { pitchrange; _ }) ->
+                register_compatible_with_pitch_range pitchrange v)
+              (instruments_of group)
           in
-          let v, perf_state' = sel_sample_pred pred states'.perf_state in
-          let group' =
-            List.map (fun p -> { p with performance = Some (Shared v) }) group
+          let harmony_ok =
+            group
+            |> List.concat_map (fun p ->
+                   match p.harmony with
+                   | Some (PerNote hs) -> hs
+                   | Some (Shared h) -> [ h ]
+                   | None -> [])
+            |> List.for_all (fun h ->
+                   register_is_percussion v = row_value_is_percussion h)
           in
-          (ed, group', { states' with perf_state = perf_state' })
+          instr_ok && harmony_ok
+        in
+        let v, reg_state' = sel_sample_pred_tagged pred states'.reg_state in
+        let ok = result_ok v in
+        let r = get_value v in
+        ( List.map
+            (fun p -> { p with register = Some (Shared r); register_ok = Some (Shared ok) })
+            group,
+          { states' with reg_state = reg_state' } )
+      else (group, states')
+    in
+    (ed, group, states')
   in
   let final_states, _, groups =
     List.init n_events (fun _ -> ())
     |> List.fold_left
          (fun (states, dens_state, acc) () ->
            let target, dens_state' = sel_sample dens_state in
-           let ed, group, states' = fill_group_with_perf states target in
+           let ed, group, states' = fill_group_with_note_modes states target in
            ( advance_all_windows states',
              sel_advance_window dens_state',
              (ed, group) :: acc ))
