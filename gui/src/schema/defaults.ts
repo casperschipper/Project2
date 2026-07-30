@@ -152,9 +152,115 @@ export function defaultProject(): Project {
     registerPrinciple: { kind: "series" },
     registerMode: "per-chord",
 
+    harmonyPrinciple: "row",
     row: ["1", "2", "3", "p", "5", "7", "9", "11", "12", "4", "6", "8", "10"],
     transposition: "none",
+    intervalMatrixSource: { kind: "matrix", rows: emptyIntervalMatrix(12) },
+    forbiddenTones: [],
+    invertMatrix: false,
   };
+}
+
+/** An all-forbidden `(tr-1) x (tr-1)` matrix - the starting point before the
+ * composer switches to the INTERVAL principle and toggles any cells on. */
+export function emptyIntervalMatrix(octaveDivision: number): boolean[][] {
+  const size = Math.max(octaveDivision - 1, 0);
+  return Array.from({ length: size }, () => Array(size).fill(false) as boolean[]);
+}
+
+/**
+ * Resizes the matrix to match a new `octaveDivision`, preserving every cell
+ * that still fits and padding new rows/columns with `false`. Unlike the
+ * other `octaveDivision`-dependent lists in this app (which just flag a size
+ * mismatch as a diagnostic and leave the composer to fix it by hand), the
+ * matrix auto-resizes - there's no per-cell "this row doesn't exist"
+ * affordance the way an out-of-range token in a list can be flagged one at a
+ * time. See `intervalMatrixWouldLoseData` for the accompanying
+ * shrink-confirmation check.
+ */
+export function resizeIntervalMatrix(rows: boolean[][], newOctaveDivision: number): boolean[][] {
+  const size = Math.max(newOctaveDivision - 1, 0);
+  return Array.from({ length: size }, (_, i) =>
+    Array.from({ length: size }, (_, j) => rows[i]?.[j] ?? false),
+  );
+}
+
+/** True iff shrinking to `newOctaveDivision` would silently discard an
+ * already-`true` cell - used to gate a confirmation prompt before the shrink
+ * is applied. */
+export function intervalMatrixWouldLoseData(rows: boolean[][], newOctaveDivision: number): boolean {
+  const size = Math.max(newOctaveDivision - 1, 0);
+  return rows.some((row, i) => row.some((cell, j) => cell && (i >= size || j >= size)));
+}
+
+/**
+ * Derives an interval matrix from a chord's own interval content (CHORD-INT,
+ * EMR-3 8.2 example 8-6) - a direct port of `Parameters.matrix_of_chord`
+ * (`pr26/lib/parameters.ml`), kept for the GUI's live preview while a chord
+ * is being edited. The two implementations must never quietly diverge - see
+ * the cross-check against the manual's own worked example in
+ * `scripts/check-emitter.ts`'s sibling checks.
+ *
+ * Walks the chord as a cycle of tones in both directions; within each
+ * direction, every consecutive pair of intervals (cyclically) becomes an
+ * allowed transition. Returns `null` if the chord is empty, contains an
+ * out-of-range tone, or repeats a tone between two neighbours (including the
+ * wraparound) - the same cases `validate.ts` already flags as errors.
+ */
+export function deriveIntervalMatrixFromChord(
+  chordRaw: string[],
+  octaveDivision: number,
+): boolean[][] | null {
+  const tr = octaveDivision;
+  const n = chordRaw.length;
+  if (n === 0 || tr < 2) return null;
+
+  const chord = chordRaw.map(Number);
+  if (chord.some((v) => !Number.isInteger(v) || v < 1 || v > tr)) return null;
+
+  const stepAt = (k: number) => chord[((k % n) + n) % n];
+  for (let i = 0; i < n; i += 1) {
+    if (stepAt(i) === stepAt(i + 1)) return null;
+  }
+
+  const interval = (a: number, b: number) => (((b - a) % tr) + tr) % tr;
+  const size = tr - 1;
+  const matrix: boolean[][] = Array.from({ length: size }, () => Array(size).fill(false));
+
+  const traversal = (dir: 1 | -1) =>
+    Array.from({ length: n }, (_, k) => interval(stepAt(k * dir), stepAt((k + 1) * dir)));
+  const mark = (seq: number[]) => {
+    seq.forEach((given, i) => {
+      const succ = seq[(i + 1) % n];
+      matrix[given - 1][succ - 1] = true;
+    });
+  };
+  mark(traversal(1));
+  mark(traversal(-1));
+  return matrix;
+}
+
+/**
+ * The matrix a project's INTERVAL principle actually uses at run time -
+ * whichever `intervalMatrixSource` resolves to, with `invertMatrix` applied
+ * on top. The single source of truth consumed by the live preview, the
+ * graph view, and the dead-end-row warning in `validate.ts`; mirrors the
+ * order `structure_formula.ml`'s parser applies inversion in (before the
+ * matrix is ever inspected), so nothing downstream needs to know or care
+ * which source produced it. Returns `null` when there's nothing valid to
+ * show (an empty or invalid chord).
+ */
+export function effectiveIntervalMatrix(project: {
+  intervalMatrixSource: Project["intervalMatrixSource"];
+  octaveDivision: number;
+  invertMatrix: boolean;
+}): boolean[][] | null {
+  const base =
+    project.intervalMatrixSource.kind === "matrix"
+      ? project.intervalMatrixSource.rows
+      : deriveIntervalMatrixFromChord(project.intervalMatrixSource.chord, project.octaveDivision);
+  if (!base) return null;
+  return project.invertMatrix ? base.map((row) => row.map((cell) => !cell)) : base;
 }
 
 /**

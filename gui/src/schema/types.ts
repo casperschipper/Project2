@@ -129,6 +129,23 @@ export type Register = PitchRange;
 /** TRANSP-ROW (EMR-3 8.2, entry 20): how the row is transposed once exhausted. */
 export type Transposition = "none" | "alea" | "series" | "chromatic" | "serial";
 
+/** HARM (EMR-3 8.2, entry 15): which of HARMONY's two implemented "row
+ * principles" produces its relative-pitch stream (CHORD is out of scope -
+ * see harmony.md). */
+export type HarmonyPrinciple = "row" | "interval";
+
+/**
+ * How INTERVAL's transition matrix (EMR-3 8.2, entries 21-24) is authored -
+ * a direct dense grid the composer edits by hand, or one derived from a
+ * chord's own interval content (CHORD-INT, example 8-6). Either way the
+ * engine resolves it to the same square matrix at run time; the GUI only
+ * ever needs to *emit* whichever the composer is using, never compute the
+ * derived form itself.
+ */
+export type IntervalMatrixSource =
+  | { kind: "matrix"; rows: boolean[][] }
+  | { kind: "chord"; chord: string[] };
+
 /** Display string for one register entry, e.g. in the table/principle editors. */
 export function registerLabel(r: Register): string {
   if (r.kind === "percussion") return "percussion";
@@ -222,14 +239,20 @@ export type Project = {
   registerPrinciple: Principle;
   registerMode: NoteMode;
 
-  // --- harmony (ROW only - see harmony.md) -------------------------------
-  /**
-   * Each entry is either a relative pitch (1..octaveDivision, as a decimal
-   * string like the other time-value lists) or the literal token "p",
-   * marking an explicit percussion event - never a magic 0.
-   */
+  // --- harmony (ROW and INTERVAL - see harmony.md) -----------------------
+  harmonyPrinciple: HarmonyPrinciple;
+  /** ROW only. Each entry is either a relative pitch (1..octaveDivision, as
+   * a decimal string like the other time-value lists) or the literal token
+   * "p", marking an explicit percussion event - never a magic 0. */
   row: string[];
   transposition: Transposition;
+  /** INTERVAL only (EMR-3 8.2, entries 21-24). */
+  intervalMatrixSource: IntervalMatrixSource;
+  /** XCL-FRQ, entry 23: relative pitches (1..octaveDivision) the interval
+   * principle may never produce. */
+  forbiddenTones: string[];
+  /** BIT, entry 24: flip every cell of whichever matrix resulted above. */
+  invertMatrix: boolean;
 };
 
 // ---------------------------------------------------------------------

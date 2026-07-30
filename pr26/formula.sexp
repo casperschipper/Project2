@@ -16,7 +16,7 @@
   (performance-table
     (0 1 2))
 
-  (number-of-instrument-groups 3)
+  (number-of-instrument-groups 1)
   (instruments
     (instrument piano
       (chordsize 1 6)
@@ -40,22 +40,23 @@
     (0 1 2))
 
   (registers (
-    (pitch-range (low (octave 3) (pitch 1)) (high (octave 4) (pitch 12)))
-    (pitch-range (low (octave 4) (pitch 1)) (high (octave 5) (pitch 12)))
-    (pitch-range (low (octave 5) (pitch 1)) (high (octave 7) (pitch 12)))))
+    (pitch-range percussion)
+    (pitch-range (low (octave 1) (pitch 1)) (high (octave 3) (pitch 12)))
+    (pitch-range (low (octave 3) (pitch 1)) (high (octave 5) (pitch 12)))))
   (register-table
     (0 1 2)
-    (0)
+    (1 2)
     (0 2))
 
   (harmony
-    (row (1 8 2 5 7))
-    (transposition series))
+    (principle row)
+    (row (1 2 3 p 5 7 9 11 12 4 6 8 10))
+    (transposition none))
 
   (principles
-    (instrument (ensemble (sequence 0 0 0)) (order series))
+    (instrument (ensemble (sequence 0)) (order series))
     (entrydelay (ensemble series) (order (ratio ((0 1) (1 3) (2 1) (3 5) (4 2) (5 1) (6 1) (7 10)))))
-    (performance (ensemble (sequence 0)) (order (sequence (0 1 2))) (mode per-chord))
+    (performance (ensemble (sequence 0)) (order series) (mode per-chord))
     (dynamics (ensemble series) (order series) (mode per-chord))
     (duration (ensemble series) (order series) (relation (independent per-note)))
     (register (ensemble series) (order series) (mode per-chord)))

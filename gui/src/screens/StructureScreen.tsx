@@ -2,6 +2,7 @@ import { useStore } from "../state/store";
 import { Field, Section } from "../components/Field";
 import { HierarchyEditor } from "../components/ListEditors";
 import { PrincipleEditor } from "../components/PrincipleEditor";
+import { intervalMatrixWouldLoseData, resizeIntervalMatrix } from "../schema/defaults";
 import type { DurationRelation } from "../schema/types";
 
 /**
@@ -77,7 +78,30 @@ export function StructureScreen() {
             className="input--narrow"
             min={1}
             value={project.octaveDivision}
-            onChange={(e) => update((p) => (p.octaveDivision = Number(e.target.value)))}
+            onChange={(e) => {
+              const next = Number(e.target.value);
+              // The interval matrix always auto-resizes to match - but
+              // shrinking silently discards any checked cell outside the
+              // new size, so that specifically needs a confirmation first.
+              if (
+                project.intervalMatrixSource.kind === "matrix" &&
+                intervalMatrixWouldLoseData(project.intervalMatrixSource.rows, next)
+              ) {
+                const proceed = window.confirm(
+                  "Lowering the octave division shrinks the interval matrix, discarding any checked cells outside the new size. Continue?",
+                );
+                if (!proceed) return;
+              }
+              update((p) => {
+                p.octaveDivision = next;
+                if (p.intervalMatrixSource.kind === "matrix") {
+                  p.intervalMatrixSource = {
+                    kind: "matrix",
+                    rows: resizeIntervalMatrix(p.intervalMatrixSource.rows, next),
+                  };
+                }
+              });
+            }}
           />
         </Field>
       </Section>

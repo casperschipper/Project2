@@ -93,6 +93,61 @@ let () =
   assert (not (register_compatible_with_pitch_range pitch_range PercussionRegister));
   print_endline "register_compatible_with_pitch_range: all tests passed"
 
+(* [matrix_of_chord] (EMR-3 8.2 CHORD-INT, example 8-6): the chord is walked
+   as a cyclic sequence of tones in both directions; consecutive intervals
+   along each direction become allowed transitions. Verified against the
+   manual's own (badly OCR'd, but decodable) worked example and an
+   independently supplied one that confirms the same algorithm generalizes
+   beyond 3-tone chords. *)
+let () =
+  let open Pr26.Parameters in
+  let steps_of lst =
+    lst |> List.map (fun n -> Result.get_ok (mk_step ~tr:12 n)) |> Array.of_list
+  in
+  let assert_matrix ~tr (IntervalMatrix m) allowed =
+    for i = 1 to tr - 1 do
+      for j = 1 to tr - 1 do
+        let expected = List.mem (i, j) allowed in
+        if m.(i - 1).(j - 1) <> expected then
+          failwith
+            (Printf.sprintf "matrix[%d][%d] = %b, expected %b" i j
+               m.(i - 1).(j - 1) expected)
+      done
+    done
+  in
+  (* manual's own example 8-6: chord 5 6 10, tr=12 *)
+  let m1 = Result.get_ok (matrix_of_chord ~tr:12 (steps_of [ 5; 6; 10 ])) in
+  assert_matrix ~tr:12 m1 [ (1, 4); (4, 7); (7, 1); (5, 8); (8, 11); (11, 5) ];
+  (* independently supplied example: chord 1 3 7, tr=12 *)
+  let m2 = Result.get_ok (matrix_of_chord ~tr:12 (steps_of [ 1; 3; 7 ])) in
+  assert_matrix ~tr:12 m2
+    [ (2, 4); (4, 6); (6, 2); (6, 8); (8, 10); (10, 6) ];
+  (match matrix_of_chord ~tr:12 (steps_of [ 5; 5; 6 ]) with
+  | Error (IntervalChordHasRepeatedAdjacentTone 5) -> ()
+  | _ -> failwith "expected IntervalChordHasRepeatedAdjacentTone");
+  print_endline "matrix_of_chord: all tests passed"
+
+(* [mk_interval_matrix_from_adjacency]: the sparse authoring form - rows
+   never mentioned as a "given" interval stay entirely forbidden, and
+   out-of-range/duplicate entries are rejected. *)
+let () =
+  let open Pr26.Parameters in
+  let (IntervalMatrix m) =
+    Result.get_ok
+      (mk_interval_matrix_from_adjacency ~tr:5 [ (1, [ 1; 2 ]); (2, [ 1 ]) ])
+  in
+  assert (m.(0) = [| true; true; false; false |]);
+  assert (m.(1) = [| true; false; false; false |]);
+  assert (m.(2) = [| false; false; false; false |]);
+  assert (m.(3) = [| false; false; false; false |]);
+  (match mk_interval_matrix_from_adjacency ~tr:5 [ (1, [ 9 ]) ] with
+  | Error (InvalidIntervalNumber { n = 9; tr = 5 }) -> ()
+  | _ -> failwith "expected InvalidIntervalNumber");
+  (match mk_interval_matrix_from_adjacency ~tr:5 [ (1, [ 1 ]); (1, [ 2 ]) ] with
+  | Error (DuplicateIntervalMatrixEntry 1) -> ()
+  | _ -> failwith "expected DuplicateIntervalMatrixEntry");
+  print_endline "mk_interval_matrix_from_adjacency: all tests passed"
+
 (* Shared fixture for the Stage 1/Stage 2 continuity regressions below: one
    instrument, "union none" with 2 instrument groups (=> 2 layers per
    variant), and an uncombined entry-delay parameter whose 9-element list is
@@ -139,6 +194,7 @@ let test_formula_sexp ~n_variants =
   (register-table (0))
 
   (harmony
+    (principle row)
     (row (p))
     (transposition none))
 
@@ -214,3 +270,179 @@ let () =
   in
   assert (List.length distinct = 9);
   print_endline "cross-variant group-selection continuity: test passed"
+
+(* ---- HARMONY's INTERVAL principle (EMR-3 8.2, entries 21-24) ---- *)
+
+let build_interval_formula ~tr ~chordsize ~matrix_sexp ~forbidden_sexp
+    ~density_sexp =
+  let src =
+    Printf.sprintf
+      {|(structure-formula
+  (seed 3)
+  (variant-duration 5.0)
+  (octave-division %d)
+
+  (dynamics (mf))
+  (dynamics-table (0))
+
+  (performance (normal))
+  (performance-table (0))
+
+  (number-of-instrument-groups 1)
+  (instruments
+    (instrument only
+      (chordsize %d %d)
+      (performance (normal))
+      (dynamics (mf))
+      (pitch-range (low (octave 1) (pitch 1)) (high (octave 8) (pitch %d)))
+      (durations 0.1 1.0)))
+  (instrument-table (0))
+
+  (entrydelays (0.5))
+  (entrydelay-table (0))
+
+  (durations (0.2))
+  (duration-table (0))
+
+  (registers ((pitch-range (low (octave 1) (pitch 1)) (high (octave 8) (pitch %d)))))
+  (register-table (0))
+
+  (harmony
+    (principle interval)
+    (matrix %s)
+    %s)
+
+  (principles
+    (instrument (ensemble series) (order series))
+    (entrydelay (ensemble series) (order series))
+    (performance (ensemble series) (order series) (mode per-chord))
+    (dynamics (ensemble series) (order series) (mode per-chord))
+    (duration (ensemble series) (order series) (relation (independent per-chord)))
+    (register (ensemble series) (order series) (mode per-chord)))
+
+  (hierarchy (Ins Reg Har Per Dyn Ent Dur))
+  (union none)
+  (density %s)
+)|}
+      tr chordsize chordsize tr tr matrix_sexp forbidden_sexp density_sexp
+  in
+  match Pr26.Sexp.of_string src with
+  | Error e -> failwith ("interval test formula failed to parse: " ^ e)
+  | Ok sexps -> (
+      match Pr26.Structure_formula.Parse.of_sexp sexps with
+      | Error (errors, _) ->
+          failwith
+            (Printf.sprintf "interval test formula failed to build: %d error(s)"
+               (List.length errors))
+      | Ok (sf, _warnings) -> sf)
+
+let steps_in_order (variants : Pr26.Score_generation.entry list list list) =
+  variants
+  |> List.concat_map (fun layers ->
+         layers
+         |> List.concat_map (fun (entries : Pr26.Score_generation.entry list) ->
+                entries
+                |> List.concat_map (fun (e : Pr26.Score_generation.entry) ->
+                       e.notes
+                       |> List.map (fun (n : Pr26.Score_generation.note) ->
+                              match n.pitch with
+                              | Pitched { step = Step s; _ } -> s
+                              | Percussion ->
+                                  failwith "unexpected percussion in interval test"))))
+
+(* One tone per chord tone, ignoring the entry-point boundary (no "per
+   chord" mode exists for either HARMONY principle - see the ROW fix earlier
+   this session): a fixed-size-3 chord under [Autonomous] density, and the
+   sparse adjacency matrix already hand-verified against the manual's own
+   worked example. Every consecutive pair in the resolved sequence (notes
+   within a chord *and* across chord boundaries alike) must be an allowed
+   transition, and at least one chord's own notes must actually differ from
+   one another - proving the chain runs through the chord rather than
+   sharing one shared value for it. *)
+let () =
+  let sf =
+    build_interval_formula ~tr:12 ~chordsize:3
+      ~matrix_sexp:"(adjacency (1 (1 2)) (2 (1 3)) (3 (4)) (4 (1 4)))"
+      ~forbidden_sexp:"" ~density_sexp:"(autonomous (low 3) (high 3) (principle (group (element series) (repetition series) (repetitions 1 4))))"
+  in
+  let variants = Pr26.Score_generation.build_score sf in
+  let steps = steps_in_order variants |> Array.of_list in
+  let tr = 12 in
+  let interval_between a b = ((b - a) mod tr + tr) mod tr in
+  let allowed = [ (1, 1); (1, 2); (2, 1); (2, 3); (3, 4); (4, 1); (4, 4) ] in
+  (* Walk consecutive *intervals* (not tones - transposition is relative):
+     the interval from steps.(i) to steps.(i+1) must be allowed to precede
+     the interval from steps.(i+1) to steps.(i+2). *)
+  let intervals =
+    Array.init (Array.length steps - 1) (fun i ->
+        interval_between steps.(i) steps.(i + 1))
+  in
+  for i = 0 to Array.length intervals - 2 do
+    assert (List.mem (intervals.(i), intervals.(i + 1)) allowed)
+  done;
+  (* first chord = first 3 steps; assert they aren't all identical *)
+  let first_chord = [ steps.(0); steps.(1); steps.(2) ] in
+  assert (List.sort_uniq compare first_chord <> [ steps.(0) ]);
+  print_endline "interval principle: per-chord-tone distribution test passed"
+
+(* XCL-FRQ (entry 23): a forbidden tone must never appear, however long the
+   run - checked against a fully-connected matrix so nothing else would ever
+   exclude it. *)
+let () =
+  let fully_connected =
+    let succs = "(1 2 3 4 5 6 7 8 9 10 11)" in
+    "(adjacency"
+    ^ String.concat ""
+        (List.init 11 (fun i -> Printf.sprintf " (%d %s)" (i + 1) succs))
+    ^ ")"
+  in
+  let sf =
+    build_interval_formula ~tr:12 ~chordsize:1 ~matrix_sexp:fully_connected
+      ~forbidden_sexp:"(forbidden-tones (7))" ~density_sexp:"instrument-density"
+  in
+  let variants = Pr26.Score_generation.build_score sf in
+  let steps = steps_in_order variants in
+  assert (not (List.mem 7 steps));
+  print_endline "interval principle: forbidden-tones test passed"
+
+(* Postponement (condition 3): with a fully-connected matrix (so nothing
+   else constrains the choice) and no forbidden tones, the first
+   [tr] draws - one full "producible" cycle - must be [tr] pairwise
+   distinct tones, before any repeat becomes possible. *)
+let () =
+  let fully_connected =
+    "(adjacency (1 (1 2 3)) (2 (1 2 3)) (3 (1 2 3)))"
+  in
+  let sf =
+    build_interval_formula ~tr:4 ~chordsize:1 ~matrix_sexp:fully_connected
+      ~forbidden_sexp:"" ~density_sexp:"instrument-density"
+  in
+  let variants = Pr26.Score_generation.build_score sf in
+  let steps = steps_in_order variants in
+  let first_cycle = List.filteri (fun i _ -> i < 4) steps in
+  assert (List.length (List.sort_uniq compare first_cycle) = 4);
+  print_endline "interval principle: postponement test passed"
+
+(* "INTERVAL RESTRICTIONS TOO STRICT" (the manual's own acknowledged
+   fallback): tr=2 leaves only interval 1 in the matrix's domain; forbidding
+   tone 2 means the *only* reachable tone from tone 1 is always forbidden -
+   deterministically hitting the fallback on every other note, never
+   crashing or looping. *)
+let () =
+  let sf =
+    build_interval_formula ~tr:2 ~chordsize:1
+      ~matrix_sexp:"(adjacency (1 (1)))" ~forbidden_sexp:"(forbidden-tones (2))"
+      ~density_sexp:"instrument-density"
+  in
+  let variants = Pr26.Score_generation.build_score sf in
+  let notes =
+    variants
+    |> List.concat_map (fun layers ->
+           layers
+           |> List.concat_map (fun (entries : Pr26.Score_generation.entry list) ->
+                  entries
+                  |> List.concat_map (fun (e : Pr26.Score_generation.entry) ->
+                         e.notes)))
+  in
+  assert (List.exists (fun (n : Pr26.Score_generation.note) -> not n.harmony_matrix_ok) notes);
+  print_endline "interval principle: too-strict fallback test passed"

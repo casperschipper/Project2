@@ -7,6 +7,7 @@ import type {
   Table,
 } from "./types";
 import { HIERARCHY_ELEMS, HIERARCHY_LABELS } from "./types";
+import { effectiveIntervalMatrix } from "./defaults";
 
 /**
  * Client-side validation.
@@ -355,25 +356,150 @@ export function validateProject(p: Project): Diagnostic[] {
     out.push(diag("empty-list", "error", [key("register"), key("list")], "the register list is empty"));
   }
 
-  // ROW: each entry is either the literal "p" (percussion) or a relative
-  // pitch 1..tr - never a magic 0.
-  p.row.forEach((raw, i) => {
-    if (raw === "p") return;
-    const n = Number(raw);
-    if (!Number.isInteger(n) || n < 1 || n > p.octaveDivision) {
+  // HARMONY: ROW's own checks only apply when it's the active principle -
+  // the Ins-before-Har ordering check further below is unconditional, since
+  // both principles are always per-note.
+  if (p.harmonyPrinciple === "row") {
+    // ROW: each entry is either the literal "p" (percussion) or a relative
+    // pitch 1..tr - never a magic 0.
+    p.row.forEach((raw, i) => {
+      if (raw === "p") return;
+      const n = Number(raw);
+      if (!Number.isInteger(n) || n < 1 || n > p.octaveDivision) {
+        out.push(
+          diag(
+            "invalid-relative-pitch",
+            "error",
+            [key("harmony"), key("row"), idx(i)],
+            `"${raw}" is not a valid row entry - use a relative pitch 1..${p.octaveDivision}, or 'p' for percussion`,
+            { raw, tr: p.octaveDivision },
+          ),
+        );
+      }
+    });
+    if (p.row.length === 0) {
+      out.push(diag("empty-list", "error", [key("harmony"), key("row")], "the row is empty"));
+    }
+  } else {
+    // INTERVAL (EMR-3 8.2, entries 21-24). The matrix always auto-resizes
+    // with octaveDivision (see MatrixEditor/resizeIntervalMatrix), so a size
+    // mismatch should only ever arise from a hand-edited file - checked
+    // defensively anyway, mirroring the engine's own `InvalidIntervalMatrixSize`.
+    const tr = p.octaveDivision;
+    const matrixSize = Math.max(tr - 1, 0);
+
+    // Only meaningful once the matrix's own shape is known to be right - a
+    // malformed dense matrix already gets its own error below, and a row
+    // index wouldn't correspond to a real interval number anyway.
+    let matrixShapeOk = true;
+
+    if (p.intervalMatrixSource.kind === "matrix") {
+      const rows = p.intervalMatrixSource.rows;
+      matrixShapeOk =
+        rows.length === matrixSize && rows.every((row) => row.length === matrixSize);
+      if (!matrixShapeOk) {
+        out.push(
+          diag(
+            "invalid-interval-matrix-size",
+            "error",
+            [key("harmony"), key("matrix")],
+            `the interval matrix must be ${matrixSize} x ${matrixSize} (tones-per-octave minus one)`,
+            { expected: matrixSize },
+          ),
+        );
+      }
+    } else {
+      // CHORD-INT: the chord is a plain list of relative pitches (no "p" -
+      // an interval can't be computed to/from a percussion event).
+      p.intervalMatrixSource.chord.forEach((raw, i) => {
+        const n = Number(raw);
+        if (!Number.isInteger(n) || n < 1 || n > tr) {
+          out.push(
+            diag(
+              "invalid-relative-pitch",
+              "error",
+              [key("harmony"), key("chord"), idx(i)],
+              `"${raw}" is not a valid chord tone - use a relative pitch 1..${tr}`,
+              { raw, tr },
+            ),
+          );
+        }
+      });
+      if (p.intervalMatrixSource.chord.length === 0) {
+        out.push(
+          diag("empty-list", "error", [key("harmony"), key("chord")], "the chord is empty"),
+        );
+      } else {
+        const chord = p.intervalMatrixSource.chord;
+        const n = chord.length;
+        if (chord.some((v, i) => v === chord[(i + 1) % n])) {
+          out.push(
+            diag(
+              "interval-chord-has-repeated-adjacent-tone",
+              "error",
+              [key("harmony"), key("chord")],
+              "this chord repeats a tone between two tones that are next to each other (including wrapping from the last tone back to the first), so no interval can be computed between them",
+            ),
+          );
+        }
+      }
+    }
+
+    // Fig. 8-5's own well-formedness warning: a row with no allowed
+    // successor at all is a dead end - the runtime still copes (falling
+    // back to "INTERVAL RESTRICTIONS TOO STRICT"), but it's worth flagging.
+    // Checked against the *effective* matrix (chord-derived if applicable,
+    // then inverted if set) - the engine's own equivalent check runs against
+    // the already-inverted matrix too, so this has to match or the two could
+    // disagree on the exact same formula.
+    if (matrixShapeOk) {
+      const matrixFieldKey = p.intervalMatrixSource.kind === "matrix" ? "matrix" : "chord";
+      effectiveIntervalMatrix(p)?.forEach((row, i) => {
+        if (!row.some((cell) => cell)) {
+          out.push(
+            diag(
+              "interval-matrix-row-has-no-successor",
+              "warning",
+              [key("harmony"), key(matrixFieldKey), idx(i)],
+              `interval ${i + 1} has no allowed successor - reaching it will always fall back to "INTERVAL RESTRICTIONS TOO STRICT"`,
+              { interval: i + 1 },
+            ),
+          );
+        }
+      });
+    }
+
+    // XCL-FRQ, entry 23.
+    p.forbiddenTones.forEach((raw, i) => {
+      const n = Number(raw);
+      if (!Number.isInteger(n) || n < 1 || n > tr) {
+        out.push(
+          diag(
+            "invalid-relative-pitch",
+            "error",
+            [key("harmony"), key("forbiddenTones"), idx(i)],
+            `"${raw}" is not a valid forbidden tone - use a relative pitch 1..${tr}`,
+            { raw, tr },
+          ),
+        );
+      }
+    });
+    const distinctForbidden = new Set(
+      p.forbiddenTones
+        .map((raw) => Number(raw))
+        .filter((n) => Number.isInteger(n) && n >= 1 && n <= tr),
+    );
+    if (tr > 0 && distinctForbidden.size >= tr) {
       out.push(
         diag(
-          "invalid-relative-pitch",
+          "all-tones-forbidden",
           "error",
-          [key("harmony"), key("row"), idx(i)],
-          `"${raw}" is not a valid row entry - use a relative pitch 1..${p.octaveDivision}, or 'p' for percussion`,
-          { raw, tr: p.octaveDivision },
+          [key("harmony"), key("forbiddenTones")],
+          `every tone from 1 to ${tr} is forbidden, leaving nothing the interval principle could ever produce`,
+          { tr },
         ),
       );
     }
-  });
-  if (p.row.length === 0) {
-    out.push(diag("empty-list", "error", [key("harmony"), key("row")], "the row is empty"));
   }
 
   // --- tables ---------------------------------------------------------

@@ -20,6 +20,11 @@ type note = {
      percussion register paired with a real step, or a register the step
      didn't fit in) - see [resolve_pitch]. *)
   pitch_ok : bool;
+  (* [false] iff HARMONY's INTERVAL principle hit its "restrictions too
+     strict" fallback for this note (see [proto.harmony_matrix_ok]) - always
+     [true] under ROW. Kept separate from [pitch_ok] since it's a distinct
+     failure mode with its own comment. *)
+  harmony_matrix_ok : bool;
   (* [true] iff this note's instrument had already been picked earlier within
      the same autonomous-density chord - i.e. there weren't enough distinct
      instruments to "score" the chord without reusing one (EMR-3 8.16). *)
@@ -246,8 +251,16 @@ type proto = {
   register_ok : bool note_value option;
   harmony : row_value note_value option;
   (* [false] iff the row-stream search in [resolve_step]'s [Har] arm hit its
-     try cap without finding a value agreeing with [Reg] - see there. *)
+     try cap without finding a value agreeing with [Reg] - see there. Always
+     [true] for a percussion-forced tone. *)
   harmony_ok : bool note_value option;
+  (* INTERVAL-only: [false] iff [interval_next] hit its "INTERVAL
+     RESTRICTIONS TOO STRICT" fallback (the given interval's matrix row had
+     no allowed successor at all, or none whose tone wasn't forbidden) - a
+     distinct failure mode from [harmony_ok], kept separate so it gets its
+     own comment (see [note_problems]). Always [true] for ROW and for a
+     percussion-forced tone. *)
+  harmony_matrix_ok : bool note_value option;
   (* [true] iff, within the current autonomous-density chord, this proto's
      instrument had already been picked by an earlier entry in the same
      chord - set by [resolve_layer_autonomous]'s [fill_group] once the whole
@@ -269,12 +282,44 @@ let empty_proto =
     register_ok = None;
     harmony = None;
     harmony_ok = None;
+    harmony_matrix_ok = None;
   }
 
 (* States threaded through the hierarchy fold — one per parameter hierarchy
    controls. [instr_arr] is kept here so a step can constrain itself to
    values achievable by at least one instrument in this group, even before
    [Ins] has run. *)
+(* Running phase for HARMONY's INTERVAL principle (EMR-3 8.2, entries
+   21-24) - the second "row principle" alongside ROW's [row_value Seq.t].
+   The chain runs on *intervals*, not tones, so what's needed between draws
+   is the last tone *and* the last interval used to reach it - except right
+   at the start, where neither exists yet ([NotStarted]) or only the very
+   first (ALEA-chosen) tone does ([HaveTone], about to bootstrap the first
+   interval "where at least one 0 occurs in its line"). See
+   [interval_next]. *)
+type interval_phase =
+  | NotStarted
+  | HaveTone of step
+  | HaveTransition of step * int
+
+(* Which of HARMONY's two "row principles" is active, and its own running
+   state - a variant instead of two separate [continuing_state] fields since
+   only one is ever meaningful for a given formula (chosen once, at
+   formula-load time, never mixed). [tr]/[matrix]/[forbidden] are constant
+   for the whole run, kept alongside the evolving [phase]/[seen_since_reset]
+   so [resolve_step]'s [Har] case doesn't need extra parameters threaded in
+   just for this - mirrors how ROW's own [tr]/[transposition] are already
+   "baked into" its [Seq.t] rather than passed around separately. *)
+type har_state_t =
+  | HarRow of row_value Seq.t
+  | HarInterval of {
+      tr : int;
+      matrix : interval_matrix;
+      forbidden : step list;
+      phase : interval_phase;
+      seen_since_reset : Pitch_set.t;
+    }
+
 (* Threaded across every layer (and, once built, every variant - see
    [build_score]) rather than rebuilt fresh each time: EMR-3 6.2/8.2 are
    explicit that a selection cycle "passes over the layers and can only
@@ -286,9 +331,10 @@ type continuing_state = {
   dyn_state : Dynamic.t sel_state;
   dur_state : duration sel_state;
   reg_state : register sel_state;
-  (* Not a [sel_state]: ROW is its own bespoke, order-preserving stream
-     (EMR-3 8.2), never an Alea/Series/Tendency draw - see [row_stream]. *)
-  har_state : row_value Seq.t;
+  (* Not a [sel_state]: HARMONY's two "row principles" are each their own
+     bespoke, order-preserving stream (EMR-3 8.2), never an Alea/Series/
+     Tendency draw - see [row_stream] and [interval_next]. *)
+  har_state : har_state_t;
   instr_arr : instrument array;
   (* The array each state above was most recently built against. Compared
      against the next layer's own array by [continue_or_restart]: EMR-3
@@ -328,7 +374,22 @@ let continue_or_restart ~principle ~n ~last_arr ~arr state =
    below is empty, which no real (already-validated, non-empty) parameter
    array can ever equal - so [continue_or_restart] always takes the fresh
    branch for layer 0, exactly as if there were no prior state at all. *)
-let initial_continuing_state ~tr ~transposition row : continuing_state =
+let initial_har_state ~tr (harmony : harmony_principle) : har_state_t =
+  match harmony with
+  | HarmRow { row; transposition } ->
+      HarRow (row_stream ~tr ~transposition row)
+  | HarmInterval { matrix; forbidden_tones } ->
+      HarInterval
+        {
+          tr;
+          matrix;
+          forbidden = forbidden_tones;
+          phase = NotStarted;
+          seen_since_reset = Pitch_set.empty;
+        }
+
+let initial_continuing_state ~tr (harmony : harmony_principle) :
+    continuing_state =
   {
     instr_state = SAlea (alea_init [||]);
     ed_state = SAlea (alea_init [||]);
@@ -336,7 +397,7 @@ let initial_continuing_state ~tr ~transposition row : continuing_state =
     dyn_state = SAlea (alea_init [||]);
     dur_state = SAlea (alea_init [||]);
     reg_state = SAlea (alea_init [||]);
-    har_state = row_stream ~tr ~transposition row;
+    har_state = initial_har_state ~tr harmony;
     instr_arr = [||];
     instr_last_arr = [||];
     ed_last_arr = [||];
@@ -522,6 +583,105 @@ let har_pred_from proto =
           (fun r -> row_value_is_percussion h = register_is_percussion r)
           rs
 
+(* One step of the INTERVAL principle. [pred] is the external (register/
+   instrument percussion-agreement) predicate - condition (2); condition
+   (1) (forbidden tones, XCL-FRQ, never relaxed) and (3) (postponement -
+   prefer a tone not sounded since the last reset, which happens once every
+   producible tone has appeared at least once) are handled internally.
+   Relaxation order, per the manual ("ignored in reverse order"): try
+   (1+2+3) together; drop 3 (repeats allowed, still fine); drop 2 too
+   (register/instrument mismatch, flagged via the first returned [bool] -
+   mirrors ROW's own not-ok flag exactly); if even *that* leaves nothing
+   (the given interval's matrix row has no allowed column at all, or every
+   allowed column leads to a forbidden tone) - "INTERVAL RESTRICTIONS TOO
+   STRICT", flagged via the second returned [bool] and kept separate from
+   the first, since this is a distinct failure mode from a register/
+   instrument mismatch and gets its own comment (see [note_problems]). *)
+let interval_next ~tr ~(matrix : interval_matrix) ~forbidden ~pred ~phase
+    ~seen_since_reset :
+    row_value * bool * bool * interval_phase * Pitch_set.t =
+  let (IntervalMatrix m) = matrix in
+  let is_forbidden t = List.mem t forbidden in
+  let producible = tr - List.length (List.sort_uniq compare forbidden) in
+  let row_has_successor i = Array.exists (fun x -> x) m.(i - 1) in
+  let row_successors i =
+    List.init (tr - 1) (fun j -> j + 1)
+    |> List.filter (fun j -> m.(i - 1).(j - 1))
+  in
+  (* ALEA among whichever candidates [admits] lets through - not just the
+     first in list order, since more than one tone/interval may qualify. *)
+  let pick_from ~admits candidates =
+    match List.filter (fun (_, t) -> admits t) candidates with
+    | [] -> None
+    | valid -> Some (choose_lst valid)
+  in
+  let pick candidates =
+    let ok_full (Step s as t) =
+      (not (is_forbidden t))
+      && pred (Tone t)
+      && not (Pitch_set.mem s seen_since_reset)
+    in
+    let ok_no_postpone t = (not (is_forbidden t)) && pred (Tone t) in
+    let ok_forbidden_only t = not (is_forbidden t) in
+    match pick_from ~admits:ok_full candidates with
+    | Some (p, t) -> Some (p, t, true)
+    | None -> (
+        match pick_from ~admits:ok_no_postpone candidates with
+        | Some (p, t) -> Some (p, t, true)
+        | None -> (
+            match pick_from ~admits:ok_forbidden_only candidates with
+            | Some (p, t) -> Some (p, t, false)
+            | None -> None))
+  in
+  let remember (Step s) seen =
+    let seen' = Pitch_set.add s seen in
+    if Pitch_set.cardinal seen' >= producible then Pitch_set.empty else seen'
+  in
+  (* Degenerate matrix (or, for the very first tone, every tone forbidden) -
+     validated against at formula-load time, but the runtime still needs to
+     produce *something* rather than loop forever or crash. Picks interval 1
+     regardless of the matrix or forbidden-tones list, flagged not-ok via
+     [harmony_matrix_ok]. *)
+  let too_strict_fallback base = transpose_step ~tr 1 base in
+  match phase with
+  | NotStarted -> (
+      let candidates = List.init tr (fun i -> (i + 1, Step (i + 1))) in
+      match pick candidates with
+      | Some (_, t, ok) ->
+          let seen' = remember t seen_since_reset in
+          (Tone t, ok, true, HaveTone t, seen')
+      | None ->
+          let t = Step 1 in
+          let seen' = remember t seen_since_reset in
+          (Tone t, true, false, HaveTone t, seen'))
+  | HaveTone base -> (
+      let candidates =
+        List.init (tr - 1) (fun i -> i + 1)
+        |> List.filter row_has_successor
+        |> List.map (fun i -> (i, transpose_step ~tr i base))
+      in
+      match pick candidates with
+      | Some (i, t, ok) ->
+          let seen' = remember t seen_since_reset in
+          (Tone t, ok, true, HaveTransition (t, i), seen')
+      | None ->
+          let t = too_strict_fallback base in
+          let seen' = remember t seen_since_reset in
+          (Tone t, true, false, HaveTransition (t, 1), seen'))
+  | HaveTransition (base, given) -> (
+      let candidates =
+        row_successors given
+        |> List.map (fun i -> (i, transpose_step ~tr i base))
+      in
+      match pick candidates with
+      | Some (i, t, ok) ->
+          let seen' = remember t seen_since_reset in
+          (Tone t, ok, true, HaveTransition (t, i), seen')
+      | None ->
+          let t = too_strict_fallback base in
+          let seen' = remember t seen_since_reset in
+          (Tone t, true, false, HaveTransition (t, 1), seen'))
+
 (* One hierarchy element's worth of work for one entry. This is the single
    place that knows how [Ins]/[Ent]/[Dur]/[Per]/[Dyn] each condition on, or
    get conditioned by, one another - both density modes below just fold this
@@ -642,50 +802,94 @@ let resolve_step ~perf_mode ~dyn_mode ~dur_relation ~reg_mode
           ( PerNote (List.init n (fun _ -> RowPercussion)),
             PerNote (List.init n (fun _ -> true)) )
         in
-        (states, { proto with harmony = Some v; harmony_ok = Some oks })
+        ( states,
+          {
+            proto with
+            harmony = Some v;
+            harmony_ok = Some oks;
+            harmony_matrix_ok = Some oks;
+          } )
       else
         let pred = har_pred_from proto in
         let n = Option.value proto.nr_of_notes ~default:1 in
-        (* [row_stream] is infinite (it keeps re-transposing once the row is
-           used up), but every pass preserves which entries are
-           [RowPercussion] vs [Tone] - a composer-written row with no [Tone]
-           at all (or none at all matching a fixed non-percussion register)
-           would make [pred] unsatisfiable forever. Cap the search instead of
-           risking an infinite loop; beyond the cap, accept the next value
-           anyway and flag it not-ok, mirroring EMR-3's own "wrong pitch...
-           provided with a comment" fallback. *)
-        let max_tries = 10_000 in
-        let draw_one st =
-          let rec try_next tries st =
-            let hd, tl =
-              match Seq.uncons st with
-              | Some (hd, tl) -> (hd, tl)
-              | None -> assert false
+        (* EMR-3's ROW (entry 19) and INTERVAL (entries 21-24) have no "per
+           chord" call number between them: every note in a chord always
+           gets its own successive value, ignoring the entry-point boundary
+           entirely. (A genuine shared-per-chord harmony is a distinct,
+           not-yet-implemented CHORD principle, not a mode of either.) *)
+        (match states.har_state with
+        | HarRow seq ->
+            (* [row_stream] is infinite (it keeps re-transposing once the row
+               is used up), but every pass preserves which entries are
+               [RowPercussion] vs [Tone] - a composer-written row with no
+               [Tone] at all (or none at all matching a fixed non-percussion
+               register) would make [pred] unsatisfiable forever. Cap the
+               search instead of risking an infinite loop; beyond the cap,
+               accept the next value anyway and flag it not-ok, mirroring
+               EMR-3's own "wrong pitch... provided with a comment"
+               fallback. *)
+            let max_tries = 10_000 in
+            let draw_one st =
+              let rec try_next tries st =
+                let hd, tl =
+                  match Seq.uncons st with
+                  | Some (hd, tl) -> (hd, tl)
+                  | None -> assert false
+                in
+                if pred hd then (hd, tl, true)
+                else if tries >= max_tries then (hd, tl, false)
+                else try_next (tries + 1) tl
+              in
+              try_next 0 st
             in
-            if pred hd then (hd, tl, true)
-            else if tries >= max_tries then (hd, tl, false)
-            else try_next (tries + 1) tl
-          in
-          try_next 0 st
-        in
-        (* EMR-3's ROW (entry 19) has no "per chord" call number: every note
-           in a chord always gets its own successive row value, ignoring the
-           entry-point boundary entirely. (A genuine shared-per-chord harmony
-           is a distinct, not-yet-implemented CHORD principle, not a mode of
-           ROW.) *)
-        let v, oks, har_state' =
-          let vs, oks, st' =
-            List.init n (fun _ -> ())
-            |> List.fold_left
-                 (fun (acc, oks_acc, st) () ->
-                   let hd, tl, ok = draw_one st in
-                   (hd :: acc, ok :: oks_acc, tl))
-                 ([], [], states.har_state)
-          in
-          (PerNote (List.rev vs), PerNote (List.rev oks), st')
-        in
-        ( { states with har_state = har_state' },
-          { proto with harmony = Some v; harmony_ok = Some oks } )
+            let vs, oks, seq' =
+              List.init n (fun _ -> ())
+              |> List.fold_left
+                   (fun (acc, oks_acc, st) () ->
+                     let hd, tl, ok = draw_one st in
+                     (hd :: acc, ok :: oks_acc, tl))
+                   ([], [], seq)
+            in
+            let v = PerNote (List.rev vs) and oks = PerNote (List.rev oks) in
+            ( { states with har_state = HarRow seq' },
+              {
+                proto with
+                harmony = Some v;
+                harmony_ok = Some oks;
+                harmony_matrix_ok =
+                  Some (PerNote (List.init n (fun _ -> true)));
+              } )
+        | HarInterval { tr; matrix; forbidden; phase; seen_since_reset } ->
+            let vs, oks, matrix_oks, phase', seen' =
+              List.init n (fun _ -> ())
+              |> List.fold_left
+                   (fun (acc, oks_acc, matrix_oks_acc, phase, seen) () ->
+                     let v, ok, matrix_ok, phase', seen' =
+                       interval_next ~tr ~matrix ~forbidden ~pred ~phase
+                         ~seen_since_reset:seen
+                     in
+                     ( v :: acc,
+                       ok :: oks_acc,
+                       matrix_ok :: matrix_oks_acc,
+                       phase',
+                       seen' ))
+                   ([], [], [], phase, seen_since_reset)
+            in
+            let v = PerNote (List.rev vs)
+            and oks = PerNote (List.rev oks)
+            and matrix_oks = PerNote (List.rev matrix_oks) in
+            ( {
+                states with
+                har_state =
+                  HarInterval
+                    { tr; matrix; forbidden; phase = phase'; seen_since_reset = seen' };
+              },
+              {
+                proto with
+                harmony = Some v;
+                harmony_ok = Some oks;
+                harmony_matrix_ok = Some matrix_oks;
+              } ))
 
 let resolve_entry ?(start = empty_proto) ~hierarchy ~perf_mode ~dyn_mode
     ~dur_relation ~reg_mode states =
@@ -1228,6 +1432,9 @@ let notes_of_proto proto : note list =
   let har_ok =
     match proto.harmony_ok with Some tv -> tv | None -> assert false
   in
+  let har_matrix_ok =
+    match proto.harmony_matrix_ok with Some tv -> tv | None -> assert false
+  in
   List.init n (fun i ->
       let pitch, agree_ok = resolve_pitch (value_at reg i) (value_at har i) in
       let pitch_ok = agree_ok && value_at reg_ok i && value_at har_ok i in
@@ -1240,6 +1447,7 @@ let notes_of_proto proto : note list =
         duration_ok = value_at dur_ok i;
         pitch;
         pitch_ok;
+        harmony_matrix_ok = value_at har_matrix_ok i;
         instrument_repeated = proto.instrument_repeated;
       })
 
@@ -1527,10 +1735,7 @@ let build_score cfg =
     ensemble_for ~label:"register" ~to_string:reg_to_string cfg.reg_list
       cfg.register_table cfg.register_combination
   in
-  let continuing0 =
-    initial_continuing_state ~tr:cfg.tr ~transposition:cfg.transposition
-      cfg.row
-  in
+  let continuing0 = initial_continuing_state ~tr:cfg.tr cfg.harmony in
   (* One [generate_score_hierarchical] call per variant, [continuing]
      threaded from the last variant into the next exactly as it already
      threads from layer to layer within one - the fresh start EMR-3 grants
@@ -1641,8 +1846,12 @@ let note_problems constraint_map (note : note) =
               (pitch_to_string note.pitch);
           ]
       in
+      let interval_matrix_problem =
+        if note.harmony_matrix_ok then []
+        else [ "INTERVAL RESTRICTIONS TOO STRICT" ]
+      in
       perf_problem @ dyn_problem @ dur_problem @ dur_relation_problem
-      @ pitch_problem
+      @ pitch_problem @ interval_matrix_problem
 
 (* Aligns rows of already-stringified cells by padding each column to its
    widest value. Knows nothing about score events, so it can't drift out of

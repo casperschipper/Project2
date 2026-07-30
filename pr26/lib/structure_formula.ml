@@ -79,15 +79,14 @@ type structure_formula = {
   register_principle : selection_principle;
   register_combination : combination;
   register_mode : note_mode;
-  (* HARMONY (EMR-3 8.2): ROW only (CHORD/INTERVAL are out of scope, see
-     harmony.md) - a fixed sequence of relative pitches, transposed as a
-     whole once exhausted; no ensemble machinery, since it's its own
-     bespoke stream rather than an Alea/Series/Tendency draw. Per entry 19,
-     ROW always distributes one value per chord tone - there is no "per
-     chord" mode for it, unlike performance/dynamics/duration/register. *)
-  row : row;
+  (* HARMONY (EMR-3 8.2): ROW and INTERVAL, its two "row principles" (CHORD
+     is out of scope, see harmony.md - it becomes main parameter and takes
+     over vertical density itself, a fundamentally different mechanism).
+     Neither has ensemble machinery - each is its own bespoke stream rather
+     than an Alea/Series/Tendency draw - and neither has a "per chord" mode:
+     both always distribute one value per chord tone. *)
+  harmony : harmony_principle;
   tr : int;
-  transposition : transposition;
   union : union;
   density : vertical_density;
   hierarchy : hierarchy;
@@ -146,7 +145,7 @@ let mk_structure_formula ~seed ~variant_duration ~n_variants ~instr_list
     ~entrydelay_principle ~performance_principle ~performance_combination
     ~performance_mode ~dynamics_principle ~dynamics_combination ~dynamics_mode
     ~reg_list ~register_table ~register_principle ~register_combination
-    ~register_mode ~row ~tr ~transposition ~union ~hierarchy
+    ~register_mode ~harmony ~tr ~union ~hierarchy
     ~density ~dur_list ~dur_table ~duration_combination
     ~duration_relation_mode ~duration_principle =
   let hierarchy_errors =
@@ -271,10 +270,26 @@ let mk_structure_formula ~seed ~variant_duration ~n_variants ~instr_list
        count - resolved first. *)
     @ needs_ins_first_always [ Key KHarmony ] Har
   in
+  (* Fig. 8-5's own well-formedness caution: a row with no allowed successor
+     at all is a genuine dead end - the composer's to avoid, not something
+     the runtime repairs (though it degrades gracefully if reached anyway -
+     see [Score_generation]'s "INTERVAL RESTRICTIONS TOO STRICT"). *)
+  let interval_matrix_warnings =
+    match harmony with
+    | HarmInterval { matrix; _ } ->
+        interval_matrix_dead_end_rows matrix
+        |> List.map (fun i ->
+               {
+                 location = [ Key KHarmony; Key KMatrix; Index (i - 1) ];
+                 severity = Severity.Warning;
+                 problem = IntervalMatrixRowHasNoSuccessor i;
+               })
+    | HarmRow _ -> []
+  in
   let all_diags =
     hierarchy_errors @ combination_errors @ performance_membership_errors
     @ dynamics_membership_errors @ ratio_coverage_errors
-    @ per_note_ordering_errors
+    @ per_note_ordering_errors @ interval_matrix_warnings
   in
   match
     List.partition
@@ -311,9 +326,8 @@ let mk_structure_formula ~seed ~variant_duration ~n_variants ~instr_list
             register_principle;
             register_combination;
             register_mode;
-            row;
+            harmony;
             tr;
-            transposition;
             union;
             density;
             hierarchy;
@@ -413,6 +427,19 @@ module Parse = struct
     | Some (Sexp.List (_ :: rest)) -> Ok rest
     | Some _ -> fail (Printf.sprintf "malformed field %S" name)
     | None -> fail (Printf.sprintf "missing field %S" name)
+
+  (* Like [require_field], but absence isn't an error - [default] is used
+     instead, matching how e.g. n-variants defaults for formulas written
+     before a field existed. *)
+  let optional_field name ~default items parse =
+    match
+      List.find_opt
+        (function Sexp.List (Sexp.Atom k :: _) -> k = name | _ -> false)
+        items
+    with
+    | None -> Ok default
+    | Some (Sexp.List (_ :: rest)) -> parse rest
+    | Some _ -> fail (Printf.sprintf "malformed field %S" name)
 
   let parse_table items =
     let parse_row = function
@@ -665,6 +692,41 @@ module Parse = struct
         let* n = require_int a in
         Ok (Some n)
     | Sexp.List _ -> fail "row entry expects a relative pitch or 'p'"
+
+  (* HARMONY's INTERVAL principle (EMR-3 8.2, entries 21-24): the matrix can
+     be authored three ways - a dense grid of 0/1 rows, derived from a given
+     chord's own interval content (CHORD-INT), or a sparse adjacency list
+     (given interval -> its allowed successors, not in the manual but far
+     more practical to hand-write than a mostly-forbidden dense grid). *)
+  let parse_interval_matrix ~tr args =
+    match args with
+    | [ Sexp.List (Sexp.Atom "rows" :: [ Sexp.List row_sexps ]) ] ->
+        let parse_bool_row = function
+          | Sexp.List cells ->
+              let* ints = cells |> List.map require_int |> sequence in
+              Ok (Array.of_list (List.map (fun n -> n <> 0) ints))
+          | Sexp.Atom _ -> fail "expected list for matrix row, got atom"
+        in
+        let* rows = row_sexps |> List.map parse_bool_row |> sequence in
+        lift (mk_interval_matrix ~tr (Array.of_list rows))
+    | [ Sexp.List (Sexp.Atom "chord" :: [ Sexp.List tone_sexps ]) ] ->
+        let* ns = tone_sexps |> List.map require_int |> sequence in
+        let* steps = ns |> List.map (fun n -> lift (mk_step ~tr n)) |> sequence in
+        lift (matrix_of_chord ~tr (Array.of_list steps))
+    | [ Sexp.List (Sexp.Atom "adjacency" :: entries) ] ->
+        let parse_entry = function
+          | Sexp.List [ (Sexp.Atom _ as g); Sexp.List succs ] ->
+              let* given = require_int g in
+              let* succ_ints = succs |> List.map require_int |> sequence in
+              Ok (given, succ_ints)
+          | _ -> fail "adjacency entry expects (given (succ ...))"
+        in
+        let* entries = entries |> List.map parse_entry |> sequence in
+        lift (mk_interval_matrix_from_adjacency ~tr entries)
+    | _ ->
+        fail
+          "matrix expects one of: (rows (...)), (chord (...)), (adjacency \
+           (given (succ ...)) ...)"
 
   let parse_instrument i sexp =
     match sexp with
@@ -939,34 +1001,78 @@ module Parse = struct
         (let* args = require_field "register-table" items in
          parse_table args)
     in
-    let* row, transposition =
+    let* harmony =
       let* args = in_loc [ Key KHarmony ] (require_field "harmony" items) in
-      let* row =
-        in_loc
-          [ Key KHarmony; Key KRow ]
-          (let* row_args = require_field "row" args in
-           let* items =
-             match row_args with
-             | [ Sexp.List inner ] -> inner |> List.map parse_row_item |> sequence
-             | _ -> fail "row expects (row (...))"
-           in
-           lift (mk_row ~tr items))
+      let* principle_name =
+        in_loc [ Key KHarmony; Key KPrinciple ]
+          (let* p_args = require_field "principle" args in
+           match p_args with
+           | [ Sexp.Atom s ] -> Ok s
+           | _ -> fail "principle expects one of: row, interval")
       in
-      let* transposition =
-        in_loc
-          [ Key KHarmony; Key KTransposition ]
-          (let* t_args = require_field "transposition" args in
-           match t_args with
-           | [ Sexp.Atom s ] -> lift (transposition_of_string s)
-           | _ ->
-               fail
-                 "transposition expects one of: none, alea, series, \
-                  chromatic, serial")
-      in
-      (* ROW always distributes per chord tone - see the [note_mode] comment
-         on [structure_formula.row] - so a lingering (mode ...) field from an
-         older file is simply ignored rather than parsed. *)
-      Ok (row, transposition)
+      match principle_name with
+      | "row" ->
+          let* row =
+            in_loc
+              [ Key KHarmony; Key KRow ]
+              (let* row_args = require_field "row" args in
+               let* items =
+                 match row_args with
+                 | [ Sexp.List inner ] ->
+                     inner |> List.map parse_row_item |> sequence
+                 | _ -> fail "row expects (row (...))"
+               in
+               lift (mk_row ~tr items))
+          in
+          let* transposition =
+            in_loc
+              [ Key KHarmony; Key KTransposition ]
+              (let* t_args = require_field "transposition" args in
+               match t_args with
+               | [ Sexp.Atom s ] -> lift (transposition_of_string s)
+               | _ ->
+                   fail
+                     "transposition expects one of: none, alea, series, \
+                      chromatic, serial")
+          in
+          (* ROW always distributes per chord tone, no "per chord" mode of
+             its own - a lingering (mode ...) field from an older file is
+             simply ignored rather than parsed. *)
+          Ok (HarmRow { row; transposition })
+      | "interval" ->
+          let* matrix =
+            in_loc [ Key KHarmony; Key KMatrix ]
+              (let* m_args = require_field "matrix" args in
+               parse_interval_matrix ~tr m_args)
+          in
+          let* forbidden_ints =
+            in_loc [ Key KHarmony; Key KForbiddenTones ]
+              (optional_field "forbidden-tones" ~default:[] args (function
+                | [ Sexp.List inner ] ->
+                    inner |> List.map require_int |> sequence
+                | [] -> Ok []
+                | _ -> fail "forbidden-tones expects (forbidden-tones (...))"))
+          in
+          let* forbidden_tones =
+            in_loc [ Key KHarmony; Key KForbiddenTones ]
+              (let* steps =
+                 forbidden_ints
+                 |> List.map (fun n -> lift (mk_step ~tr n))
+                 |> sequence
+               in
+               lift (mk_forbidden_tones ~tr steps))
+          in
+          let* invert =
+            in_loc [ Key KHarmony; Key KInvertMatrix ]
+              (optional_field "invert-matrix" ~default:false args (function
+                | [ Sexp.Atom "yes" ] -> Ok true
+                | [ Sexp.Atom "no" ] -> Ok false
+                | _ -> fail "invert-matrix expects yes or no"))
+          in
+          let matrix = if invert then invert_matrix matrix else matrix in
+          Ok (HarmInterval { matrix; forbidden_tones })
+      | s ->
+          in_loc [ Key KHarmony; Key KPrinciple ] (lift (Error (IntervalPrincipleName s)))
     in
     let instr_names =
       let (ParameterList instr_arr) = instr_list in
@@ -1124,7 +1230,7 @@ module Parse = struct
       ~performance_principle ~performance_combination ~performance_mode
       ~dynamics_principle ~dynamics_combination ~dynamics_mode ~reg_list
       ~register_table ~register_principle ~register_combination
-      ~register_mode ~row ~tr ~transposition ~union ~density
+      ~register_mode ~harmony ~tr ~union ~density
       ~hierarchy ~dur_list ~dur_table ~duration_combination
       ~duration_relation_mode ~duration_principle
 

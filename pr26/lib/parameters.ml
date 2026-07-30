@@ -56,6 +56,13 @@ type problem =
   | InvalidRelativePitch of { n : int; tr : int }
   | InvalidTranspositionName of string
   | InvalidNVariants of int
+  | InvalidIntervalMatrixSize of { rows : int; cols : int; expected : int }
+  | IntervalChordHasRepeatedAdjacentTone of int
+  | InvalidIntervalNumber of { n : int; tr : int }
+  | DuplicateIntervalMatrixEntry of int
+  | AllTonesForbidden of int
+  | IntervalPrincipleName of string
+  | IntervalMatrixRowHasNoSuccessor of int
 
 (* The hierarchy must be a permutation of [all_hierarchy_elems]: every
    parameter controls exactly one resolution step, so a missing one would
@@ -121,6 +128,33 @@ let display_problem p =
         s
   | InvalidNVariants n ->
       Printf.sprintf "number of variants must be at least 1, got %d" n
+  | InvalidIntervalMatrixSize { rows; cols; expected } ->
+      Printf.sprintf
+        "the interval matrix must be %d x %d (tones-per-octave minus one), \
+         got %d row(s) of %d"
+        expected expected rows cols
+  | IntervalChordHasRepeatedAdjacentTone n ->
+      Printf.sprintf
+        "this chord repeats tone %d between two tones that are next to each \
+         other (including wrapping from the last tone back to the first), \
+         so no interval can be computed between them"
+        n
+  | InvalidIntervalNumber { n; tr } ->
+      Printf.sprintf "interval %d is out of range 1..%d" n (tr - 1)
+  | DuplicateIntervalMatrixEntry n ->
+      Printf.sprintf "interval %d is given more than once in the adjacency list" n
+  | AllTonesForbidden tr ->
+      Printf.sprintf
+        "every tone from 1 to %d is forbidden, leaving nothing the interval \
+         principle could ever produce"
+        tr
+  | IntervalPrincipleName s ->
+      Printf.sprintf "%S is not a valid harmony principle (expected row or interval)" s
+  | IntervalMatrixRowHasNoSuccessor i ->
+      Printf.sprintf
+        "interval %d has no allowed successor - reaching it will always \
+         fall back to \"INTERVAL RESTRICTIONS TOO STRICT\""
+        i
 
 (* Closed vocabulary of path components identifying where in a
    structure_formula (and, one level down, in the composer's sexp) a
@@ -161,6 +195,12 @@ type key =
   | KTr
   | KTransposition
   | KNVariants
+  | KMatrix
+  | KRows
+  | KChord
+  | KAdjacency
+  | KForbiddenTones
+  | KInvertMatrix
 
 type segment = Key of key | Index of int
 type location = segment list
@@ -214,6 +254,12 @@ let key_to_string = function
   | KTr -> "tr"
   | KTransposition -> "transposition"
   | KNVariants -> "n-variants"
+  | KMatrix -> "matrix"
+  | KRows -> "rows"
+  | KChord -> "chord"
+  | KAdjacency -> "adjacency"
+  | KForbiddenTones -> "forbidden-tones"
+  | KInvertMatrix -> "invert-matrix"
 
 let segment_to_string = function
   | Key k -> key_to_string k
@@ -284,6 +330,14 @@ let problem_id = function
   | InvalidRelativePitch _ -> "invalid-relative-pitch"
   | InvalidTranspositionName _ -> "invalid-transposition-name"
   | InvalidNVariants _ -> "invalid-n-variants"
+  | InvalidIntervalMatrixSize _ -> "invalid-interval-matrix-size"
+  | IntervalChordHasRepeatedAdjacentTone _ ->
+      "interval-chord-has-repeated-adjacent-tone"
+  | InvalidIntervalNumber _ -> "invalid-interval-number"
+  | DuplicateIntervalMatrixEntry _ -> "duplicate-interval-matrix-entry"
+  | AllTonesForbidden _ -> "all-tones-forbidden"
+  | IntervalPrincipleName _ -> "invalid-harmony-principle-name"
+  | IntervalMatrixRowHasNoSuccessor _ -> "interval-matrix-row-has-no-successor"
 
 (* Minimal JSON writing. Only what the diagnostic shape needs - there is no
    json library in this project's dependencies and pulling one in for three
@@ -345,6 +399,21 @@ let json_of_problem_data p =
       json_obj [ ("n", string_of_int n); ("tr", string_of_int tr) ]
   | InvalidTranspositionName s -> json_obj [ ("name", json_string s) ]
   | InvalidNVariants n -> json_obj [ ("n", string_of_int n) ]
+  | InvalidIntervalMatrixSize { rows; cols; expected } ->
+      json_obj
+        [
+          ("rows", string_of_int rows);
+          ("cols", string_of_int cols);
+          ("expected", string_of_int expected);
+        ]
+  | IntervalChordHasRepeatedAdjacentTone n ->
+      json_obj [ ("n", string_of_int n) ]
+  | InvalidIntervalNumber { n; tr } ->
+      json_obj [ ("n", string_of_int n); ("tr", string_of_int tr) ]
+  | DuplicateIntervalMatrixEntry n -> json_obj [ ("n", string_of_int n) ]
+  | AllTonesForbidden tr -> json_obj [ ("tr", string_of_int tr) ]
+  | IntervalPrincipleName s -> json_obj [ ("name", json_string s) ]
+  | IntervalMatrixRowHasNoSuccessor i -> json_obj [ ("interval", string_of_int i) ]
   | InvalidInstrumentName | InvalidChordSize | InvalidDensity _
   | InvalidPitchRange | InvalidRegister | DuplicateHierarchy
   | InstrumentDensityRequiresInsFirst | InvalidDurationRange _
@@ -1123,6 +1192,123 @@ let row_stream ~tr ~transposition (Row elements as row) : row_value Seq.t =
         Seq.append pass (expand ((cumulative + k) mod tr) rest) ()
   in
   expand 0 intervals
+
+(* INTERVAL principle (EMR-3 8.2, entries 21-24): the second "row principle"
+   alongside ROW above, producing the same kind of [row_value] stream from a
+   different mechanism - a Markov chain walked over intervals rather than a
+   fixed, transposed-as-a-whole sequence. [matrix.(i-1).(j-1) = true] means
+   interval [j] (1..tr-1) may immediately follow interval [i]. Represented
+   densely regardless of how the composer authored it - see
+   [mk_interval_matrix]/[matrix_of_chord]/[mk_interval_matrix_from_adjacency]
+   below, three different ways to arrive at the same value. *)
+type interval_matrix = IntervalMatrix of bool array array
+
+let mk_interval_matrix ~tr (rows : bool array array) =
+  let expected = tr - 1 in
+  let rows_n = Array.length rows in
+  let cols_ok = Array.for_all (fun row -> Array.length row = expected) rows in
+  if rows_n <> expected || not cols_ok then
+    Error
+      (InvalidIntervalMatrixSize
+         {
+           rows = rows_n;
+           cols = (if rows_n = 0 then 0 else Array.length rows.(0));
+           expected;
+         })
+  else Ok (IntervalMatrix rows)
+
+(* EMR-3 8.2 CHORD-INT / example 8-6: derive a matrix from a chord's own
+   interval content instead of hand-authoring it. The chord is a cyclic
+   sequence of tones, walked in both directions; within each direction,
+   every *consecutive pair of intervals* (cyclically) becomes an allowed
+   transition. Verified against both the manual's own worked example (chord
+   5 6 10, tr=12) and an independently supplied one (chord 1 3 7, tr=12) -
+   see test/test_pr26.ml. *)
+let matrix_of_chord ~tr (steps : step array) =
+  let n = Array.length steps in
+  let step_at k =
+    let (Step v) = steps.(((k mod n) + n) mod n) in
+    v
+  in
+  let interval a b = ((b - a) mod tr + tr) mod tr in
+  let traversal dir =
+    Array.init n (fun k ->
+        interval (step_at (k * dir)) (step_at ((k + 1) * dir)))
+  in
+  let repeated_adjacent =
+    List.init n (fun i -> (step_at i, step_at (i + 1)))
+    |> List.find_opt (fun (a, b) -> a = b)
+  in
+  match repeated_adjacent with
+  | Some (a, _) -> Error (IntervalChordHasRepeatedAdjacentTone a)
+  | None ->
+      let m = Array.make_matrix (tr - 1) (tr - 1) false in
+      let mark seq =
+        Array.iteri
+          (fun i given -> m.(given - 1).(seq.((i + 1) mod n) - 1) <- true)
+          seq
+      in
+      mark (traversal 1);
+      mark (traversal (-1));
+      Ok (IntervalMatrix m)
+
+(* A sparse alternative to writing out the full dense matrix by hand: only
+   list, for each [given] interval that has any allowed successor at all,
+   the [succ] intervals allowed to follow it. Any interval never mentioned
+   as a [given] simply stays a fully-forbidden row (matching the shape of
+   Fig. 8-5's own example - mostly forbidden, a few allowed successors per
+   row - much more practical to write this way than as a dense grid). *)
+let mk_interval_matrix_from_adjacency ~tr (entries : (int * int list) list) =
+  let max_i = tr - 1 in
+  let in_range n = n >= 1 && n <= max_i in
+  let all_values =
+    entries |> List.concat_map (fun (given, succs) -> given :: succs)
+  in
+  match List.find_opt (fun n -> not (in_range n)) all_values with
+  | Some n -> Error (InvalidIntervalNumber { n; tr })
+  | None -> (
+      let givens = List.map fst entries in
+      match
+        List.find_opt
+          (fun g -> List.length (List.filter (( = ) g) givens) > 1)
+          givens
+      with
+      | Some g -> Error (DuplicateIntervalMatrixEntry g)
+      | None ->
+          let m = Array.make_matrix max_i max_i false in
+          List.iter
+            (fun (given, succs) ->
+              List.iter (fun succ -> m.(given - 1).(succ - 1) <- true) succs)
+            entries;
+          Ok (IntervalMatrix m))
+
+(* BIT, entry 24: flip every cell of whichever matrix resulted above. *)
+let invert_matrix (IntervalMatrix m) =
+  IntervalMatrix (Array.map (Array.map not) m)
+
+(* Fig. 8-5's own well-formedness caution: a row with no allowed successor at
+   all is a genuine dead end (the composer's responsibility to avoid) -
+   surfaced as a warning, not an error, at formula-load time (see
+   structure_formula.ml); the runtime (score_generation.ml) still degrades
+   gracefully ("INTERVAL RESTRICTIONS TOO STRICT") if one is reached anyway. *)
+let interval_matrix_dead_end_rows (IntervalMatrix m) =
+  m |> Array.to_list
+  |> List.mapi (fun i row -> (i + 1, row))
+  |> List.filter (fun (_, row) -> not (Array.exists (fun x -> x) row))
+  |> List.map fst
+
+(* XCL-FRQ, entry 23: tones the interval principle may never produce, at
+   any point - not even as its very first (ALEA-chosen) tone. *)
+let mk_forbidden_tones ~tr (steps : step list) =
+  let distinct = List.sort_uniq compare (List.map step_to_int steps) in
+  if List.length distinct >= tr then Error (AllTonesForbidden tr) else Ok steps
+
+(* HARM, entry 15: which of the two implemented "row principles" produces
+   HARMONY's relative-pitch stream (CHORD, entry 15 call 1, is out of scope -
+   see harmony.md). *)
+type harmony_principle =
+  | HarmRow of { row : row; transposition : transposition }
+  | HarmInterval of { matrix : interval_matrix; forbidden_tones : step list }
 
 let percussion_string = "*"
 

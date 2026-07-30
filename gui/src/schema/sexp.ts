@@ -130,6 +130,40 @@ function emitPitchRange(pr: PitchRange): string {
   return `(pitch-range ${bound("low", pr.low)} ${bound("high", pr.high)})`;
 }
 
+/**
+ * HARMONY (EMR-3 8.2): ROW and INTERVAL. The GUI's own emitter only ever
+ * needs to write `(matrix (rows ...))` (dense) or `(matrix (chord ...))` -
+ * whichever the composer is actually editing - since the engine computes the
+ * derived form (and any inversion) at run time; `(matrix (adjacency ...))`
+ * is a hand-written-file convenience the parser accepts but this emitter
+ * never produces.
+ */
+function emitHarmony(p: Project): string {
+  if (p.harmonyPrinciple === "row") {
+    return (
+      `  (harmony\n` +
+      `    (principle row)\n` +
+      `    (row (${p.row.join(" ")}))\n` +
+      `    (transposition ${p.transposition}))`
+    );
+  }
+  const matrixSexp =
+    p.intervalMatrixSource.kind === "matrix"
+      ? `(rows (\n` +
+        p.intervalMatrixSource.rows
+          .map((row) => `        (${row.map((c) => (c ? 1 : 0)).join(" ")})`)
+          .join("\n") +
+        `\n      ))`
+      : `(chord (${p.intervalMatrixSource.chord.join(" ")}))`;
+  return (
+    `  (harmony\n` +
+    `    (principle interval)\n` +
+    `    (matrix ${matrixSexp})\n` +
+    `    (forbidden-tones (${p.forbiddenTones.join(" ")}))\n` +
+    `    (invert-matrix ${p.invertMatrix ? "yes" : "no"}))`
+  );
+}
+
 /** Trim trailing zeros but always keep a decimal point, as OCaml expects. */
 function fmt(n: number): string {
   return Number.isInteger(n) ? `${n}.0` : String(n);
@@ -183,11 +217,7 @@ export function toSexp(p: Project): string {
   parts.push(emitTable("register-table", p.registerTable));
   parts.push("");
 
-  parts.push(
-    `  (harmony\n` +
-      `    (row (${p.row.join(" ")}))\n` +
-      `    (transposition ${p.transposition}))`,
-  );
+  parts.push(emitHarmony(p));
   parts.push("");
 
   // The principles block. Note the per-parameter asymmetry: instrument takes
