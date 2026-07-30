@@ -81,7 +81,8 @@ let display_problem p =
         "instrument table has %d row(s) but this table has %d; sizes must \
          match for 'combination' to align rows 1:1"
         instrument_rows other_rows
-  | InvalidDensity DensityTooSmall -> "invalid density definition: low must be at least 1"
+  | InvalidDensity DensityTooSmall ->
+      "invalid density definition: low must be at least 1"
   | InvalidDensity DensityMaxBelowMin ->
       "invalid density definition: max should not be higher than min"
   | UnknownPerformance s -> "unknown performance mode: " ^ s
@@ -98,7 +99,8 @@ let display_problem p =
   | NegativeDuration x ->
       "duration is " ^ string_of_float x ^ ", but may not be negative"
   | InvalidDurationRange DurationRangeNegative -> "duration may not be negative"
-  | InvalidDurationRange DurationRangeMaxBelowMin -> "min duration exceeds max duration"
+  | InvalidDurationRange DurationRangeMaxBelowMin ->
+      "min duration exceeds max duration"
   | ParseError msg -> "parse error: " ^ msg
   | RatioAllBlocked { row } ->
       Printf.sprintf
@@ -106,8 +108,8 @@ let display_problem p =
          selecting it could never produce a value"
         (row |> List.map string_of_int |> String.concat " ")
   | PerNoteRequiresInsFirst ->
-      "this parameter is per-note: Ins must precede it in the hierarchy \
-       (chord size isn't known until an instrument is picked)"
+      "this parameter is per-note: Ins must precede it in the hierarchy (chord \
+       size isn't known until an instrument is picked)"
   | InvalidTr n ->
       Printf.sprintf "tones-per-octave (tr) must be at least 1, got %d" n
   | InvalidRelativePitch { n; tr } ->
@@ -177,7 +179,11 @@ end
    builds and the score still generates (mirrors score_generation.ml's
    "IMPOSSIBLE" annotations, which are advisory and never block generation).
    Errors remain fully blocking. *)
-type diagnostic = { location : location; severity : Severity.t; problem : problem }
+type diagnostic = {
+  location : location;
+  severity : Severity.t;
+  problem : problem;
+}
 
 let key_to_string = function
   | KGlobal -> "global"
@@ -231,8 +237,10 @@ let severity_to_string = function
   | Severity.Warning -> "WARNING"
 
 let display_diagnostic { location; severity; problem } =
-  Printf.sprintf "[%s] %s: %s" (location_to_string location)
-    (severity_to_string severity) (display_problem problem)
+  Printf.sprintf "[%s] %s: %s"
+    (location_to_string location)
+    (severity_to_string severity)
+    (display_problem problem)
 
 let print_diagnostics label diags =
   Printf.printf "%s:\n" label;
@@ -267,7 +275,8 @@ let problem_id = function
   | InstrumentDensityRequiresInsFirst -> "instrument-density-requires-ins-first"
   | NegativeDuration _ -> "negative-duration"
   | InvalidDurationRange DurationRangeNegative -> "duration-range-negative"
-  | InvalidDurationRange DurationRangeMaxBelowMin -> "duration-range-max-below-min"
+  | InvalidDurationRange DurationRangeMaxBelowMin ->
+      "duration-range-max-below-min"
   | ParseError _ -> "parse-error"
   | RatioAllBlocked _ -> "ratio-all-blocked"
   | PerNoteRequiresInsFirst -> "per-note-requires-ins-first"
@@ -299,7 +308,9 @@ let json_string s = "\"" ^ json_escape s ^ "\""
 let json_array items = "[" ^ String.concat "," items ^ "]"
 
 let json_obj fields =
-  "{" ^ String.concat "," (List.map (fun (k, v) -> json_string k ^ ":" ^ v) fields) ^ "}"
+  "{"
+  ^ String.concat "," (List.map (fun (k, v) -> json_string k ^ ":" ^ v) fields)
+  ^ "}"
 
 (* The structured payload. The GUI uses these to fill placeholders in the
    markdown (e.g. the offending name, the two mismatched row counts) so an
@@ -310,14 +321,21 @@ let json_of_problem_data p =
       json_obj [ ("value", Printf.sprintf "%g" x) ]
   | TableSizeMismatch { instrument_rows; other_rows } ->
       json_obj
-        [ ("instrumentRows", string_of_int instrument_rows);
-          ("otherRows", string_of_int other_rows) ]
-  | UnknownPerformance s | UnknownDynamic s -> json_obj [ ("name", json_string s) ]
+        [
+          ("instrumentRows", string_of_int instrument_rows);
+          ("otherRows", string_of_int other_rows);
+        ]
+  | UnknownPerformance s | UnknownDynamic s ->
+      json_obj [ ("name", json_string s) ]
   | IncompleteHierarchy missing ->
       json_obj
-        [ ( "missing",
+        [
+          ( "missing",
             json_array
-              (List.map (fun e -> json_string (hierarchy_elem_to_string e)) missing) ) ]
+              (List.map
+                 (fun e -> json_string (hierarchy_elem_to_string e))
+                 missing) );
+        ]
   | ParseError msg -> json_obj [ ("message", json_string msg) ]
   | RatioAllBlocked { row } ->
       json_obj [ ("row", json_array (List.map string_of_int row)) ]
@@ -329,8 +347,8 @@ let json_of_problem_data p =
   | InvalidNVariants n -> json_obj [ ("n", string_of_int n) ]
   | InvalidInstrumentName | InvalidChordSize | InvalidDensity _
   | InvalidPitchRange | InvalidRegister | DuplicateHierarchy
-  | InstrumentDensityRequiresInsFirst
-  | InvalidDurationRange _ | PerNoteRequiresInsFirst ->
+  | InstrumentDensityRequiresInsFirst | InvalidDurationRange _
+  | PerNoteRequiresInsFirst ->
       json_obj []
 
 (* [location] is emitted both as the structured segment list (which the GUI
@@ -342,20 +360,26 @@ let json_of_segment = function
 
 let json_of_diagnostic { location; severity; problem } =
   json_obj
-    [ ("id", json_string (problem_id problem));
-      ("severity", json_string (match severity with
-                                | Severity.Error -> "error"
-                                | Severity.Warning -> "warning"));
+    [
+      ("id", json_string (problem_id problem));
+      ( "severity",
+        json_string
+          (match severity with
+          | Severity.Error -> "error"
+          | Severity.Warning -> "warning") );
       ("path", json_string (location_to_string location));
       ("location", json_array (List.map json_of_segment location));
       ("message", json_string (display_problem problem));
-      ("data", json_of_problem_data problem) ]
+      ("data", json_of_problem_data problem);
+    ]
 
 let json_of_diagnostics ~ok ~errors ~warnings ~extra =
   json_obj
-    ([ ("ok", if ok then "true" else "false");
+    ([
+       ("ok", if ok then "true" else "false");
        ("errors", json_array (List.map json_of_diagnostic errors));
-       ("warnings", json_array (List.map json_of_diagnostic warnings)) ]
+       ("warnings", json_array (List.map json_of_diagnostic warnings));
+     ]
     @ extra)
 
 let entry_to_float (Entrydelay x) = x
@@ -493,7 +517,8 @@ module Pitch_set = Set.Make (Int)
 type step = Step of int
 
 let mk_step ~tr n =
-  if n < 1 || n > tr then Error (InvalidRelativePitch { n; tr }) else Ok (Step n)
+  if n < 1 || n > tr then Error (InvalidRelativePitch { n; tr })
+  else Ok (Step n)
 
 let step_to_int (Step n) = n
 
@@ -502,7 +527,9 @@ let step_to_int (Step n) = n
    (see [register] below), a different concept entirely. *)
 type octave = Octave of int
 
-let mk_octave n = if n < 1 || n > 9 then Error (InvalidOctave n) else Ok (Octave n)
+let mk_octave n =
+  if n < 1 || n > 9 then Error (InvalidOctave n) else Ok (Octave n)
+
 let octave_to_int (Octave n) = n
 
 (* EMR-3 absolute pitch (§7.1): an octave (1-9) plus a relative pitch within
@@ -555,8 +582,10 @@ let register_compatible_with_pitch_range pitchrange reg =
   match (pitchrange, reg) with
   | PercussionPitchRange, PercussionRegister -> true
   | PitchRange { min; max; _ }, PitchRegister { low; high } ->
-      absolute_pitch_compare low max <= 0 && absolute_pitch_compare high min >= 0
-  | PercussionPitchRange, PitchRegister _ | PitchRange _, PercussionRegister -> false
+      absolute_pitch_compare low max <= 0
+      && absolute_pitch_compare high min >= 0
+  | PercussionPitchRange, PitchRegister _ | PitchRange _, PercussionRegister ->
+      false
 
 type allowed_durations = AllowedDurations of { min : float; max : float }
 
@@ -564,7 +593,8 @@ let print_allowed_durations (AllowedDurations { min; max }) =
   Printf.sprintf "Allowed durations: from %f till %f" min max
 
 let mk_allowed_durations mini maxi =
-  if mini < 0.0 || maxi < 0.0 then Error (InvalidDurationRange DurationRangeNegative)
+  if mini < 0.0 || maxi < 0.0 then
+    Error (InvalidDurationRange DurationRangeNegative)
   else if mini > maxi then Error (InvalidDurationRange DurationRangeMaxBelowMin)
   else Ok (AllowedDurations { min = mini; max = maxi })
 
@@ -583,7 +613,8 @@ type instrument =
    the structure formula's top-level "performance" / "dynamics" fields);
    every instrument's own (performance (...)) / (dynamics (...)) must be a
    subset of the corresponding master list *)
-let check_instrument_performances_known known_performances instrs : diagnostic list =
+let check_instrument_performances_known known_performances instrs :
+    diagnostic list =
   instrs
   |> List.mapi (fun i (Instrument { performance; _ }) ->
       Performance_modes.diff performance known_performances
@@ -638,11 +669,11 @@ let print_instrument
           forbidden;
         } ->
         let forbidden_str =
-          Pitch_set.elements forbidden |> List.map string_of_int
-          |> String.concat ","
+          Pitch_set.elements forbidden
+          |> List.map string_of_int |> String.concat ","
         in
-        Printf.sprintf "%d%02d-%d%02d, forbidden: [%s]" min_oct min_rel
-          max_oct max_rel forbidden_str
+        Printf.sprintf "%d%02d-%d%02d, forbidden: [%s]" min_oct min_rel max_oct
+          max_rel forbidden_str
   in
   Printf.printf
     "instrument: %s, chordsize: %d-%d, performance: [%s], dynamics: [%s], \
@@ -652,14 +683,7 @@ let print_instrument
 
 let inst instrument cs performance dynamics pitchrange durations =
   Instrument
-    {
-      instrument;
-      chordsize = cs;
-      performance;
-      dynamics;
-      pitchrange;
-      durations;
-    }
+    { instrument; chordsize = cs; performance; dynamics; pitchrange; durations }
 
 (* for formation of the ensemble Alea, Series or Sequence will pick the groups from the table *)
 type ensemble_group_selection =
@@ -1100,10 +1124,12 @@ let row_stream ~tr ~transposition (Row elements as row) : row_value Seq.t =
   in
   expand 0 intervals
 
+let percussion_string = "*"
+
 let row_value_to_string = function
-  | RowPercussion -> "*"
+  | RowPercussion -> percussion_string
   | Tone (Step n) -> string_of_int n
 
 let pitch_to_string = function
-  | Percussion -> "*"
+  | Percussion -> percussion_string
   | Pitched { octave = Octave o; step = Step s } -> Printf.sprintf "%d.%d" o s

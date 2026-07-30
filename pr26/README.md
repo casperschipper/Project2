@@ -39,6 +39,11 @@ Should the composer be helped in some way to construct useful tables? If a param
 
 
 
+[ ] interval principle
+
+# DONE
+
+
 [x] registers in instrument definitions are made up of octave and relative pitch
 (to be called like taht in the interface)
 [x] Call compass "pitch range"
@@ -48,9 +53,6 @@ Should the composer be helped in some way to construct useful tables? If a param
 variants in the "variant group"
 [x] multiple variants
 [x] test row transposition modes
-[ ] interval principle
-
-# DONE
 
 [x] Fixed transposition in ROW mode
 [x] Fixed performance per chord

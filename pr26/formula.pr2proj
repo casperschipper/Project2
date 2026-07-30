@@ -1,0 +1,320 @@
+{
+  "formatVersion": 1,
+  "seed": 2,
+  "variantDuration": "30.0",
+  "numberOfVariants": 1,
+  "octaveDivision": 12,
+  "hierarchy": [
+    "Ins",
+    "Reg",
+    "Har",
+    "Per",
+    "Dyn",
+    "Ent",
+    "Dur"
+  ],
+  "union": "none",
+  "density": {
+    "kind": "autonomous",
+    "low": 1,
+    "high": 2,
+    "principle": {
+      "kind": "group",
+      "element": "series",
+      "repetition": "series",
+      "minRepetitions": 1,
+      "maxRepetitions": 4
+    }
+  },
+  "durationRelation": {
+    "kind": "independent",
+    "mode": "per-note"
+  },
+  "startIndex": 0,
+  "comment": "",
+  "outputDir": "/Users/casperschipper/devel/Projekt2/pr26",
+  "numberOfInstrumentGroups": 1,
+  "instruments": [
+    {
+      "name": "piano",
+      "chordSizeMin": 1,
+      "chordSizeMax": 6,
+      "performance": [
+        "normal",
+        "muted",
+        "overtone1"
+      ],
+      "dynamics": [
+        "p",
+        "mf",
+        "f",
+        "ppp",
+        "pp",
+        "ff",
+        "fff"
+      ],
+      "pitchRange": {
+        "kind": "pitch",
+        "low": {
+          "octave": 1,
+          "pitch": 1
+        },
+        "high": {
+          "octave": 5,
+          "pitch": 12
+        }
+      },
+      "durationMin": "0.1",
+      "durationMax": "16.0"
+    }
+  ],
+  "instrumentTable": [
+    [
+      0
+    ]
+  ],
+  "instrumentGroupNames": [
+    "piano"
+  ],
+  "instrumentEnsemble": {
+    "kind": "sequence",
+    "values": [
+      0
+    ]
+  },
+  "instrumentPrinciple": {
+    "kind": "series"
+  },
+  "entrydelays": [
+    "0.1",
+    "0.2",
+    "0.3",
+    "0.4",
+    "0.5",
+    "0.6",
+    "0.7",
+    "0.8"
+  ],
+  "entrydelayTable": [
+    [
+      0,
+      1,
+      2
+    ],
+    [
+      3,
+      4,
+      5
+    ],
+    [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ]
+  ],
+  "entrydelayEnsemble": {
+    "kind": "series"
+  },
+  "entrydelayPrinciple": {
+    "kind": "ratio",
+    "pairs": [
+      {
+        "index": 0,
+        "weight": 1
+      },
+      {
+        "index": 1,
+        "weight": 3
+      },
+      {
+        "index": 2,
+        "weight": 1
+      },
+      {
+        "index": 3,
+        "weight": 5
+      },
+      {
+        "index": 4,
+        "weight": 2
+      },
+      {
+        "index": 5,
+        "weight": 1
+      },
+      {
+        "index": 6,
+        "weight": 1
+      },
+      {
+        "index": 7,
+        "weight": 10
+      }
+    ]
+  },
+  "durations": [
+    "0.1",
+    "0.2",
+    "0.3",
+    "0.5",
+    "0.8",
+    "5.0"
+  ],
+  "durationTable": [
+    [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    [
+      2,
+      3,
+      4
+    ],
+    [
+      0,
+      1,
+      2
+    ]
+  ],
+  "durationEnsemble": {
+    "kind": "series"
+  },
+  "durationPrinciple": {
+    "kind": "series"
+  },
+  "dynamics": [
+    "ppp",
+    "pp",
+    "p",
+    "mf",
+    "f",
+    "ff",
+    "fff"
+  ],
+  "dynamicsTable": [
+    [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    [
+      2,
+      3,
+      4
+    ],
+    [
+      0,
+      6
+    ]
+  ],
+  "dynamicsEnsemble": {
+    "kind": "series"
+  },
+  "dynamicsPrinciple": {
+    "kind": "series"
+  },
+  "dynamicsMode": "per-chord",
+  "performance": [
+    "normal",
+    "muted",
+    "overtone1"
+  ],
+  "performanceTable": [
+    [
+      0,
+      1,
+      2
+    ]
+  ],
+  "performanceEnsemble": {
+    "kind": "sequence",
+    "values": [
+      0
+    ]
+  },
+  "performancePrinciple": {
+    "kind": "sequence",
+    "values": [
+      0,
+      1,
+      2
+    ]
+  },
+  "performanceMode": "per-chord",
+  "registers": [
+    {
+      "kind": "pitch",
+      "low": {
+        "octave": 3,
+        "pitch": 1
+      },
+      "high": {
+        "octave": 4,
+        "pitch": 12
+      }
+    },
+    {
+      "kind": "pitch",
+      "low": {
+        "octave": 4,
+        "pitch": 1
+      },
+      "high": {
+        "octave": 5,
+        "pitch": 12
+      }
+    },
+    {
+      "kind": "pitch",
+      "low": {
+        "octave": 5,
+        "pitch": 1
+      },
+      "high": {
+        "octave": 7,
+        "pitch": 12
+      }
+    }
+  ],
+  "registerTable": [
+    [
+      0,
+      1,
+      2
+    ],
+    [
+      0
+    ],
+    [
+      0,
+      2
+    ]
+  ],
+  "registerEnsemble": {
+    "kind": "series"
+  },
+  "registerPrinciple": {
+    "kind": "series"
+  },
+  "registerMode": "per-chord",
+  "row": [
+    "1",
+    "8",
+    "2",
+    "5",
+    "7"
+  ],
+  "transposition": "series"
+}
