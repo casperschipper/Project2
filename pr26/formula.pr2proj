@@ -1,7 +1,7 @@
 {
   "formatVersion": 1,
   "seed": 2,
-  "variantDuration": "30.0",
+  "variantDuration": "120.0",
   "numberOfVariants": 1,
   "octaveDivision": 12,
   "hierarchy": [
@@ -17,7 +17,7 @@
   "density": {
     "kind": "autonomous",
     "low": 1,
-    "high": 2,
+    "high": 1,
     "principle": {
       "kind": "group",
       "element": "series",
@@ -60,11 +60,11 @@
           "pitch": 1
         },
         "high": {
-          "octave": 5,
+          "octave": 6,
           "pitch": 12
         }
       },
-      "durationMin": "0.1",
+      "durationMin": "0.001",
       "durationMax": "16.0"
     }
   ],
@@ -86,9 +86,9 @@
     "kind": "series"
   },
   "entrydelays": [
-    "0.1",
-    "0.2",
-    "0.3",
+    "0.01",
+    "0.02",
+    "0.03",
     "0.4",
     "0.5",
     "0.6",
@@ -99,7 +99,12 @@
     [
       0,
       1,
-      2
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
     ],
     [
       3,
@@ -118,7 +123,10 @@
     ]
   ],
   "entrydelayEnsemble": {
-    "kind": "series"
+    "kind": "sequence",
+    "values": [
+      0
+    ]
   },
   "entrydelayPrinciple": {
     "kind": "ratio",
@@ -158,20 +166,23 @@
     ]
   },
   "durations": [
+    "0.01",
+    "0.02",
     "0.1",
     "0.2",
     "0.3",
     "0.5",
-    "0.8",
-    "5.0"
+    "2.0"
   ],
   "durationTable": [
     [
+      4,
+      4,
       0,
       1,
       2,
       3,
-      4
+      5
     ],
     [
       2,
@@ -185,7 +196,10 @@
     ]
   ],
   "durationEnsemble": {
-    "kind": "series"
+    "kind": "sequence",
+    "values": [
+      0
+    ]
   },
   "durationPrinciple": {
     "kind": "series"
@@ -257,10 +271,32 @@
     {
       "kind": "pitch",
       "low": {
+        "octave": 2,
+        "pitch": 1
+      },
+      "high": {
+        "octave": 2,
+        "pitch": 12
+      }
+    },
+    {
+      "kind": "pitch",
+      "low": {
         "octave": 3,
         "pitch": 1
       },
       "high": {
+        "octave": 3,
+        "pitch": 7
+      }
+    },
+    {
+      "kind": "pitch",
+      "low": {
+        "octave": 3,
+        "pitch": 6
+      },
+      "high": {
         "octave": 4,
         "pitch": 12
       }
@@ -272,7 +308,18 @@
         "pitch": 1
       },
       "high": {
-        "octave": 5,
+        "octave": 4,
+        "pitch": 7
+      }
+    },
+    {
+      "kind": "pitch",
+      "low": {
+        "octave": 4,
+        "pitch": 1
+      },
+      "high": {
+        "octave": 4,
         "pitch": 12
       }
     },
@@ -283,7 +330,7 @@
         "pitch": 1
       },
       "high": {
-        "octave": 7,
+        "octave": 5,
         "pitch": 12
       }
     }
@@ -292,7 +339,9 @@
     [
       0,
       1,
-      2
+      2,
+      3,
+      4
     ],
     [
       0
@@ -303,12 +352,32 @@
     ]
   ],
   "registerEnsemble": {
-    "kind": "series"
+    "kind": "sequence",
+    "values": [
+      0
+    ]
   },
   "registerPrinciple": {
-    "kind": "series"
+    "kind": "tendency",
+    "sections": [
+      {
+        "portion": 1,
+        "startMin": 0,
+        "startMax": 0,
+        "endMin": 0,
+        "endMax": 1
+      },
+      {
+        "portion": 1,
+        "startMin": 0.5,
+        "startMax": 0.5,
+        "endMin": 0,
+        "endMax": 1
+      }
+    ]
   },
   "registerMode": "per-chord",
+  "harmonyPrinciple": "interval",
   "row": [
     "1",
     "8",
@@ -316,5 +385,155 @@
     "5",
     "7"
   ],
-  "transposition": "series"
+  "transposition": "series",
+  "intervalMatrixSource": {
+    "kind": "matrix",
+    "rows": [
+      [
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false
+      ],
+      [
+        false,
+        false,
+        true,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      [
+        false,
+        true,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      [
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false
+      ],
+      [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false
+      ],
+      [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false
+      ],
+      [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        true,
+        false
+      ],
+      [
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false
+      ],
+      [
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false
+      ],
+      [
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true
+      ],
+      [
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    ]
+  },
+  "forbiddenTones": [],
+  "invertMatrix": false
 }
