@@ -319,6 +319,21 @@ type har_state_t =
       phase : interval_phase;
       seen_since_reset : Pitch_set.t;
     }
+  | HarChord of {
+      tr : int;
+      table : chord array; (* the ORIGINAL, untransposed reference table -
+           the manual's "reference tones" - never mutated *)
+      order_state : chord sel_state; (* SEQ-CHORD: the general selection
+           principle over table entries *)
+      cumulative : int; (* transposition offset accumulated so far, mod tr -
+           applied to the ORIGINAL table each draw, exactly like
+           [row_stream]'s own [cumulative] *)
+      drawn_since_pass : int; (* draws since [cumulative] last advanced; a
+           "pass" = [Array.length table] draws, regardless of which chords
+           they actually were *)
+      trans_intervals : int Seq.t; (* remaining stream of per-pass
+           transposition intervals *)
+    }
 
 (* Threaded across every layer (and, once built, every variant - see
    [build_score]) rather than rebuilt fresh each time: EMR-3 6.2/8.2 are
@@ -387,6 +402,16 @@ let initial_har_state ~tr (harmony : harmony_principle) : har_state_t =
           phase = NotStarted;
           seen_since_reset = Pitch_set.empty;
         }
+  | HarmChord { table = ChordTable chords; order; transposition } ->
+      HarChord
+        {
+          tr;
+          table = chords;
+          order_state = sel_init order 1 (elements_of_array chords);
+          cumulative = 0;
+          drawn_since_pass = 0;
+          trans_intervals = chord_transposition_intervals ~tr transposition;
+        }
 
 let initial_continuing_state ~tr (harmony : harmony_principle) :
     continuing_state =
@@ -453,7 +478,25 @@ let duration_range_ok (AllowedDurations { min; max }) (Duration d) =
    7.3: "if the durations in the chord are equal, instruments can only be
    selected which can play the selected duration; if not the same, this
    question is posed for each duration and instrument"). *)
+let row_value_is_percussion = function
+  | RowPercussion -> true
+  | Tone _ -> false
+
+(* Under ROW/INTERVAL, [Ins] always precedes [Har], so [proto.harmony] is
+   always [None] here and this is a dead branch - it only becomes live for
+   CHORD, where harmony is seeded into every sub-pick's [start] proto
+   *before* its own fold (and hence [Ins]) runs (see
+   [resolve_layer_chord_density]). Mirrors [reg_pred_from]'s existing
+   [harmony_pred] exactly. *)
 let ins_pred_from proto =
+  let from_harmony (Instrument { pitchrange; _ }) =
+    let is_percussion = pitchrange = PercussionPitchRange in
+    match proto.harmony with
+    | None -> true
+    | Some (Shared h) -> is_percussion = row_value_is_percussion h
+    | Some (PerNote hs) ->
+        List.for_all (fun h -> is_percussion = row_value_is_percussion h) hs
+  in
   let from_perf (Instrument { performance = modes; _ }) =
     match proto.performance with
     | None -> true
@@ -480,7 +523,7 @@ let ins_pred_from proto =
     | Some (PerNote rs) ->
         List.for_all (register_compatible_with_pitch_range pitchrange) rs
   in
-  fun i -> from_perf i && from_dyn i && from_dur i && from_reg i
+  fun i -> from_perf i && from_dyn i && from_dur i && from_reg i && from_harmony i
 
 (* [Per]/[Dyn]'s predicate: restrict to modes the (already- or not-yet-known)
    instrument can play, exactly mirroring [Ins]'s own conditioning above. *)
@@ -528,10 +571,6 @@ let ed_pred_from proto dur_relation =
 let register_is_percussion = function
   | PercussionRegister -> true
   | PitchRegister _ -> false
-
-let row_value_is_percussion = function
-  | RowPercussion -> true
-  | Tone _ -> false
 
 (* [Reg]'s predicate (EMR-3 fig 7-6): conditioned on both [Ins] (via the
    instrument's pitch range, mirroring [mode_pred_from_instrument]) and [Har]
@@ -681,6 +720,39 @@ let interval_next ~tr ~(matrix : interval_matrix) ~forbidden ~pred ~phase
           let t = too_strict_fallback base in
           let seen' = remember t seen_since_reset in
           (Tone t, true, false, HaveTransition (t, 1), seen'))
+
+(* One step of HARMONY's CHORD principle: draws the next chord (SEQ-CHORD,
+   unconditioned - order-of-chords has no predicate to satisfy, exactly like
+   [resolve_layer_autonomous]'s own unconditioned density-target draw),
+   transposes it by whatever cumulative offset is currently in effect, and
+   advances that offset once a full "pass" (one draw per table entry) has
+   elapsed. Never invoked with anything but [HarChord] - the type still has
+   to cover every [har_state_t] constructor, so the other two are dead
+   branches here, mirrored by [chord_next]'s own callers never reaching
+   them either. *)
+let chord_next : har_state_t -> chord * har_state_t = function
+  | HarChord { tr; table; order_state; cumulative; drawn_since_pass; trans_intervals } ->
+      let picked, order_state' = sel_draw order_state in
+      let transposed = transpose_chord ~tr cumulative picked in
+      let drawn' = drawn_since_pass + 1 in
+      let cumulative', drawn'', trans_intervals' =
+        if drawn' >= Array.length table then
+          match trans_intervals () with
+          | Seq.Cons (k, rest) -> ((cumulative + k) mod tr, 0, rest)
+          | Seq.Nil -> (cumulative, 0, trans_intervals) (* unreachable: infinite *)
+        else (cumulative, drawn', trans_intervals)
+      in
+      ( transposed,
+        HarChord
+          {
+            tr;
+            table;
+            order_state = order_state';
+            cumulative = cumulative';
+            drawn_since_pass = drawn'';
+            trans_intervals = trans_intervals';
+          } )
+  | HarRow _ | HarInterval _ -> assert false
 
 (* One hierarchy element's worth of work for one entry. This is the single
    place that knows how [Ins]/[Ent]/[Dur]/[Per]/[Dyn] each condition on, or
@@ -889,7 +961,13 @@ let resolve_step ~perf_mode ~dyn_mode ~dur_relation ~reg_mode
                 harmony = Some v;
                 harmony_ok = Some oks;
                 harmony_matrix_ok = Some matrix_oks;
-              } ))
+              } )
+        | HarChord _ ->
+            (* Unreachable: [Har] never appears in [subpick_hierarchy] under
+               CHORD (see [resolve_layer_chord_density]) - its value is
+               always a whole-group fact, seeded into every sub-pick before
+               its own fold runs, never drawn inside [resolve_step] itself. *)
+            assert false)
 
 let resolve_entry ?(start = empty_proto) ~hierarchy ~perf_mode ~dyn_mode
     ~dur_relation ~reg_mode states =
@@ -933,9 +1011,18 @@ type chord_seeds = {
   cs_dyn : Dynamic.t note_value option;
   cs_reg : (register note_value * bool note_value) option;
   cs_dur : (duration note_value * bool note_value) option;
+  (* CHORD only: a dummy percussion/pitched marker, seeded before a
+     sub-pick's own fold runs so [Ins]/[Reg]'s existing percussion-agreement
+     predicates ([ins_pred_from]'s [from_harmony], [reg_pred_from]'s
+     [harmony_pred]) fire correctly even though [Har] itself never runs for
+     a sub-pick under CHORD - overwritten with the real, sliced-from-the-
+     drawn-chord per-note values afterward (see [assign_harmony] in
+     [resolve_layer_chord_density]). Always [None] for [Autonomous]. *)
+  cs_harmony_seed : row_value note_value option;
 }
 
-let no_chord_seeds = { cs_perf = None; cs_dyn = None; cs_reg = None; cs_dur = None }
+let no_chord_seeds =
+  { cs_perf = None; cs_dyn = None; cs_reg = None; cs_dur = None; cs_harmony_seed = None }
 
 (** With [Autonomous] density, each timepoint samples a target density and keeps
     resolving sub-picks (each independently picking its own instrument,
@@ -1405,6 +1492,483 @@ let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
   in
   (List.rev groups, final_states)
 
+(* HARMONY's CHORD principle (EMR-3 §8.2/§9.2): HARMONY is the main
+   parameter here - each entry point's whole chord (tones *and* how many of
+   them) is drawn first, via [chord_next], and vertical density is simply
+   whatever size that chord turns out to be; [density] itself is never
+   consulted (validated to be [ChordDensity] at formula-load time, and
+   ignored here beyond that). Reuses the same "keep picking instruments
+   until the target is reached, trim the last one" [fill_subpicks] shape
+   [resolve_layer_autonomous] uses for [Autonomous] density (see its own
+   doc comment for the general rationale - entry delay/duration extraction
+   below is a direct copy of that reasoning, unaffected by anything here) -
+   but a drawn chord's tones split into (at most) two homogeneous
+   sub-targets first: an instrument's own [pitchrange] is atomically either
+   percussion or pitched, never both, so "scoring" a chord that mixes the
+   two (EMR-3 8.16: percussion instruments "can participate in the
+   'scoring' of the vertical density") necessarily means picking some
+   percussion sub-picks and some pitched ones - there is no per-note choice
+   once a sub-pick's instrument is fixed. [Har] is excluded from
+   [subpick_hierarchy] entirely (unlike [Autonomous]'s [PerChord]-
+   conditional exclusions): under CHORD its value is always a whole-group
+   fact, seeded into every sub-pick's [start] proto as a dummy percussion/
+   pitched marker (purely so [Ins]/[Reg]'s existing percussion-agreement
+   predicates fire correctly) *before* its own fold runs, then overwritten
+   with the real, sliced-from-the-drawn-chord per-note values by
+   [assign_harmony] once every sub-pick's [nr_of_notes] is final. *)
+let resolve_layer_chord_density ~n_events ~hierarchy ~perf_mode ~dyn_mode
+    ~dur_relation ~reg_mode states0 =
+  let index_of x =
+    let rec go i = function
+      | [] -> assert false
+      | y :: rest -> if y = x then i else go (i + 1) rest
+    in
+    go 0 hierarchy
+  in
+  let ent_before_dur = index_of Ent < index_of Dur in
+  let dur_note_mode = duration_note_mode dur_relation in
+  let dur_extracted =
+    dur_relation <> DurEqualsEntry && dur_note_mode = PerChord
+  in
+  let perf_extracted = perf_mode = PerChord in
+  let dyn_extracted = dyn_mode = PerChord in
+  let reg_extracted = reg_mode = PerChord in
+  let perf_before_ins = index_of Per < index_of Ins in
+  let dyn_before_ins = index_of Dyn < index_of Ins in
+  let reg_before_ins = index_of Reg < index_of Ins in
+  let dur_before_ins = index_of Dur < index_of Ins in
+  let subpick_hierarchy =
+    hierarchy
+    |> List.filter (fun e -> e <> Ent && e <> Har)
+    |> List.filter (fun e -> not (e = Per && perf_extracted))
+    |> List.filter (fun e -> not (e = Dyn && dyn_extracted))
+    |> List.filter (fun e -> not (e = Reg && reg_extracted))
+    |> List.filter (fun e -> not (e = Dur && dur_extracted))
+  in
+  let resolve_subpick ?seed_entrydelay ~seeds states =
+    let start =
+      {
+        empty_proto with
+        entrydelay = seed_entrydelay;
+        performance = seeds.cs_perf;
+        dynamic = seeds.cs_dyn;
+        register = Option.map fst seeds.cs_reg;
+        register_ok = Option.map snd seeds.cs_reg;
+        duration = Option.map fst seeds.cs_dur;
+        duration_ok = Option.map snd seeds.cs_dur;
+        harmony = seeds.cs_harmony_seed;
+      }
+    in
+    resolve_entry ~start ~hierarchy:subpick_hierarchy ~perf_mode ~dyn_mode
+      ~dur_relation ~reg_mode states
+  in
+  let instruments_of group =
+    List.map
+      (fun p -> match p.instrument with Some i -> i | None -> assert false)
+      group
+  in
+  let max_duration_of proto =
+    match proto.duration with
+    | Some (Shared (Duration d)) -> d
+    | Some (PerNote ds) ->
+        ds |> List.map (fun (Duration d) -> d) |> List.fold_left Float.max 0.0
+    | None -> 0.0
+  in
+  let force_not_ok = function
+    | Shared _ -> Shared false
+    | PerNote xs -> PerNote (List.map (fun _ -> false) xs)
+  in
+  let mark_group_ok ok proto =
+    if ok then proto
+    else { proto with duration_ok = Option.map force_not_ok proto.duration_ok }
+  in
+  let stamp_ok ok proto = { proto with duration_ok = Some (Shared ok) } in
+  let fill_subpicks states target ~seed ~next_seed ~seeds =
+    let rec loop states total used acc settled =
+      let states', proto =
+        resolve_subpick ?seed_entrydelay:settled ~seeds states
+      in
+      let picked =
+        match proto.instrument with
+        | Some (Instrument { instrument; _ }) -> instrument
+        | None -> assert false
+      in
+      let proto = { proto with instrument_repeated = List.mem picked used } in
+      let settled' = next_seed settled proto in
+      let n = Option.value proto.nr_of_notes ~default:1 in
+      let total' = total + n in
+      let used' = picked :: used in
+      if total' >= target then
+        let proto' =
+          { proto with nr_of_notes = Some (n - (total' - target)) }
+        in
+        (settled', List.rev (proto' :: acc), states')
+      else loop states' total' used' (proto :: acc) settled'
+    in
+    loop states 0 [] [] seed
+  in
+  (* Two homogeneous [fill_subpicks] calls, one per tone type, concatenated -
+     the chord-aware generalization of a single [fill_subpicks] call. A
+     segment with target 0 (the common case for an all-pitched or
+     all-percussion chord) is skipped entirely rather than resolving a
+     "phantom" zero-note sub-pick, which would needlessly consume an
+     instrument-selection-cycle draw (and could pick a mismatched instrument
+     if no instrument of that tone type exists at all - harmless once
+     trimmed to zero notes, but wasteful and pollutes [instrument_repeated]
+     bookkeeping for no benefit). *)
+  let fill_subpicks_split states (percussion_n, pitched_n) ~seed ~next_seed
+      ~seeds1 ~seeds2 =
+    let settled1, perc_group, states1 =
+      if percussion_n <= 0 then (seed, [], states)
+      else fill_subpicks states percussion_n ~seed ~next_seed ~seeds:seeds1
+    in
+    let settled2, pitched_group, states2 =
+      if pitched_n <= 0 then (settled1, [], states1)
+      else
+        fill_subpicks states1 pitched_n ~seed:settled1 ~next_seed
+          ~seeds:seeds2
+    in
+    (settled2, perc_group @ pitched_group, states2)
+  in
+  let keep_seed settled _ = settled in
+  let draw_duration_before ~ed_opt states =
+    let pred =
+      dur_pred_from ~instr_arr:states.instr_arr
+        { empty_proto with entrydelay = ed_opt }
+        dur_relation
+    in
+    let v, dur_state' = sel_sample_pred_tagged pred states.dur_state in
+    let ok = result_ok v in
+    let d = get_value v in
+    ({ states with dur_state = dur_state' }, Some (Shared d, Shared ok))
+  in
+  let stamp_duration_after ~ed_opt group states' =
+    let instruments = instruments_of group in
+    let pred (Duration d as dv) =
+      List.for_all
+        (fun (Instrument { durations; _ }) -> duration_range_ok durations dv)
+        instruments
+      &&
+      match (dur_relation, ed_opt) with
+      | DurShorterThanEntry _, Some (Entrydelay ed) -> d <= ed
+      | _ -> true
+    in
+    let v, dur_state' = sel_sample_pred_tagged pred states'.dur_state in
+    let ok = result_ok v in
+    let d = get_value v in
+    let group' =
+      List.map
+        (fun p ->
+          { p with duration = Some (Shared d); duration_ok = Some (Shared ok) })
+        group
+    in
+    (group', { states' with dur_state = dur_state' })
+  in
+  let finish_with_computed_entrydelay group states' =
+    let max_dur =
+      group
+      |> List.fold_left (fun acc p -> Float.max acc (max_duration_of p)) 0.0
+    in
+    let pred =
+      match dur_relation with
+      | DurShorterThanEntry _ -> fun (Entrydelay ed) -> ed >= max_dur
+      | DurIndependent _ | DurEqualsEntry -> Fun.const true
+    in
+    let v, ed_state' = sel_sample_pred_tagged pred states'.ed_state in
+    let ok = result_ok v in
+    let ed = get_value v in
+    let group = List.map (mark_group_ok ok) group in
+    (ed, group, { states' with ed_state = ed_state' })
+  in
+  let fill_group ~seeds1 ~seeds2 states split =
+    match (dur_relation, ent_before_dur) with
+    | DurEqualsEntry, true ->
+        let pred (Entrydelay ed) =
+          dur_pred_from ~instr_arr:states.instr_arr empty_proto dur_relation
+            (Duration ed)
+        in
+        let v, ed_state' = sel_sample_pred_tagged pred states.ed_state in
+        let ok = result_ok v in
+        let ed = get_value v in
+        let states = { states with ed_state = ed_state' } in
+        let _, group, states' =
+          fill_subpicks_split states split ~seed:(Some ed) ~next_seed:keep_seed
+            ~seeds1 ~seeds2
+        in
+        (ed, List.map (stamp_ok ok) group, states')
+    | DurEqualsEntry, false ->
+        let next_seed settled proto =
+          match settled with
+          | Some _ -> settled
+          | None -> (
+              match proto.duration with
+              | Some (Shared (Duration d)) -> Some (Entrydelay d)
+              | _ -> None)
+        in
+        let settled, group, states' =
+          fill_subpicks_split states split ~seed:None ~next_seed ~seeds1
+            ~seeds2
+        in
+        (* Unlike [resolve_layer_autonomous] (guaranteed at least one
+           sub-pick via [low >= 1] on [Autonomous]'s own density range), a
+           drawn chord could in principle be empty (zero tones); [settled]
+           would then never get set by any sub-pick. Falls back to a zero
+           entry delay rather than crash - a degenerate case the composer's
+           chord table should avoid, not one the runtime needs to repair
+           further. *)
+        let ed = Option.value settled ~default:(Entrydelay 0.0) in
+        let ok =
+          match group with
+          | p :: _ -> (
+              match p.duration_ok with Some (Shared ok) -> ok | _ -> true)
+          | [] -> true
+        in
+        (ed, List.map (stamp_ok ok) group, states')
+    | (DurIndependent _ | DurShorterThanEntry _), true ->
+        let v, ed_state' =
+          sel_sample_pred_tagged (Fun.const true) states.ed_state
+        in
+        let ed = get_value v in
+        let states = { states with ed_state = ed_state' } in
+        if dur_extracted && dur_before_ins then
+          let states, dur_seed = draw_duration_before ~ed_opt:(Some ed) states in
+          let _, group, states' =
+            fill_subpicks_split states split ~seed:(Some ed)
+              ~next_seed:keep_seed
+              ~seeds1:{ seeds1 with cs_dur = dur_seed }
+              ~seeds2:{ seeds2 with cs_dur = dur_seed }
+          in
+          (ed, group, states')
+        else
+          let _, group, states' =
+            fill_subpicks_split states split ~seed:(Some ed)
+              ~next_seed:keep_seed ~seeds1 ~seeds2
+          in
+          if dur_extracted then
+            let group, states' =
+              stamp_duration_after ~ed_opt:(Some ed) group states'
+            in
+            (ed, group, states')
+          else (ed, group, states')
+    | (DurIndependent _ | DurShorterThanEntry _), false ->
+        if dur_extracted && dur_before_ins then
+          let states, dur_seed = draw_duration_before ~ed_opt:None states in
+          let _, group, states' =
+            fill_subpicks_split states split ~seed:None ~next_seed:keep_seed
+              ~seeds1:{ seeds1 with cs_dur = dur_seed }
+              ~seeds2:{ seeds2 with cs_dur = dur_seed }
+          in
+          finish_with_computed_entrydelay group states'
+        else
+          let _, group, states' =
+            fill_subpicks_split states split ~seed:None ~next_seed:keep_seed
+              ~seeds1 ~seeds2
+          in
+          let group, states' =
+            if dur_extracted then stamp_duration_after ~ed_opt:None group states'
+            else (group, states')
+          in
+          finish_with_computed_entrydelay group states'
+  in
+  let fill_group_with_note_modes states (percussion_n, pitched_n) =
+    let states, perf_seed =
+      if perf_extracted && perf_before_ins then
+        let pred =
+          mode_pred_from_instrument ~instr_arr:states.instr_arr
+            ~mem:Performance_modes.mem None
+            (fun (Instrument { performance; _ }) -> performance)
+        in
+        let v, perf_state' = sel_sample_pred pred states.perf_state in
+        ({ states with perf_state = perf_state' }, Some (Shared v))
+      else (states, None)
+    in
+    let states, dyn_seed =
+      if dyn_extracted && dyn_before_ins then
+        let pred =
+          mode_pred_from_instrument ~instr_arr:states.instr_arr
+            ~mem:Dynamic_modes.mem None
+            (fun (Instrument { dynamics; _ }) -> dynamics)
+        in
+        let v, dyn_state' = sel_sample_pred pred states.dyn_state in
+        ({ states with dyn_state = dyn_state' }, Some (Shared v))
+      else (states, None)
+    in
+    (* Two shared registers instead of one when [Reg] is extracted, before
+       or after [Ins]: a single shared register can never be simultaneously
+       percussion- and pitched-compatible, and a chord mixing both tone
+       types is real (EMR-3 8.16). Skipped for whichever segment is empty
+       for this particular chord. *)
+    let states, perc_reg_seed, pitched_reg_seed =
+      if reg_extracted && reg_before_ins then
+        let draw_for harmony_seed states =
+          let pred =
+            reg_pred_from ~instr_arr:states.instr_arr
+              { empty_proto with harmony = Some (Shared harmony_seed) }
+          in
+          let v, reg_state' = sel_sample_pred_tagged pred states.reg_state in
+          let ok = result_ok v in
+          let r = get_value v in
+          ({ states with reg_state = reg_state' }, Some (Shared r, Shared ok))
+        in
+        let states, perc_seed =
+          if percussion_n > 0 then draw_for RowPercussion states
+          else (states, None)
+        in
+        let states, pitched_seed =
+          if pitched_n > 0 then draw_for (Tone (Step 1)) states
+          else (states, None)
+        in
+        (states, perc_seed, pitched_seed)
+      else (states, None, None)
+    in
+    let seeds1 =
+      {
+        cs_perf = perf_seed;
+        cs_dyn = dyn_seed;
+        cs_reg = perc_reg_seed;
+        cs_dur = None;
+        cs_harmony_seed = Some (Shared RowPercussion);
+      }
+    in
+    let seeds2 =
+      {
+        cs_perf = perf_seed;
+        cs_dyn = dyn_seed;
+        cs_reg = pitched_reg_seed;
+        cs_dur = None;
+        cs_harmony_seed = Some (Shared (Tone (Step 1)));
+      }
+    in
+    let ed, group, states' =
+      fill_group ~seeds1 ~seeds2 states (percussion_n, pitched_n)
+    in
+    let group, states' =
+      if perf_extracted && not perf_before_ins then
+        let pred v =
+          List.for_all
+            (fun (Instrument { performance = modes; _ }) ->
+              Performance_modes.mem v modes)
+            (instruments_of group)
+        in
+        let v, perf_state' = sel_sample_pred pred states'.perf_state in
+        ( List.map (fun p -> { p with performance = Some (Shared v) }) group,
+          { states' with perf_state = perf_state' } )
+      else (group, states')
+    in
+    let group, states' =
+      if dyn_extracted && not dyn_before_ins then
+        let pred v =
+          List.for_all
+            (fun (Instrument { dynamics = modes; _ }) -> Dynamic_modes.mem v modes)
+            (instruments_of group)
+        in
+        let v, dyn_state' = sel_sample_pred pred states'.dyn_state in
+        ( List.map (fun p -> { p with dynamic = Some (Shared v) }) group,
+          { states' with dyn_state = dyn_state' } )
+      else (group, states')
+    in
+    let group, states' =
+      if reg_extracted && not reg_before_ins then
+        let is_percussion_proto p =
+          match p.harmony with Some (Shared RowPercussion) -> true | _ -> false
+        in
+        let perc_group, pitched_group =
+          List.partition is_percussion_proto group
+        in
+        let draw_for target_percussion sub_group states' =
+          match sub_group with
+          | [] -> (sub_group, states')
+          | _ ->
+              let pred v =
+                register_is_percussion v = target_percussion
+                && List.for_all
+                     (fun (Instrument { pitchrange; _ }) ->
+                       register_compatible_with_pitch_range pitchrange v)
+                     (instruments_of sub_group)
+              in
+              let v, reg_state' =
+                sel_sample_pred_tagged pred states'.reg_state
+              in
+              let ok = result_ok v in
+              let r = get_value v in
+              ( List.map
+                  (fun p ->
+                    { p with register = Some (Shared r); register_ok = Some (Shared ok) })
+                  sub_group,
+                { states' with reg_state = reg_state' } )
+        in
+        let perc_group', states' = draw_for true perc_group states' in
+        let pitched_group', states' = draw_for false pitched_group states' in
+        (perc_group' @ pitched_group', states')
+      else (group, states')
+    in
+    (ed, group, states')
+  in
+  let split_chord (Chord arr) =
+    let tones = Array.to_list arr in
+    let percussion_n = List.length (List.filter row_value_is_percussion tones) in
+    let pitched_tones =
+      List.filter (fun v -> not (row_value_is_percussion v)) tones
+    in
+    (percussion_n, pitched_tones)
+  in
+  (* Post-hoc slice-and-stamp pass, run once the whole group's [nr_of_notes]
+     are final: each percussion sub-pick's tones all become [RowPercussion];
+     each pitched sub-pick consumes the next [nr_of_notes] tones off the
+     shared, in-order [pitched_tones] list (which [fill_subpicks]' own
+     target-trimming guarantees sums to exactly [List.length pitched_tones]
+     across the pitched sub-picks). Always fully "ok" - the group was
+     engineered to exactly match the drawn chord; a genuine pitch/register
+     mismatch can still surface as [pitch_ok = false] via [resolve_pitch],
+     unchanged. *)
+  let assign_harmony pitched_tones group =
+    let all_true n = PerNote (List.init n (fun _ -> true)) in
+    let rec go remaining = function
+      | [] -> []
+      | proto :: rest ->
+          let n = Option.value proto.nr_of_notes ~default:1 in
+          let is_percussion =
+            match proto.harmony with
+            | Some (Shared RowPercussion) -> true
+            | _ -> false
+          in
+          let vals, remaining' =
+            if is_percussion then (List.init n (fun _ -> RowPercussion), remaining)
+            else
+              let rec take acc n = function
+                | l when n = 0 -> (List.rev acc, l)
+                | x :: xs -> take (x :: acc) (n - 1) xs
+                | [] -> (List.rev acc, [])
+              in
+              take [] n remaining
+          in
+          {
+            proto with
+            harmony = Some (PerNote vals);
+            harmony_ok = Some (all_true n);
+            harmony_matrix_ok = Some (all_true n);
+          }
+          :: go remaining' rest
+    in
+    go pitched_tones group
+  in
+  let final_states, groups =
+    List.init n_events (fun _ -> ())
+    |> List.fold_left
+         (fun (states, acc) () ->
+           let chord, har_state' = chord_next states.har_state in
+           let states = { states with har_state = har_state' } in
+           let percussion_n, pitched_tones = split_chord chord in
+           let ed, group, states' =
+             fill_group_with_note_modes states
+               (percussion_n, List.length pitched_tones)
+           in
+           let group = assign_harmony pitched_tones group in
+           (advance_all_windows states', (ed, group) :: acc))
+         (states0, [])
+  in
+  (List.rev groups, final_states)
+
 (* ---- Step 2: turn resolved protos into the final score (entries + notes) ---- *)
 
 (* One sub-pick's own notes - no entry delay or time here yet, both are a
@@ -1541,6 +2105,9 @@ let calculate_layer_hierarchical ~n_events ~variant_n_events ~hierarchy
         resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
           ~dur_relation ~reg_mode ~low ~high ~selection_principle
           states0
+    | ChordDensity ->
+        resolve_layer_chord_density ~n_events ~hierarchy ~perf_mode ~dyn_mode
+          ~dur_relation ~reg_mode states0
   in
   (resolve_times groups, states')
 
@@ -1574,6 +2141,21 @@ let start_new_variant ~variant_n_events (continuing : continuing_state) =
     dyn_state = reset_if_tendency continuing.dyn_state continuing.dyn_last_arr;
     dur_state = reset_if_tendency continuing.dur_state continuing.dur_last_arr;
     reg_state = reset_if_tendency continuing.reg_state continuing.reg_last_arr;
+    (* CHORD's order-of-chords is the one [har_state_t] case with a real
+       [sel_state] of its own (ROW/INTERVAL are each their own bespoke
+       stream, untouched by any of this) - the table itself never changes
+       across layers, so only its [Tendency] window schedule (if that's the
+       chosen order) needs the same per-variant reset as every other
+       parameter's own [Tendency]-mode field above. *)
+    har_state =
+      (match continuing.har_state with
+      | HarChord hc ->
+          HarChord
+            {
+              hc with
+              order_state = reset_if_tendency hc.order_state (elements_of_array hc.table);
+            }
+      | (HarRow _ | HarInterval _) as other -> other);
   }
 
 let generate_score_hierarchical ~variant_duration ~instrument_ensemble
@@ -1942,11 +2524,13 @@ let density_cell density (e : entry) =
   match density with
   | Autonomous _ -> string_of_int (List.length e.notes)
   | InstrumentDensity -> "-"
+  | ChordDensity -> string_of_int (List.length e.notes)
 
 let density_header_comment = function
   | Autonomous { low; high; _ } ->
       Printf.sprintf "# density: autonomous (low %d, high %d)\n" low high
   | InstrumentDensity -> "# density: instrument\n"
+  | ChordDensity -> "# density: chord\n"
 
 (* Hierarchical view: one header line per entry (time, instrument, note
    count, and whichever of performance/dynamic/duration were chord-wide),

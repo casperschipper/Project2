@@ -4,22 +4,25 @@ import { Field, Section } from "../components/Field";
 import { TokenListEditor } from "../components/ListEditors";
 import { MatrixEditor } from "../components/MatrixEditor";
 import { IntervalGraph } from "../components/IntervalGraph";
+import { PrincipleEditor } from "../components/PrincipleEditor";
 import { effectiveIntervalMatrix, emptyIntervalMatrix } from "../schema/defaults";
-import type { HarmonyPrinciple, Transposition } from "../schema/types";
+import type { ChordTransposition, HarmonyPrinciple, Transposition } from "../schema/types";
 
 /**
- * HARMONY (EMR-3 8.2): ROW and INTERVAL, its two implemented "row
- * principles" (CHORD is out of scope - see harmony.md: it becomes main
- * parameter and takes over vertical density itself, a fundamentally
- * different mechanism). Neither ever decides *which* octave a relative
- * pitch lands in - that is REGISTER's job, on its own screen. Their
- * relative order in the Structure screen's hierarchy decides which one
- * constrains the other for a given note.
+ * HARMONY (EMR-3 8.2): ROW and INTERVAL, its two "row principles", plus
+ * CHORD. ROW/INTERVAL never decide *which* octave a relative pitch lands in
+ * - that is REGISTER's job, on its own screen - and their relative order in
+ * the Structure screen's hierarchy decides which one constrains the other
+ * for a given note. Neither has a "per chord" mode either: every note in a
+ * chord always takes its own next value, ignoring the entry point entirely
+ * (EMR-3 has no MOD-HARM call number for either).
  *
- * Unlike performance/dynamics/duration/register, neither has a "per chord"
- * mode: every note in a chord always takes its own next value, ignoring the
- * entry point entirely (EMR-3 has no MOD-HARM call number for either). A
- * genuinely shared-per-chord harmony is the CHORD principle, not built yet.
+ * CHORD is different in kind: it decides a whole chord (tones *and* how
+ * many of them) per entry point, becomes HARMONY's "main parameter", and
+ * takes over vertical density itself (EMR-3 §9.2) - the Structure screen's
+ * own density selector reflects that (see there). Switching into or out of
+ * CHORD here keeps `density` in sync automatically, so the two settings can
+ * never quietly disagree.
  */
 export function HarmonyScreen() {
   const { project, update } = useStore();
@@ -50,13 +53,28 @@ export function HarmonyScreen() {
           <select
             style={{ width: 340 }}
             value={project.harmonyPrinciple}
-            onChange={(e) =>
-              update((p) => (p.harmonyPrinciple = e.target.value as HarmonyPrinciple))
-            }
+            onChange={(e) => {
+              const next = e.target.value as HarmonyPrinciple;
+              update((p) => {
+                p.harmonyPrinciple = next;
+                // Keep density in lockstep: CHORD requires chord-density and
+                // vice versa (validate.ts also enforces this, but syncing it
+                // here means the two can never actually drift apart through
+                // the UI in the first place).
+                if (next === "chord") {
+                  p.density = { kind: "chord-density" };
+                } else if (p.density.kind === "chord-density") {
+                  p.density = { kind: "instrument-density" };
+                }
+              });
+            }}
           >
             <option value="row">Row — a fixed sequence, transposed once exhausted</option>
             <option value="interval">
               Interval — an unending chain walked over a matrix of allowed intervals
+            </option>
+            <option value="chord">
+              Chord — a whole chord per entry point, deciding vertical density itself
             </option>
           </select>
         </Field>
@@ -327,6 +345,147 @@ export function HarmonyScreen() {
           </Section>
         </>
       )}
+
+      {project.harmonyPrinciple === "chord" && (
+        <>
+          <Section title="Chord table">
+            <Field
+              label="Chords"
+              helpKey="fields/harmony-chord"
+              path="harmony.chord"
+              hint={`One chord per group - each entry a relative pitch (1..${project.octaveDivision}) or 'p' for percussion. A chord's own size becomes the vertical density whenever it's drawn.`}
+            >
+              <ChordTableEditor
+                chords={project.chords}
+                onChange={(chords) => update((p) => (p.chords = chords))}
+                octaveDivision={project.octaveDivision}
+              />
+            </Field>
+          </Section>
+
+          <Section title="Order of chords">
+            <Field
+              label="Order"
+              helpKey="fields/harmony-chord-order"
+              path="harmony.order"
+              hint="How the next chord is chosen from the table above."
+            >
+              <PrincipleEditor
+                principle={project.chordOrder}
+                onChange={(v) => update((p) => (p.chordOrder = v))}
+                values={project.chords.map(
+                  (c, i) => `chord ${i + 1} (${c.length} tone${c.length === 1 ? "" : "s"})`,
+                )}
+                valueLabel="chord"
+              />
+            </Field>
+          </Section>
+
+          <Section title="Transposition">
+            <Field
+              label="Transposition"
+              helpKey="fields/harmony-chord-transposition"
+              path="harmony.transposition"
+              hint="How the whole table is transposed each time every chord in it has been drawn once (one pass)."
+            >
+              <select
+                style={{ width: 340 }}
+                value={
+                  typeof project.chordTransposition === "string"
+                    ? project.chordTransposition
+                    : "given"
+                }
+                onChange={(e) => {
+                  const kind = e.target.value;
+                  const next: ChordTransposition =
+                    kind === "given"
+                      ? { kind: "given", values: ["1"] }
+                      : (kind as "none" | "alea" | "series");
+                  update((p) => (p.chordTransposition = next));
+                }}
+              >
+                <option value="none">None — the table repeats unchanged</option>
+                <option value="alea">Alea — a random interval each pass</option>
+                <option value="series">Series — each interval once before repeating</option>
+                <option value="given">Given — an explicit list of intervals you provide</option>
+              </select>
+
+              {typeof project.chordTransposition !== "string" && (
+                <div style={{ marginTop: 8 }}>
+                  <TokenListEditor
+                    values={project.chordTransposition.values}
+                    onChange={(v) =>
+                      update((p) => {
+                        if (typeof p.chordTransposition !== "string")
+                          p.chordTransposition.values = v;
+                      })
+                    }
+                    placeholder="1"
+                    bulkPlaceholder="2 5"
+                    invalid={(v) => {
+                      const n = Number(v);
+                      return !Number.isInteger(n) || n < 1 || n > project.octaveDivision;
+                    }}
+                  />
+                </div>
+              )}
+            </Field>
+          </Section>
+        </>
+      )}
+    </div>
+  );
+}
+
+/** One `TokenListEditor` per chord, with add/remove-chord affordances - the
+ * CHORD table's own list-of-lists, alongside every other chord-table row
+ * being just a `row`-shaped token list underneath. */
+function ChordTableEditor({
+  chords,
+  onChange,
+  octaveDivision,
+}: {
+  chords: string[][];
+  onChange: (chords: string[][]) => void;
+  octaveDivision: number;
+}) {
+  const invalid = (v: string) => {
+    if (v === "p") return false;
+    const n = Number(v);
+    return !Number.isInteger(n) || n < 1 || n > octaveDivision;
+  };
+
+  return (
+    <div className="stack">
+      {chords.map((chord, i) => (
+        <div className="field__row" key={i}>
+          <span className="faint" style={{ width: 60 }}>
+            Chord {i + 1}
+          </span>
+          <div style={{ flex: 1 }}>
+            <TokenListEditor
+              values={chord}
+              onChange={(v) => onChange(chords.map((c, j) => (j === i ? v : c)))}
+              placeholder="1"
+              bulkPlaceholder="1 3 5"
+              invalid={invalid}
+            />
+          </div>
+          <button
+            type="button"
+            className="btn btn--ghost btn--icon btn--danger"
+            onClick={() => onChange(chords.filter((_, j) => j !== i))}
+            title="Remove this chord"
+          >
+            ×
+          </button>
+        </div>
+      ))}
+      <div>
+        <button type="button" className="btn btn--small" onClick={() => onChange([...chords, ["1"]])}>
+          + Add chord
+        </button>
+      </div>
     </div>
   );
 }

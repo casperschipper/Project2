@@ -158,6 +158,9 @@ export function defaultProject(): Project {
     intervalMatrixSource: { kind: "matrix", rows: emptyIntervalMatrix(12) },
     forbiddenTones: [],
     invertMatrix: false,
+    chords: [["1", "3", "5"]],
+    chordOrder: { kind: "series" },
+    chordTransposition: "none",
   };
 }
 

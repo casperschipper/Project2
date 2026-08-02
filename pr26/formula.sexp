@@ -8,7 +8,7 @@
 
   (dynamics (ppp pp p mf f ff fff))
   (dynamics-table
-    (0 1 2 3 4 5 6)
+    (2 3 4)
     (2 3 4)
     (0 6))
 
@@ -35,7 +35,7 @@
 
   (durations (0.01 0.02 0.1 0.2 0.3 0.5 2.0))
   (duration-table
-    (4 4 0 1 2 3 5)
+    (4 0 1 2 3 5)
     (2 3 4)
     (0 1 2))
 
@@ -52,10 +52,16 @@
     (0 2))
 
   (harmony
-    (principle interval)
-    (matrix (chord (1 8)))
-    (forbidden-tones ())
-    (invert-matrix no))
+    (principle chord)
+    (chords (
+      (1 5)
+      (1 7)
+      (1 7 2)
+      (1 2 4 5 7 9 11 12)
+      (1 6 11)
+    ))
+    (order series)
+    (transposition (given (1))))
 
   (principles
     (instrument (ensemble (sequence 0)) (order series))
@@ -65,7 +71,7 @@
     (duration (ensemble (sequence 0)) (order series) (relation (independent per-note)))
     (register (ensemble (sequence 0)) (order (tendency (section 1.0 (start 0.0 0.0) (end 0.0 1.0)) (section 1.0 (start 0.5 0.5) (end 0.0 1.0)))) (mode per-chord)))
 
-  (hierarchy (Ins Reg Har Per Dyn Ent Dur))
+  (hierarchy (Har Ins Reg Per Dyn Ent Dur))
   (union none)
-  (density (autonomous (low 1) (high 1) (principle (group (element series) (repetition series) (repetitions 1 4)))))
+  (density chord-density)
 )

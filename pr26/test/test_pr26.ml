@@ -446,3 +446,288 @@ let () =
   in
   assert (List.exists (fun (n : Pr26.Score_generation.note) -> not n.harmony_matrix_ok) notes);
   print_endline "interval principle: too-strict fallback test passed"
+
+(* ---- HARMONY's CHORD principle (EMR-3 8.2, entries 15-18) ---- *)
+
+(* [transpose_chord]: "chords starting with 0 are excluded from
+   transposition, regardless of the numbers which follow" - a whole-chord
+   property; zeros *within* an otherwise-transposable chord stay inert. *)
+let () =
+  let open Pr26.Parameters in
+  let tr = 12 in
+  let c1 = Result.get_ok (mk_chord ~tr [ Some 1; Some 3; Some 5 ]) in
+  let c2 = Result.get_ok (mk_chord ~tr [ None; Some 3; Some 5 ]) in
+  let c3 = Result.get_ok (mk_chord ~tr [ Some 1; None; Some 5 ]) in
+  let to_ints (Chord arr) = Array.to_list arr |> List.map row_value_to_int in
+  assert (to_ints (transpose_chord ~tr 2 c1) = [ 3; 5; 7 ]);
+  assert (to_ints (transpose_chord ~tr 2 c2) = to_ints c2);
+  assert (to_ints (transpose_chord ~tr 2 c3) = [ 3; 0; 7 ]);
+  print_endline "transpose_chord: all tests passed"
+
+(* Cumulative, not compounding (mirrors [row_stream]'s own regression shape
+   for ROW): two passes through a 2-chord table under [ChordTransposeSeries]
+   with a deterministic [Sequence] order - pass 2's chords must equal pass
+   1's chords each transposed by the *same* single interval (drawn from the
+   ORIGINAL reference table, never compounded against an already-transposed
+   intermediate pass). *)
+let () =
+  let open Pr26.Parameters in
+  let open Pr26.Score_generation in
+  let tr = 12 in
+  let table =
+    Result.get_ok
+      (mk_chord_table ~tr [ [ Some 1; Some 3 ]; [ Some 2; Some 5 ] ])
+  in
+  let harmony =
+    HarmChord
+      {
+        table;
+        order = Pr26.Selection.Sequence [ 0; 1 ];
+        transposition = ChordTransposeSeries;
+      }
+  in
+  let to_ints (Chord arr) = Array.to_list arr |> List.map row_value_to_int in
+  let state0 = initial_har_state ~tr harmony in
+  let c1, state1 = chord_next state0 in
+  let c2, state2 = chord_next state1 in
+  let c3, state3 = chord_next state2 in
+  let c4, _ = chord_next state3 in
+  assert (to_ints c1 = [ 1; 3 ]);
+  assert (to_ints c2 = [ 2; 5 ]);
+  let k = ((List.hd (to_ints c3) - 1) - (List.hd (to_ints c1) - 1) + tr) mod tr in
+  let transpose_by k ns = List.map (fun n -> ((n - 1 + k) mod tr) + 1) ns in
+  assert (to_ints c3 = transpose_by k (to_ints c1));
+  assert (to_ints c4 = transpose_by k (to_ints c2));
+  print_endline "chord_next: cumulative-not-compounding test passed"
+
+(* [ChordTransposeGiven]: distinct from ROW's "serial" mode (which reuses
+   the row's own tones) - a separately-authored explicit list, cycled once
+   per completed pass and applied cumulatively to the ORIGINAL table, mod
+   tr. 3-chord table, given intervals (2 5): pass 1 untransposed, pass 2 by
+   2, pass 3 by (2+5) mod 12 = 7 - not by 5 alone, proving accumulation. *)
+let () =
+  let open Pr26.Parameters in
+  let open Pr26.Score_generation in
+  let tr = 12 in
+  let table =
+    Result.get_ok (mk_chord_table ~tr [ [ Some 1 ]; [ Some 2 ]; [ Some 3 ] ])
+  in
+  let transposition = Result.get_ok (mk_chord_transposition_given ~tr [ 2; 5 ]) in
+  let harmony =
+    HarmChord { table; order = Pr26.Selection.Sequence [ 0; 1; 2 ]; transposition }
+  in
+  let to_ints (Chord arr) = Array.to_list arr |> List.map row_value_to_int in
+  let rec draw_n n state acc =
+    if n = 0 then List.rev acc
+    else
+      let c, state' = chord_next state in
+      draw_n (n - 1) state' (to_ints c :: acc)
+  in
+  let results = draw_n 9 (initial_har_state ~tr harmony) [] in
+  assert (
+    results
+    = [ [ 1 ]; [ 2 ]; [ 3 ]; [ 3 ]; [ 4 ]; [ 5 ]; [ 8 ]; [ 9 ]; [ 10 ] ]);
+  print_endline "chord_next: ChordTransposeGiven cycling test passed"
+
+(* End-to-end CHORD tests. Two instruments (one pitched, one percussion) and
+   two registers (likewise) - [alea] for instrument/register order, not
+   [series]: with a predicate as restrictive as percussion-vs-pitched
+   agreement and only one instrument/register of each kind, [series]' own
+   "search only the currently-remaining, not-yet-drawn options" semantics
+   can narrow to the wrong-type remainder before a reshuffle - a real,
+   pre-existing characteristic of [series_draw_predicate] (shared by every
+   parameter, not introduced by CHORD), simply never exercised this hard
+   before since [Ins] never conditioned on harmony until now. [Alea]
+   searches its full pool on every draw, so it isn't affected. *)
+let build_chord_formula ~tr ~chords_sexp ~order_sexp ~transposition_sexp
+    ~hierarchy_sexp ~density_sexp =
+  let src =
+    Printf.sprintf
+      {|(structure-formula
+  (seed 5)
+  (variant-duration 8.0)
+  (octave-division %d)
+
+  (dynamics (mf))
+  (dynamics-table (0))
+
+  (performance (normal))
+  (performance-table (0))
+
+  (number-of-instrument-groups 1)
+  (instruments
+    (instrument piano
+      (chordsize 1 2)
+      (performance (normal))
+      (dynamics (mf))
+      (pitch-range (low (octave 1) (pitch 1)) (high (octave 8) (pitch %d)))
+      (durations 0.1 1.0))
+    (instrument drum
+      (chordsize 1 2)
+      (performance (normal))
+      (dynamics (mf))
+      (pitch-range percussion)
+      (durations 0.1 1.0)))
+  (instrument-table (0 1))
+
+  (entrydelays (0.5))
+  (entrydelay-table (0))
+
+  (durations (0.2))
+  (duration-table (0))
+
+  (registers (
+    (pitch-range (low (octave 1) (pitch 1)) (high (octave 8) (pitch %d)))
+    (pitch-range percussion)))
+  (register-table (0 1))
+
+  (harmony
+    (principle chord)
+    (chords %s)
+    (order %s)
+    (transposition %s))
+
+  (principles
+    (instrument (ensemble (sequence 0)) (order alea))
+    (entrydelay (ensemble (sequence 0)) (order series))
+    (performance (ensemble (sequence 0)) (order series) (mode per-chord))
+    (dynamics (ensemble series) (order series) (mode per-chord))
+    (duration (ensemble (sequence 0)) (order series) (relation (independent per-note)))
+    (register (ensemble (sequence 0)) (order alea) (mode per-note)))
+
+  (hierarchy %s)
+  (union none)
+  (density %s)
+)|}
+      tr tr tr chords_sexp order_sexp transposition_sexp hierarchy_sexp
+      density_sexp
+  in
+  match Pr26.Sexp.of_string src with
+  | Error e -> Error [ "parse error: " ^ e ]
+  | Ok sexps -> (
+      match Pr26.Structure_formula.Parse.of_sexp sexps with
+      | Error (errors, _) ->
+          Error (errors |> List.map (fun (d : Pr26.Parameters.diagnostic) -> Pr26.Parameters.problem_id d.problem))
+      | Ok (sf, _warnings) -> Ok sf)
+
+let build_chord_formula_ok ~tr ~chords_sexp ~order_sexp ~transposition_sexp
+    ~hierarchy_sexp ~density_sexp =
+  match
+    build_chord_formula ~tr ~chords_sexp ~order_sexp ~transposition_sexp
+      ~hierarchy_sexp ~density_sexp
+  with
+  | Ok sf -> sf
+  | Error ids ->
+      failwith
+        (Printf.sprintf "chord test formula failed to build: %s"
+           (String.concat ", " ids))
+
+(* EMR-3 §9.2: "the vertical density is identical to the size of the chord
+   selected for each entry point" - [density] is genuinely superseded, not
+   just ignored-but-coincidentally-matching. A 2-chord table with distinct
+   sizes (2 and 4), drawn in a fixed alternating [Sequence] order: every
+   entry's note count must alternate 2, 4, 2, 4, ... *)
+let () =
+  let sf =
+    build_chord_formula_ok ~tr:12
+      ~chords_sexp:"((1 3) (2 5 8 11))"
+      ~order_sexp:"(sequence (0 1))" ~transposition_sexp:"none"
+      ~hierarchy_sexp:"(Har Ins Reg Per Dyn Ent Dur)"
+      ~density_sexp:"chord-density"
+  in
+  let variants = Pr26.Score_generation.build_score sf in
+  let entries =
+    variants
+    |> List.concat_map (fun layers ->
+           layers |> List.concat_map (fun (es : Pr26.Score_generation.entry list) -> es))
+  in
+  assert (List.length entries >= 4);
+  let counts = entries |> List.map (fun (e : Pr26.Score_generation.entry) -> List.length e.notes) in
+  List.iteri
+    (fun i n -> assert (n = if i mod 2 = 0 then 2 else 4))
+    counts;
+  print_endline "chord principle: chord-size-drives-density test passed"
+
+(* A chord mixing percussion and pitched tones (EMR-3 8.16: percussion
+   instruments "can participate in the 'scoring' of the vertical density"
+   alongside melody ones) - every percussion-flagged note must come from
+   the percussion instrument with a [Percussion] pitch, and every pitched
+   note must come from the pitched instrument with a real relative pitch
+   drawn from the chord's own (untransposed - it starts with "p") tones. *)
+let () =
+  let sf =
+    build_chord_formula_ok ~tr:12 ~chords_sexp:"((p 3 7))" ~order_sexp:"alea"
+      ~transposition_sexp:"none"
+      ~hierarchy_sexp:"(Har Ins Reg Per Dyn Ent Dur)"
+      ~density_sexp:"chord-density"
+  in
+  let variants = Pr26.Score_generation.build_score sf in
+  let notes =
+    variants
+    |> List.concat_map (fun layers ->
+           layers
+           |> List.concat_map (fun (es : Pr26.Score_generation.entry list) ->
+                  es
+                  |> List.concat_map (fun (e : Pr26.Score_generation.entry) -> e.notes)))
+  in
+  assert (notes <> []);
+  List.iter
+    (fun (n : Pr26.Score_generation.note) ->
+      let (Pr26.Parameters.InstrumentName name) = n.instrument in
+      match n.pitch with
+      | Pr26.Parameters.Percussion -> assert (name = "drum")
+      | Pr26.Parameters.Pitched { step = Step s; _ } ->
+          assert (name = "piano");
+          assert (s = 3 || s = 7))
+    notes;
+  assert (
+    List.exists
+      (fun (n : Pr26.Score_generation.note) -> n.pitch = Pr26.Parameters.Percussion)
+      notes);
+  print_endline "chord principle: mixed percussion/pitched chord test passed"
+
+(* HARMONY must be first in the hierarchy under CHORD (EMR-3 §9.2: HARMONY
+   is main parameter) - mirrors [InstrumentDensityRequiresInsFirst]. *)
+let () =
+  (match
+     build_chord_formula ~tr:12 ~chords_sexp:"((1 3))" ~order_sexp:"alea"
+       ~transposition_sexp:"none"
+       ~hierarchy_sexp:"(Ins Har Reg Per Dyn Ent Dur)"
+       ~density_sexp:"chord-density"
+   with
+  | Ok _ -> assert false
+  | Error ids -> assert (List.mem "harmony-requires-har-first" ids));
+  print_endline "chord principle: hierarchy validation test passed"
+
+(* CHORD principle and chord-density must always agree, in both directions. *)
+let () =
+  (match
+     build_chord_formula ~tr:12 ~chords_sexp:"((1 3))" ~order_sexp:"alea"
+       ~transposition_sexp:"none"
+       ~hierarchy_sexp:"(Har Ins Reg Per Dyn Ent Dur)"
+       ~density_sexp:"instrument-density"
+   with
+  | Ok _ -> assert false
+  | Error ids -> assert (List.mem "chord-principle-density-mismatch" ids));
+  print_endline "chord principle: density/principle consistency test passed"
+
+(* Empty/oversized chord table. *)
+let () =
+  (match
+     build_chord_formula ~tr:12 ~chords_sexp:"()" ~order_sexp:"alea"
+       ~transposition_sexp:"none"
+       ~hierarchy_sexp:"(Har Ins Reg Per Dyn Ent Dur)"
+       ~density_sexp:"chord-density"
+   with
+  | Ok _ -> assert false
+  | Error ids -> assert (List.mem "empty-chord-table" ids));
+  (match
+     build_chord_formula ~tr:12
+       ~chords_sexp:"((1 2 3 4 5 6 7 8 9 10 11 12 1))" ~order_sexp:"alea"
+       ~transposition_sexp:"none"
+       ~hierarchy_sexp:"(Har Ins Reg Per Dyn Ent Dur)"
+       ~density_sexp:"chord-density"
+   with
+  | Ok _ -> assert false
+  | Error ids -> assert (List.mem "chord-too-long" ids));
+  print_endline "chord principle: empty/oversized chord table test passed"

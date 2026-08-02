@@ -160,7 +160,42 @@ let mk_structure_formula ~seed ~variant_duration ~n_variants ~instr_list
               problem = InstrumentDensityRequiresInsFirst;
             };
           ]
+    | ChordDensity, first :: _ ->
+        if first == Har then []
+        else
+          [
+            {
+              location = [ Key KHierarchy ];
+              severity = Severity.Error;
+              problem = HarmonyRequiresHarFirst;
+            };
+          ]
     | _ -> []
+  in
+  (* CHORD makes HARMONY the main parameter and thus decisive for vertical
+     density (EMR-3 §9.2) - the two settings must always agree, in both
+     directions, so a composer changing one without the other is caught
+     immediately rather than silently doing the wrong thing at runtime. *)
+  let chord_density_consistency_errors =
+    match (harmony, density) with
+    | HarmChord _, ChordDensity -> []
+    | HarmChord _, _ ->
+        [
+          {
+            location = [ Key KDensity ];
+            severity = Severity.Error;
+            problem = ChordPrincipleDensityMismatch;
+          };
+        ]
+    | (HarmRow _ | HarmInterval _), ChordDensity ->
+        [
+          {
+            location = [ Key KHarmony; Key KPrinciple ];
+            severity = Severity.Error;
+            problem = ChordPrincipleDensityMismatch;
+          };
+        ]
+    | (HarmRow _ | HarmInterval _), (Autonomous _ | InstrumentDensity) -> []
   in
   let combination_errors =
     check_combination
@@ -265,10 +300,15 @@ let mk_structure_formula ~seed ~variant_duration ~n_variants ~instr_list
     @ needs_ins_first [ Key KDynamics; Key KMode ] Dyn dynamics_mode
     @ needs_ins_first [ Key KDuration; Key KRelation ] Dur dur_note_mode
     @ needs_ins_first [ Key KRegister; Key KMode ] Reg register_mode
-    (* ROW always distributes per chord tone (no "per chord" mode of its
-       own), so it always needs the chord's instrument - and thus its note
-       count - resolved first. *)
-    @ needs_ins_first_always [ Key KHarmony ] Har
+    (* ROW/INTERVAL always distribute per chord tone (no "per chord" mode of
+       their own), so they always need the chord's instrument - and thus its
+       note count - resolved first. CHORD is the opposite: it decides the
+       chord (and hence the note count) itself, so Ins must come *after* Har
+       - enforced separately, by [hierarchy_errors] above via
+       [HarmonyRequiresHarFirst], not here. *)
+    @ (match harmony with
+      | HarmRow _ | HarmInterval _ -> needs_ins_first_always [ Key KHarmony ] Har
+      | HarmChord _ -> [])
   in
   (* Fig. 8-5's own well-formedness caution: a row with no allowed successor
      at all is a genuine dead end - the composer's to avoid, not something
@@ -284,12 +324,26 @@ let mk_structure_formula ~seed ~variant_duration ~n_variants ~instr_list
                  severity = Severity.Warning;
                  problem = IntervalMatrixRowHasNoSuccessor i;
                })
-    | HarmRow _ -> []
+    | HarmRow _ | HarmChord _ -> []
+  in
+  (* EMR-3 §8.2: "Maximum number of tones per group = pitch grid tr." *)
+  let chord_table_errors =
+    match harmony with
+    | HarmChord { table; _ } ->
+        chord_table_too_long_indices ~tr table
+        |> List.map (fun (i, len) ->
+               {
+                 location = [ Key KHarmony; Key KChord; Index i ];
+                 severity = Severity.Error;
+                 problem = ChordTooLong { len; tr };
+               })
+    | HarmRow _ | HarmInterval _ -> []
   in
   let all_diags =
-    hierarchy_errors @ combination_errors @ performance_membership_errors
-    @ dynamics_membership_errors @ ratio_coverage_errors
-    @ per_note_ordering_errors @ interval_matrix_warnings
+    hierarchy_errors @ chord_density_consistency_errors @ combination_errors
+    @ performance_membership_errors @ dynamics_membership_errors
+    @ ratio_coverage_errors @ per_note_ordering_errors
+    @ interval_matrix_warnings @ chord_table_errors
   in
   match
     List.partition
@@ -693,6 +747,27 @@ module Parse = struct
         Ok (Some n)
     | Sexp.List _ -> fail "row entry expects a relative pitch or 'p'"
 
+  (* One entry of HARMONY's CHORD table (EMR-3 8.2): a whole chord, i.e. a
+     list of relative-pitch-or-"p" entries, each parsed exactly like one
+     ROW entry above. *)
+  let parse_chord_entry = function
+    | Sexp.List items -> items |> List.map parse_row_item |> sequence
+    | Sexp.Atom _ -> fail "expected a list of pitches for one chord"
+
+  (* TRANSP-CHORD, entry 18: like TRANSP-ROW, but only 4 forms - the
+     composer-given "row" (option 3) is a distinct, separately-authored
+     list, so it needs its own leading keyword ("given") to disambiguate
+     from the bare-atom forms, matching how (matrix (rows ...)) vs
+     (matrix (chord ...)) already disambiguate sub-forms elsewhere. *)
+  let parse_chord_transposition ~tr = function
+    | [ Sexp.Atom "none" ] -> Ok ChordNoTransposition
+    | [ Sexp.Atom "alea" ] -> Ok ChordTransposeAlea
+    | [ Sexp.Atom "series" ] -> Ok ChordTransposeSeries
+    | [ Sexp.List (Sexp.Atom "given" :: [ Sexp.List ints ]) ] ->
+        let* ns = ints |> List.map require_int |> sequence in
+        lift (mk_chord_transposition_given ~tr ns)
+    | _ -> fail "transposition expects one of: none, alea, series, (given (...))"
+
   (* HARMONY's INTERVAL principle (EMR-3 8.2, entries 21-24): the matrix can
      be authored three ways - a dense grid of 0/1 rows, derived from a given
      chord's own interval content (CHORD-INT), or a sparse adjacency list
@@ -809,6 +884,7 @@ module Parse = struct
         in
         lift (mk_autonomous ~low:low_v ~high:high_v ~selection_principle:p)
     | [ Sexp.Atom "instrument-density" ] -> Ok InstrumentDensity
+    | [ Sexp.Atom "chord-density" ] -> Ok ChordDensity
     | other ->
         fail
           (Printf.sprintf
@@ -1071,6 +1147,30 @@ module Parse = struct
           in
           let matrix = if invert then invert_matrix matrix else matrix in
           Ok (HarmInterval { matrix; forbidden_tones })
+      | "chord" ->
+          let* table =
+            in_loc [ Key KHarmony; Key KChord ]
+              (let* c_args = require_field "chords" args in
+               match c_args with
+               | [ Sexp.List chord_sexps ] ->
+                   let* chords =
+                     chord_sexps |> List.map parse_chord_entry |> sequence
+                   in
+                   lift (mk_chord_table ~tr chords)
+               | _ -> fail "chords expects (chords ((...) (...) ...))")
+          in
+          let* order =
+            in_loc [ Key KHarmony; Key KOrder ]
+              (let* o_args = require_field "order" args in
+               parse_principle o_args)
+          in
+          let* transposition =
+            in_loc
+              [ Key KHarmony; Key KTransposition ]
+              (let* t_args = require_field "transposition" args in
+               parse_chord_transposition ~tr t_args)
+          in
+          Ok (HarmChord { table; order; transposition })
       | s ->
           in_loc [ Key KHarmony; Key KPrinciple ] (lift (Error (IntervalPrincipleName s)))
     in

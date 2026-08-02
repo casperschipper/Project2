@@ -96,7 +96,8 @@ export type DurationRelation =
 
 export type Density =
   | { kind: "instrument-density" }
-  | { kind: "autonomous"; low: number; high: number; principle: Principle };
+  | { kind: "autonomous"; low: number; high: number; principle: Principle }
+  | { kind: "chord-density" };
 
 /** An absolute pitch: an octave digit (1-9) plus a relative pitch/step within it. */
 export type Pitch = { octave: number; pitch: number };
@@ -129,10 +130,24 @@ export type Register = PitchRange;
 /** TRANSP-ROW (EMR-3 8.2, entry 20): how the row is transposed once exhausted. */
 export type Transposition = "none" | "alea" | "series" | "chromatic" | "serial";
 
-/** HARM (EMR-3 8.2, entry 15): which of HARMONY's two implemented "row
- * principles" produces its relative-pitch stream (CHORD is out of scope -
- * see harmony.md). */
-export type HarmonyPrinciple = "row" | "interval";
+/** HARM (EMR-3 8.2, entry 15): which of HARMONY's three principles produces
+ * its pitch content. ROW and INTERVAL are "row principles" - a stream of
+ * relative pitches, one per chord tone. CHORD is different in kind: it
+ * decides a whole chord (tones *and* how many of them) per entry point, and
+ * so becomes the main parameter, deciding vertical density itself (EMR-3
+ * §9.2) - see `chordTransposition`/`chords`/`chordOrder` below, and the
+ * density/harmony coupling enforced in validate.ts. */
+export type HarmonyPrinciple = "row" | "interval" | "chord";
+
+/** TRANSP-CHORD (EMR-3 8.2, entry 18): like `Transposition` above, but
+ * restricted to 4 modes - no chromatic mode, and no "serial" (reuse-the-
+ * table) mode; its own "given" mode is a distinct, separately-authored list
+ * of transposition intervals instead. */
+export type ChordTransposition =
+  | "none"
+  | "alea"
+  | "series"
+  | { kind: "given"; values: string[] };
 
 /**
  * How INTERVAL's transition matrix (EMR-3 8.2, entries 21-24) is authored -
@@ -253,6 +268,14 @@ export type Project = {
   forbiddenTones: string[];
   /** BIT, entry 24: flip every cell of whichever matrix resulted above. */
   invertMatrix: boolean;
+  /** CHORD only (EMR-3 8.2, entries 15-18). TAB-CHORD: any number of chords,
+   * one per group; each entry is a relative pitch (1..octaveDivision) or "p"
+   * for percussion, the same vocabulary as `row`. */
+  chords: string[][];
+  /** SEQ-CHORD, entry 17: the order chords are drawn in - the full general
+   * selection principle, same as every other parameter's own `order`. */
+  chordOrder: Principle;
+  chordTransposition: ChordTransposition;
 };
 
 // ---------------------------------------------------------------------

@@ -136,14 +136,18 @@ function checkTable(spec: TableSpec, out: Diagnostic[]) {
   });
 }
 
-/** Principles that index into a list must stay inside it. */
+/** Principles that index into a list must stay inside it. `baseLocation`
+ * overrides the default `[key(paramKey), key("principle")]` path - needed
+ * for CHORD's order-of-chords, which would otherwise collide with the
+ * harmony-principle-name field's own path (both under `harmony`). */
 function checkPrinciple(
   paramKey: string,
   principle: Principle,
   listLength: number,
   out: Diagnostic[],
+  baseLocation?: Segment[],
 ) {
-  const base = [key(paramKey), key("principle")];
+  const base = baseLocation ?? [key(paramKey), key("principle")];
 
   if (principle.kind === "sequence") {
     if (principle.values.length === 0) {
@@ -379,6 +383,71 @@ export function validateProject(p: Project): Diagnostic[] {
     });
     if (p.row.length === 0) {
       out.push(diag("empty-list", "error", [key("harmony"), key("row")], "the row is empty"));
+    }
+  } else if (p.harmonyPrinciple === "chord") {
+    // CHORD (EMR-3 8.2, entries 15-18): a table of chords, each entry "p" or
+    // a relative pitch 1..tr - the same vocabulary as ROW's own row.
+    if (p.chords.length === 0) {
+      out.push(
+        diag("empty-chord-table", "error", [key("harmony"), key("chord")], "the CHORD table must contain at least one chord"),
+      );
+    }
+    p.chords.forEach((chord, ci) => {
+      chord.forEach((raw, i) => {
+        if (raw === "p") return;
+        const n = Number(raw);
+        if (!Number.isInteger(n) || n < 1 || n > p.octaveDivision) {
+          out.push(
+            diag(
+              "invalid-relative-pitch",
+              "error",
+              [key("harmony"), key("chord"), idx(ci), idx(i)],
+              `"${raw}" is not a valid chord entry - use a relative pitch 1..${p.octaveDivision}, or 'p' for percussion`,
+              { raw, tr: p.octaveDivision },
+            ),
+          );
+        }
+      });
+      if (chord.length > p.octaveDivision) {
+        out.push(
+          diag(
+            "chord-too-long",
+            "error",
+            [key("harmony"), key("chord"), idx(ci)],
+            `this chord has ${chord.length} tone(s), but the pitch grid only has ${p.octaveDivision} tones per octave (tr)`,
+            { len: chord.length, tr: p.octaveDivision },
+          ),
+        );
+      }
+    });
+
+    checkPrinciple("harmony", p.chordOrder, p.chords.length, out, [key("harmony"), key("order")]);
+
+    if (typeof p.chordTransposition !== "string") {
+      p.chordTransposition.values.forEach((raw, i) => {
+        const n = Number(raw);
+        if (!Number.isInteger(n) || n < 1 || n > p.octaveDivision) {
+          out.push(
+            diag(
+              "invalid-relative-pitch",
+              "error",
+              [key("harmony"), key("transposition"), idx(i)],
+              `"${raw}" is not a valid transposition interval - use 1..${p.octaveDivision}`,
+              { raw, tr: p.octaveDivision },
+            ),
+          );
+        }
+      });
+      if (p.chordTransposition.values.length === 0) {
+        out.push(
+          diag(
+            "empty-list",
+            "error",
+            [key("harmony"), key("transposition")],
+            "the given transposition list is empty",
+          ),
+        );
+      }
     }
   } else {
     // INTERVAL (EMR-3 8.2, entries 21-24). The matrix always auto-resizes
@@ -759,6 +828,45 @@ export function validateProject(p: Project): Diagnostic[] {
       ),
     );
   }
+  if (p.density.kind === "chord-density" && posOf("Har") !== 0) {
+    out.push(
+      diag(
+        "harmony-requires-har-first",
+        "error",
+        [key("hierarchy")],
+        "the CHORD principle makes HARMONY the main parameter (EMR-3 9.2): Har " +
+          "must be first in the hierarchy - it decides the chord (and hence the " +
+          "vertical density) before anything else can be resolved",
+      ),
+    );
+  }
+  // CHORD principle and chord-density must always agree, in both
+  // directions - HARMONY becomes main parameter and decides vertical
+  // density itself, so the two can never disagree.
+  if (p.harmonyPrinciple === "chord" && p.density.kind !== "chord-density") {
+    out.push(
+      diag(
+        "chord-principle-density-mismatch",
+        "error",
+        [key("density")],
+        "the CHORD principle requires density to be chord-density, and vice " +
+          "versa - HARMONY becomes main parameter and decides vertical density " +
+          "itself (EMR-3 9.2)",
+      ),
+    );
+  }
+  if (p.harmonyPrinciple !== "chord" && p.density.kind === "chord-density") {
+    out.push(
+      diag(
+        "chord-principle-density-mismatch",
+        "error",
+        [key("harmony"), key("principle")],
+        "the CHORD principle requires density to be chord-density, and vice " +
+          "versa - HARMONY becomes main parameter and decides vertical density " +
+          "itself (EMR-3 9.2)",
+      ),
+    );
+  }
 
   // Per-note parameters need the chord size, which only exists once an
   // instrument has been chosen.
@@ -805,7 +913,11 @@ export function validateProject(p: Project): Diagnostic[] {
       ),
     );
   }
-  if (insPos > posOf("Har")) {
+  // ROW/INTERVAL are always per-note, so Ins must precede Har - the exact
+  // opposite of CHORD, which requires Har first (checked separately above,
+  // via `harmony-requires-har-first`) since it decides the chord - and
+  // hence the note count - itself.
+  if (p.harmonyPrinciple !== "chord" && insPos > posOf("Har")) {
     out.push(
       diag(
         "per-note-requires-ins-first",

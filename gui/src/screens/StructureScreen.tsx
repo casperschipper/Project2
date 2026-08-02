@@ -111,84 +111,96 @@ export function StructureScreen() {
           label="Density"
           helpKey="fields/density"
           path="density"
-          hint="How many notes sound together. Either drawn by its own principle, or taken from the chord size of whichever instrument is playing."
+          hint="How many notes sound together. Either drawn by its own principle, taken from the chord size of whichever instrument is playing, or - under the CHORD harmony principle - fixed by whichever chord was drawn."
         >
-          <select
-            style={{ width: 340 }}
-            value={project.density.kind}
-            onChange={(e) =>
-              update((p) => {
-                p.density =
-                  e.target.value === "instrument-density"
-                    ? { kind: "instrument-density" }
-                    : {
-                        kind: "autonomous",
-                        low: 1,
-                        high: 2,
-                        principle: { kind: "series" },
-                      };
-              })
-            }
-          >
-            <option value="autonomous">Autonomous — density has its own principle</option>
-            <option value="instrument-density">
-              From instruments — the instrument's chord size decides
-            </option>
-          </select>
+          {project.harmonyPrinciple === "chord" ? (
+            <div className="field__hint">
+              Fixed to the size of whichever chord is drawn - HARMONY's CHORD principle
+              (chosen on the Harmony screen) makes HARMONY the main parameter, deciding
+              vertical density itself.
+            </div>
+          ) : (
+            <>
+              <select
+                style={{ width: 340 }}
+                value={project.density.kind}
+                onChange={(e) =>
+                  update((p) => {
+                    p.density =
+                      e.target.value === "instrument-density"
+                        ? { kind: "instrument-density" }
+                        : {
+                            kind: "autonomous",
+                            low: 1,
+                            high: 2,
+                            principle: { kind: "series" },
+                          };
+                  })
+                }
+              >
+                <option value="autonomous">Autonomous — density has its own principle</option>
+                <option value="instrument-density">
+                  From instruments — the instrument's chord size decides
+                </option>
+              </select>
 
-          {project.density.kind === "autonomous" && (
-            <div className="stack" style={{ marginTop: 12 }}>
-              <div className="field__row">
-                <span className="faint" style={{ width: 130 }}>
-                  Notes at once
-                </span>
-                <input
-                  type="number"
-                  className="input--tiny"
-                  min={1}
-                  value={project.density.low}
-                  onChange={(e) =>
-                    update((p) => {
-                      if (p.density.kind === "autonomous") p.density.low = Number(e.target.value);
-                    })
-                  }
-                />
-                <span className="faint">to</span>
-                <input
-                  type="number"
-                  className="input--tiny"
-                  min={1}
-                  value={project.density.high}
-                  onChange={(e) =>
-                    update((p) => {
-                      if (p.density.kind === "autonomous") p.density.high = Number(e.target.value);
-                    })
-                  }
-                />
-              </div>
-              <div>
-                <div className="faint" style={{ fontSize: 11.5, marginBottom: 6 }}>
-                  How the density is chosen within that range:
+              {project.density.kind === "autonomous" && (
+                <div className="stack" style={{ marginTop: 12 }}>
+                  <div className="field__row">
+                    <span className="faint" style={{ width: 130 }}>
+                      Notes at once
+                    </span>
+                    <input
+                      type="number"
+                      className="input--tiny"
+                      min={1}
+                      value={project.density.low}
+                      onChange={(e) =>
+                        update((p) => {
+                          if (p.density.kind === "autonomous")
+                            p.density.low = Number(e.target.value);
+                        })
+                      }
+                    />
+                    <span className="faint">to</span>
+                    <input
+                      type="number"
+                      className="input--tiny"
+                      min={1}
+                      value={project.density.high}
+                      onChange={(e) =>
+                        update((p) => {
+                          if (p.density.kind === "autonomous")
+                            p.density.high = Number(e.target.value);
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <div className="faint" style={{ fontSize: 11.5, marginBottom: 6 }}>
+                      How the density is chosen within that range:
+                    </div>
+                    <PrincipleEditor
+                      principle={project.density.principle}
+                      onChange={(v) =>
+                        update((p) => {
+                          if (p.density.kind === "autonomous") p.density.principle = v;
+                        })
+                      }
+                      values={densityRange(project.density.low, project.density.high)}
+                      valueLabel="density"
+                    />
+                  </div>
                 </div>
-                <PrincipleEditor
-                  principle={project.density.principle}
-                  onChange={(v) =>
-                    update((p) => {
-                      if (p.density.kind === "autonomous") p.density.principle = v;
-                    })
-                  }
-                  values={densityRange(project.density.low, project.density.high)}
-                  valueLabel="density"
-                />
-              </div>
-            </div>
-          )}
+              )}
 
-          {project.density.kind === "instrument-density" && (
-            <div className="field__hint" style={{ marginTop: 8 }}>
-              Instrument must come first in the hierarchy, since the chord size is what
-              decides how many notes there are.
-            </div>
+              {project.density.kind === "instrument-density" && (
+                <div className="field__hint" style={{ marginTop: 8 }}>
+                  Instrument must come first in the hierarchy, since the chord size is what
+                  decides how many notes there are.
+                </div>
+              )}
+            </>
           )}
         </Field>
       </Section>

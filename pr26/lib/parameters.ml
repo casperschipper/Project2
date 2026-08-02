@@ -63,6 +63,10 @@ type problem =
   | AllTonesForbidden of int
   | IntervalPrincipleName of string
   | IntervalMatrixRowHasNoSuccessor of int
+  | EmptyChordTable
+  | ChordTooLong of { len : int; tr : int }
+  | HarmonyRequiresHarFirst
+  | ChordPrincipleDensityMismatch
 
 (* The hierarchy must be a permutation of [all_hierarchy_elems]: every
    parameter controls exactly one resolution step, so a missing one would
@@ -155,6 +159,19 @@ let display_problem p =
         "interval %d has no allowed successor - reaching it will always \
          fall back to \"INTERVAL RESTRICTIONS TOO STRICT\""
         i
+  | EmptyChordTable -> "the CHORD table must contain at least one chord"
+  | ChordTooLong { len; tr } ->
+      Printf.sprintf
+        "this chord has %d tone(s), but the pitch grid only has %d tones per \
+         octave (tr) - a chord can never have more tones than that"
+        len tr
+  | HarmonyRequiresHarFirst ->
+      "the CHORD principle makes HARMONY the main parameter (EMR-3 9.2): Har \
+       must be first in the hierarchy"
+  | ChordPrincipleDensityMismatch ->
+      "the CHORD principle requires density to be chord-density, and vice \
+       versa - HARMONY becomes main parameter and decides vertical density \
+       itself (EMR-3 9.2), so the two can never disagree"
 
 (* Closed vocabulary of path components identifying where in a
    structure_formula (and, one level down, in the composer's sexp) a
@@ -201,6 +218,7 @@ type key =
   | KAdjacency
   | KForbiddenTones
   | KInvertMatrix
+  | KOrder
 
 type segment = Key of key | Index of int
 type location = segment list
@@ -260,6 +278,7 @@ let key_to_string = function
   | KAdjacency -> "adjacency"
   | KForbiddenTones -> "forbidden-tones"
   | KInvertMatrix -> "invert-matrix"
+  | KOrder -> "order"
 
 let segment_to_string = function
   | Key k -> key_to_string k
@@ -338,6 +357,10 @@ let problem_id = function
   | AllTonesForbidden _ -> "all-tones-forbidden"
   | IntervalPrincipleName _ -> "invalid-harmony-principle-name"
   | IntervalMatrixRowHasNoSuccessor _ -> "interval-matrix-row-has-no-successor"
+  | EmptyChordTable -> "empty-chord-table"
+  | ChordTooLong _ -> "chord-too-long"
+  | HarmonyRequiresHarFirst -> "harmony-requires-har-first"
+  | ChordPrincipleDensityMismatch -> "chord-principle-density-mismatch"
 
 (* Minimal JSON writing. Only what the diagnostic shape needs - there is no
    json library in this project's dependencies and pulling one in for three
@@ -414,10 +437,13 @@ let json_of_problem_data p =
   | AllTonesForbidden tr -> json_obj [ ("tr", string_of_int tr) ]
   | IntervalPrincipleName s -> json_obj [ ("name", json_string s) ]
   | IntervalMatrixRowHasNoSuccessor i -> json_obj [ ("interval", string_of_int i) ]
+  | ChordTooLong { len; tr } ->
+      json_obj [ ("len", string_of_int len); ("tr", string_of_int tr) ]
   | InvalidInstrumentName | InvalidChordSize | InvalidDensity _
   | InvalidPitchRange | InvalidRegister | DuplicateHierarchy
   | InstrumentDensityRequiresInsFirst | InvalidDurationRange _
-  | PerNoteRequiresInsFirst ->
+  | PerNoteRequiresInsFirst | EmptyChordTable | HarmonyRequiresHarFirst
+  | ChordPrincipleDensityMismatch ->
       json_obj []
 
 (* [location] is emitted both as the structured segment list (which the GUI
@@ -766,9 +792,16 @@ type autonomous_density = {
   selection_principle : selection_principle;
 }
 
-type vertical_density = Autonomous of autonomous_density | InstrumentDensity
-(* | ChordDensity *)
-(* not yet implemented*)
+(* [ChordDensity]: when HARMONY's CHORD principle is selected, vertical
+   density is simply whatever size the drawn chord turns out to be (EMR-3
+   §9.2) - it can be neither autonomous nor instrument-driven. See
+   [harmony_principle]'s [HarmChord] below and
+   [mk_structure_formula]'s bidirectional consistency check tying the two
+   together. *)
+type vertical_density =
+  | Autonomous of autonomous_density
+  | InstrumentDensity
+  | ChordDensity
 
 let mk_autonomous ~low ~high ~selection_principle =
   if low < 1 then Error (InvalidDensity DensityTooSmall)
@@ -1097,6 +1130,38 @@ let mk_row ~tr items =
   |> sequence_result
   |> Result.map (fun lst -> Row (Array.of_list lst))
 
+(* HARMONY's CHORD principle (EMR-3 §8.2, entries 15-18): the third "row
+   principle" - unlike ROW/INTERVAL, a whole chord (tones *and* how many of
+   them) is produced per entry point, rather than one tone at a time. Reuses
+   [row_value] verbatim: "1..tr or percussion" is exactly TAB-CHORD's own
+   "0..tr, 0=percussion" vocabulary. *)
+type chord = Chord of row_value array
+type chord_table = ChordTable of chord array
+
+let mk_chord ~tr items =
+  items
+  |> List.map (mk_row_value ~tr)
+  |> sequence_result
+  |> Result.map (fun lst -> Chord (Array.of_list lst))
+
+let mk_chord_table ~tr (chords : int option list list) =
+  match chords with
+  | [] -> Error EmptyChordTable
+  | _ ->
+      chords |> List.map (mk_chord ~tr) |> sequence_result
+      |> Result.map (fun lst -> ChordTable (Array.of_list lst))
+
+let count_chord_tones (Chord arr) = Array.length arr
+
+(* EMR-3 §8.2: "Maximum number of tones per group = pitch grid tr." Checked
+   as a separate pass (not baked into [mk_chord_table]) so each over-long
+   chord can carry its own [Index] in the diagnostic location - mirrors
+   [interval_matrix_dead_end_rows]'s own after-the-fact-pass shape. *)
+let chord_table_too_long_indices ~tr (ChordTable chords) =
+  chords |> Array.to_list
+  |> List.mapi (fun i c -> (i, count_chord_tones c))
+  |> List.filter (fun (_, len) -> len > tr)
+
 (* EMR-3 §7.1: given a fixed register and a relative pitch already chosen by
    HARMONY, find which octave(s) within the register's span share that
    relative pitch, and take the lowest - e.g. register (401,512), relative
@@ -1192,6 +1257,43 @@ let row_stream ~tr ~transposition (Row elements as row) : row_value Seq.t =
         Seq.append pass (expand ((cumulative + k) mod tr) rest) ()
   in
   expand 0 intervals
+
+(* TRANSP-CHORD, entry 18: like TRANSP-ROW above, but restricted to 4 modes
+   instead of 5 - no chromatic mode, and no "serial" (reuse-the-table) mode;
+   its own "given row" mode (option 3) is a distinct, separately-authored
+   list of transposition intervals instead. *)
+type chord_transposition =
+  | ChordNoTransposition
+  | ChordTransposeAlea
+  | ChordTransposeSeries
+  | ChordTransposeGiven of step list
+
+let mk_chord_transposition_given ~tr ints =
+  ints |> List.map (mk_step ~tr) |> sequence_result
+  |> Result.map (fun steps -> ChordTransposeGiven steps)
+
+(* one transposition interval per completed pass through the whole table
+   (Array.length table draws) - mirrors [transposition_intervals] exactly,
+   generalizing ROW's "per completed pass through the row" to CHORD's table. *)
+let chord_transposition_intervals ~tr (ct : chord_transposition) : int Seq.t =
+  match ct with
+  | ChordNoTransposition -> Seq.repeat 0
+  | ChordTransposeAlea -> choose (List.init tr (fun i -> i + 1))
+  | ChordTransposeSeries -> series_over_range tr
+  | ChordTransposeGiven steps ->
+      Seq.cycle (List.to_seq (List.map step_to_int steps))
+
+(* "Chords starting with 0 are excluded from transposition, regardless of
+   the numbers which follow" (EMR-3 §8.2) - a whole-chord property, checked
+   once per chord. Zeros *within* an otherwise-transposable chord need no
+   special handling at all: [transpose_value]'s existing
+   [RowPercussion -> RowPercussion] case already leaves them inert. *)
+let chord_starts_with_percussion (Chord arr) =
+  Array.length arr > 0 && arr.(0) = RowPercussion
+
+let transpose_chord ~tr k (Chord arr as c) =
+  if chord_starts_with_percussion c then c
+  else Chord (Array.map (transpose_value ~tr k) arr)
 
 (* INTERVAL principle (EMR-3 8.2, entries 21-24): the second "row principle"
    alongside ROW above, producing the same kind of [row_value] stream from a
@@ -1309,6 +1411,13 @@ let mk_forbidden_tones ~tr (steps : step list) =
 type harmony_principle =
   | HarmRow of { row : row; transposition : transposition }
   | HarmInterval of { matrix : interval_matrix; forbidden_tones : step list }
+  | HarmChord of {
+      table : chord_table;
+      order : selection_principle; (* SEQ-CHORD, entry 17 - the full 6-way
+           principle, per the composer's own explicit instruction, not a
+           restricted 3-way one. *)
+      transposition : chord_transposition;
+    }
 
 let percussion_string = "*"
 

@@ -1,8 +1,8 @@
 # Density
 
-> How many tones begin together at each entry point. Choose either an autonomous density with its own range and principle, or let the instrument's chord size decide.
+> How many tones begin together at each entry point. Choose an autonomous density with its own range and principle, let the instrument's chord size decide, or - under HARMONY's CHORD principle - let the drawn chord's own size decide.
 
-See [vertical density](concepts/density) for the full discussion. This page covers the two settings.
+See [vertical density](concepts/density) for the full discussion. This page covers autonomous and instrument density; the third option, chord-density, has no settings of its own here at all - it's a direct consequence of [HARMONY's CHORD principle](fields/harmony-chord) and can only be reached by switching to that principle on the Harmony screen, which keeps the two in sync automatically (see [chord-principle-density-mismatch](errors/chord-principle-density-mismatch) for what happens if they ever disagree).
 
 ## Autonomous
 

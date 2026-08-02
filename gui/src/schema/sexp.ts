@@ -1,4 +1,5 @@
 import type {
+  ChordTransposition,
   Density,
   DurationRelation,
   Ensemble,
@@ -89,6 +90,7 @@ function emitEnsemble(e: Ensemble): string {
 
 function emitDensity(d: Density): string {
   if (d.kind === "instrument-density") return "  (density instrument-density)";
+  if (d.kind === "chord-density") return "  (density chord-density)";
   return (
     `  (density (autonomous (low ${d.low}) (high ${d.high}) ` +
     `(principle ${emitPrinciple(d.principle)})))`
@@ -130,13 +132,20 @@ function emitPitchRange(pr: PitchRange): string {
   return `(pitch-range ${bound("low", pr.low)} ${bound("high", pr.high)})`;
 }
 
+/** TRANSP-CHORD, entry 18 - see `ChordTransposition`'s own doc comment for
+ * why this is a distinct 4-mode type from `Transposition` (ROW's own). */
+function emitChordTransposition(t: ChordTransposition): string {
+  if (typeof t === "string") return t;
+  return `(given (${t.values.join(" ")}))`;
+}
+
 /**
- * HARMONY (EMR-3 8.2): ROW and INTERVAL. The GUI's own emitter only ever
- * needs to write `(matrix (rows ...))` (dense) or `(matrix (chord ...))` -
- * whichever the composer is actually editing - since the engine computes the
- * derived form (and any inversion) at run time; `(matrix (adjacency ...))`
- * is a hand-written-file convenience the parser accepts but this emitter
- * never produces.
+ * HARMONY (EMR-3 8.2): ROW, INTERVAL and CHORD. The GUI's own emitter only
+ * ever needs to write `(matrix (rows ...))` (dense) or `(matrix (chord
+ * ...))` - whichever the composer is actually editing - since the engine
+ * computes the derived form (and any inversion) at run time; `(matrix
+ * (adjacency ...))` is a hand-written-file convenience the parser accepts
+ * but this emitter never produces.
  */
 function emitHarmony(p: Project): string {
   if (p.harmonyPrinciple === "row") {
@@ -145,6 +154,16 @@ function emitHarmony(p: Project): string {
       `    (principle row)\n` +
       `    (row (${p.row.join(" ")}))\n` +
       `    (transposition ${p.transposition}))`
+    );
+  }
+  if (p.harmonyPrinciple === "chord") {
+    const chords = p.chords.map((c) => `      (${c.join(" ")})`).join("\n");
+    return (
+      `  (harmony\n` +
+      `    (principle chord)\n` +
+      `    (chords (\n${chords}\n    ))\n` +
+      `    (order ${emitPrinciple(p.chordOrder)})\n` +
+      `    (transposition ${emitChordTransposition(p.chordTransposition)}))`
     );
   }
   const matrixSexp =
