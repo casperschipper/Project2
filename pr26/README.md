@@ -5,21 +5,55 @@ It is based (mostly) on the Atari Manual.
 
 Currently, it implements the selection principles and runs some tests on the entry delay parameter.
 
-## Requirements:
+## Requirements
 
-* opam (version used 2.5.0)
-* dune (version used 3.22)
-* ocaml (version used 5.4.1)
+* opam (tested with 2.5.1)
+* dune (tested with 3.22; the project's `dune-project` requires at least 3.17)
+* OCaml (tested with 5.4.1; any recent 5.x should work)
 
-But probably it will work for more recent versions as well.
+The engine itself has no dependencies beyond the OCaml standard library (`seq` and `unix`, both bundled with the compiler) - once opam/dune/OCaml are installed there is nothing further to fetch with `opam install`.
+
+### Installing opam/dune/OCaml
+
+**macOS** (via [Homebrew](https://brew.sh)):
+
+```sh
+brew install opam
+opam init
+eval "$(opam env)"
+opam switch create 5.4.1     # or the newest 5.x opam offers
+opam install dune
+```
+
+**Linux** (Debian/Ubuntu shown; opam is packaged for most distributions - substitute your package manager, or use the [official install script](https://opam.ocaml.org/doc/Install.html) if it isn't):
+
+```sh
+sudo apt install opam
+opam init
+eval "$(opam env)"
+opam switch create 5.4.1
+opam install dune
+```
+
+**Windows**: opam ships a native Windows installer (no WSL required) - see the [opam Windows install guide](https://opam.ocaml.org/doc/Install.html). After installing:
+
+```powershell
+opam init
+opam switch create 5.4.1
+opam install dune
+```
+
+WSL2 with the Linux instructions above is the more battle-tested route if the native Windows opam install gives you trouble.
 
 ## Building & running
 
-You should be able to run it with:
+```sh
+dune build                                     # builds the library, bin/main_sexp.exe, and the tests
+dune exec bin/main_sexp.exe -- formula.sexp    # runs the engine against a formula
+dune test                                      # runs the test suite
+```
 
-`dune build`  
-`dune exec bin/main_sexp.exe` 
-This uses the formula.sexp
+`dune build` places the compiled binary at `_build/default/bin/main_sexp.exe` (`_build\default\bin\main_sexp.exe` on Windows) - this is the exact path the GUI (`../gui`) looks for, so building here is a prerequisite for running or bundling it. See `../gui/README.md` for that half.
 
 # Questions
 
