@@ -157,7 +157,6 @@ export function defaultProject(): Project {
     transposition: "none",
     intervalMatrixSource: { kind: "matrix", rows: emptyIntervalMatrix(12) },
     forbiddenTones: [],
-    invertMatrix: false,
     chords: [["1", "3", "5"]],
     chordOrder: { kind: "series" },
     chordTransposition: "none",
@@ -245,25 +244,21 @@ export function deriveIntervalMatrixFromChord(
 
 /**
  * The matrix a project's INTERVAL principle actually uses at run time -
- * whichever `intervalMatrixSource` resolves to, with `invertMatrix` applied
- * on top. The single source of truth consumed by the live preview, the
- * graph view, and the dead-end-row warning in `validate.ts`; mirrors the
- * order `structure_formula.ml`'s parser applies inversion in (before the
- * matrix is ever inspected), so nothing downstream needs to know or care
- * which source produced it. Returns `null` when there's nothing valid to
- * show (an empty or invalid chord).
+ * whichever `intervalMatrixSource` resolves to. Inverting is a one-shot
+ * action on the matrix's own cells (see the "Invert" button in
+ * `HarmonyScreen.tsx`), not a modifier applied here, so this is just the
+ * plain resolution: the hand-toggled rows verbatim, or the chord-derived
+ * preview. The single source of truth consumed by the live preview, the
+ * graph view, and the dead-end-row warning in `validate.ts`. Returns `null`
+ * when there's nothing valid to show (an empty or invalid chord).
  */
 export function effectiveIntervalMatrix(project: {
   intervalMatrixSource: Project["intervalMatrixSource"];
   octaveDivision: number;
-  invertMatrix: boolean;
 }): boolean[][] | null {
-  const base =
-    project.intervalMatrixSource.kind === "matrix"
-      ? project.intervalMatrixSource.rows
-      : deriveIntervalMatrixFromChord(project.intervalMatrixSource.chord, project.octaveDivision);
-  if (!base) return null;
-  return project.invertMatrix ? base.map((row) => row.map((cell) => !cell)) : base;
+  return project.intervalMatrixSource.kind === "matrix"
+    ? project.intervalMatrixSource.rows
+    : deriveIntervalMatrixFromChord(project.intervalMatrixSource.chord, project.octaveDivision);
 }
 
 /**

@@ -8,9 +8,7 @@
 
   (dynamics (ppp pp p mf f ff fff))
   (dynamics-table
-    (2 3 4)
-    (2 3 4)
-    (0 6))
+    (3 4 5))
 
   (performance (normal muted overtone1))
   (performance-table
@@ -27,51 +25,45 @@
   (instrument-table
     (0))
 
-  (entrydelays (0.01 0.02 0.03 0.4 0.5 0.6 0.7 0.8))
+  (entrydelays (0.01 0.02 0.03 0.1 0.5 0.6 0.7 0.8))
   (entrydelay-table
-    (0 1 2 3 4 5 6 7)
-    (3 4 5)
-    (0 1 2 3 4 5 6 7))
+    (3))
 
   (durations (0.01 0.02 0.1 0.2 0.3 0.5 2.0))
   (duration-table
-    (4 0 1 2 3 5)
-    (2 3 4)
-    (0 1 2))
+    (4))
 
   (registers (
-    (pitch-range (low (octave 2) (pitch 1)) (high (octave 2) (pitch 12)))
-    (pitch-range (low (octave 3) (pitch 1)) (high (octave 3) (pitch 7)))
-    (pitch-range (low (octave 3) (pitch 6)) (high (octave 4) (pitch 12)))
-    (pitch-range (low (octave 4) (pitch 1)) (high (octave 4) (pitch 7)))
-    (pitch-range (low (octave 4) (pitch 1)) (high (octave 4) (pitch 12)))
-    (pitch-range (low (octave 5) (pitch 1)) (high (octave 5) (pitch 12)))))
+    (pitch-range (low (octave 4) (pitch 1)) (high (octave 4) (pitch 12)))))
   (register-table
-    (0 1 2 3 4)
-    (0)
-    (0 2))
+    (0))
 
   (harmony
-    (principle chord)
-    (chords (
-      (1 5)
-      (1 7)
-      (1 7 2)
-      (1 2 4 5 7 9 11 12)
-      (1 6 11)
-    ))
-    (order series)
-    (transposition (given (1))))
+    (principle interval)
+    (matrix (rows (
+        (0 0 0 1 0 0 1 0 0 0 1)
+        (0 0 0 0 0 0 0 0 0 0 0)
+        (0 0 0 0 0 0 0 0 0 0 0)
+        (1 0 0 0 0 0 0 0 0 0 0)
+        (0 0 0 0 0 0 0 0 0 0 0)
+        (0 0 0 0 0 0 0 0 0 0 0)
+        (1 0 0 0 0 0 0 0 0 0 0)
+        (0 0 0 0 0 0 0 0 0 0 0)
+        (0 0 0 0 0 0 0 0 0 0 0)
+        (0 0 0 0 0 0 0 0 0 0 0)
+        (1 0 0 0 0 0 0 0 0 0 0)
+      )))
+    (forbidden-tones ()))
 
   (principles
     (instrument (ensemble (sequence 0)) (order series))
-    (entrydelay (ensemble (sequence 0)) (order (ratio ((0 1) (1 3) (2 1) (3 5) (4 2) (5 1) (6 1) (7 10)))))
+    (entrydelay (ensemble (sequence 0)) (order (sequence (0))))
     (performance (ensemble (sequence 0)) (order (sequence (0 1 2))) (mode per-chord))
     (dynamics (ensemble series) (order series) (mode per-chord))
     (duration (ensemble (sequence 0)) (order series) (relation (independent per-note)))
     (register (ensemble (sequence 0)) (order (tendency (section 1.0 (start 0.0 0.0) (end 0.0 1.0)) (section 1.0 (start 0.5 0.5) (end 0.0 1.0)))) (mode per-chord)))
 
-  (hierarchy (Har Ins Reg Per Dyn Ent Dur))
+  (hierarchy (Ins Reg Har Per Dyn Ent Dur))
   (union none)
-  (density chord-density)
+  (density (autonomous (low 1) (high 1) (principle (group (element series) (repetition series) (repetitions 1 4)))))
 )

@@ -266,8 +266,6 @@ export type Project = {
   /** XCL-FRQ, entry 23: relative pitches (1..octaveDivision) the interval
    * principle may never produce. */
   forbiddenTones: string[];
-  /** BIT, entry 24: flip every cell of whichever matrix resulted above. */
-  invertMatrix: boolean;
   /** CHORD only (EMR-3 8.2, entries 15-18). TAB-CHORD: any number of chords,
    * one per group; each entry is a relative pitch (1..octaveDivision) or "p"
    * for percussion, the same vocabulary as `row`. */

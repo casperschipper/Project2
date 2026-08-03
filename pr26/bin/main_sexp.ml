@@ -155,8 +155,26 @@ let render_json file =
               in
               [ ("variants", json_array (List.init n variant_obj)) ]
           in
+          (* Only a fact about *this* generated run (depends on the random
+             seed and whatever actually got drawn), not about the formula's
+             static shape - so unlike every other warning here, it can only
+             be computed after generation succeeds, not by
+             [Structure_formula]'s own validation. *)
+          let too_strict_warnings =
+            match count_interval_restrictions_too_strict variants with
+            | 0 -> []
+            | count ->
+                [
+                  {
+                    location = [ Key KHarmony; Key KMatrix ];
+                    severity = Severity.Warning;
+                    problem = IntervalRestrictionsTooStrict count;
+                  };
+                ]
+          in
           emit
-            (json_of_diagnostics ~ok:true ~errors:[] ~warnings
+            (json_of_diagnostics ~ok:true ~errors:[]
+               ~warnings:(warnings @ too_strict_warnings)
                ~extra:(("log", log) :: result_fields));
           true)
 

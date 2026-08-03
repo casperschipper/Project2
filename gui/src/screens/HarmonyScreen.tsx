@@ -31,8 +31,8 @@ export function HarmonyScreen() {
   // it isn't persisted or emitted, just local to this screen.
   const [view, setView] = useState<"grid" | "graph">("grid");
   // What the INTERVAL principle actually resolves to at run time - chord-
-  // derived if applicable, then inverted if set. `null` while the chord
-  // (or, in principle, a malformed direct matrix) isn't valid yet.
+  // derived if applicable. `null` while the chord (or, in principle, a
+  // malformed direct matrix) isn't valid yet.
   const effective = effectiveIntervalMatrix(project);
 
   return (
@@ -186,7 +186,7 @@ export function HarmonyScreen() {
               <Field
                 label="Chord"
                 helpKey="fields/harmony-matrix"
-                path="harmony.intervalMatrixSource.chord"
+                path="harmony.chord"
                 hint={`Relative pitches 1..${project.octaveDivision}. The matrix below updates live as you edit this - walked both ways, cyclically. See the help for the worked example.`}
               >
                 <TokenListEditor
@@ -211,15 +211,11 @@ export function HarmonyScreen() {
                   : "Derived matrix (read-only)"
               }
               helpKey="fields/harmony-matrix"
-              path={
-                project.intervalMatrixSource.kind === "matrix"
-                  ? "harmony.intervalMatrixSource.rows"
-                  : "harmony.intervalMatrixSource.chord"
-              }
+              path={project.intervalMatrixSource.kind === "matrix" ? "harmony.matrix" : "harmony.chord"}
               hint={
                 project.intervalMatrixSource.kind === "matrix"
                   ? "Row = the interval just used; column = the interval allowed to follow it. Check a cell to allow that transition."
-                  : "What the chord above actually produces (after inversion, if on) - a preview, not directly editable. Use the button below to fork it into a hand-editable matrix."
+                  : "What the chord above actually produces - a preview, not directly editable. Use the button below to fork it into a hand-editable matrix."
               }
             >
               <div className="field__row" style={{ marginBottom: 8 }}>
@@ -246,6 +242,25 @@ export function HarmonyScreen() {
                   </button>
                 </div>
 
+                {project.intervalMatrixSource.kind === "matrix" && (
+                  <button
+                    type="button"
+                    className="btn btn--ghost btn--small"
+                    style={{ marginLeft: "auto" }}
+                    title="Flip every cell: every allowed transition becomes forbidden and vice versa"
+                    onClick={() =>
+                      update((p) => {
+                        if (p.intervalMatrixSource.kind !== "matrix") return;
+                        p.intervalMatrixSource.rows = p.intervalMatrixSource.rows.map((row) =>
+                          row.map((cell) => !cell),
+                        );
+                      })
+                    }
+                  >
+                    Invert
+                  </button>
+                )}
+
                 {project.intervalMatrixSource.kind === "chord" && (
                   <button
                     type="button"
@@ -261,7 +276,6 @@ export function HarmonyScreen() {
                       update((p) => {
                         if (!effective) return;
                         p.intervalMatrixSource = { kind: "matrix", rows: effective };
-                        p.invertMatrix = false;
                       })
                     }
                   >
@@ -294,7 +308,7 @@ export function HarmonyScreen() {
             </Field>
           </Section>
 
-          <Section title="Forbidden tones and inversion">
+          <Section title="Forbidden tones">
             <Field
               label="Forbidden tones"
               helpKey="fields/harmony-forbidden-tones"
@@ -311,36 +325,6 @@ export function HarmonyScreen() {
                   return !Number.isInteger(n) || n < 1 || n > project.octaveDivision;
                 }}
               />
-            </Field>
-
-            <Field
-              label="Invert matrix"
-              helpKey="fields/harmony-invert-matrix"
-              path="harmony.invertMatrix"
-              hint="Flip every cell of the resulting matrix - allowed transitions become forbidden and vice versa."
-            >
-              <div className="kind-switch" role="radiogroup">
-                <button
-                  type="button"
-                  className={`kind-switch__option${
-                    !project.invertMatrix ? " kind-switch__option--active" : ""
-                  }`}
-                  aria-pressed={!project.invertMatrix}
-                  onClick={() => update((p) => (p.invertMatrix = false))}
-                >
-                  No
-                </button>
-                <button
-                  type="button"
-                  className={`kind-switch__option${
-                    project.invertMatrix ? " kind-switch__option--active" : ""
-                  }`}
-                  aria-pressed={project.invertMatrix}
-                  onClick={() => update((p) => (p.invertMatrix = true))}
-                >
-                  Yes
-                </button>
-              </div>
             </Field>
           </Section>
         </>

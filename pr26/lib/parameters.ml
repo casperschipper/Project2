@@ -67,6 +67,7 @@ type problem =
   | ChordTooLong of { len : int; tr : int }
   | HarmonyRequiresHarFirst
   | ChordPrincipleDensityMismatch
+  | IntervalRestrictionsTooStrict of int
 
 (* The hierarchy must be a permutation of [all_hierarchy_elems]: every
    parameter controls exactly one resolution step, so a missing one would
@@ -172,6 +173,15 @@ let display_problem p =
       "the CHORD principle requires density to be chord-density, and vice \
        versa - HARMONY becomes main parameter and decides vertical density \
        itself (EMR-3 9.2), so the two can never disagree"
+  | IntervalRestrictionsTooStrict count ->
+      Printf.sprintf
+        "%d note(s) in the generated score fell back to \"INTERVAL \
+         RESTRICTIONS TOO STRICT\" - at some point during generation, the \
+         given interval's row in the matrix had no allowed successor left \
+         (either structurally, or because every allowed successor was a \
+         forbidden tone). Try loosening the matrix or the forbidden-tones \
+         list."
+        count
 
 (* Closed vocabulary of path components identifying where in a
    structure_formula (and, one level down, in the composer's sexp) a
@@ -361,6 +371,7 @@ let problem_id = function
   | ChordTooLong _ -> "chord-too-long"
   | HarmonyRequiresHarFirst -> "harmony-requires-har-first"
   | ChordPrincipleDensityMismatch -> "chord-principle-density-mismatch"
+  | IntervalRestrictionsTooStrict _ -> "interval-restrictions-too-strict"
 
 (* Minimal JSON writing. Only what the diagnostic shape needs - there is no
    json library in this project's dependencies and pulling one in for three
@@ -439,6 +450,7 @@ let json_of_problem_data p =
   | IntervalMatrixRowHasNoSuccessor i -> json_obj [ ("interval", string_of_int i) ]
   | ChordTooLong { len; tr } ->
       json_obj [ ("len", string_of_int len); ("tr", string_of_int tr) ]
+  | IntervalRestrictionsTooStrict count -> json_obj [ ("count", string_of_int count) ]
   | InvalidInstrumentName | InvalidChordSize | InvalidDensity _
   | InvalidPitchRange | InvalidRegister | DuplicateHierarchy
   | InstrumentDensityRequiresInsFirst | InvalidDurationRange _
@@ -1389,14 +1401,28 @@ let invert_matrix (IntervalMatrix m) =
   IntervalMatrix (Array.map (Array.map not) m)
 
 (* Fig. 8-5's own well-formedness caution: a row with no allowed successor at
-   all is a genuine dead end (the composer's responsibility to avoid) -
-   surfaced as a warning, not an error, at formula-load time (see
+   all is a genuine dead end (the composer's responsibility to avoid) - but
+   only if the chain can ever actually land there in the first place. Two
+   ways in: as the very first interval ([interval_next]'s [HaveTone] step
+   only offers intervals whose own row has a successor, so a dead-end row
+   is never eligible to be chosen first), or via some other row's
+   transition into it (column [i] having a checked cell). A row with no
+   successor AND no incoming transition can never be reached at all - a
+   dead end nobody ever walks into isn't a problem, so it's not flagged.
+   (A dead-end row can never itself be a source of a further transition -
+   "no successor" means zero outgoing edges - so this is a one-hop check,
+   not a full reachability search: nothing transitively reaches a dead end
+   except directly, from a row that has a successor of its own.)
+   Surfaced as a warning, not an error, at formula-load time (see
    structure_formula.ml); the runtime (score_generation.ml) still degrades
-   gracefully ("INTERVAL RESTRICTIONS TOO STRICT") if one is reached anyway. *)
+   gracefully ("INTERVAL RESTRICTIONS TOO STRICT") if a reachable one is hit
+   anyway. *)
 let interval_matrix_dead_end_rows (IntervalMatrix m) =
+  let column_has_incoming j = Array.exists (fun row -> row.(j)) m in
   m |> Array.to_list
   |> List.mapi (fun i row -> (i + 1, row))
-  |> List.filter (fun (_, row) -> not (Array.exists (fun x -> x) row))
+  |> List.filter (fun (i, row) ->
+         (not (Array.exists (fun x -> x) row)) && column_has_incoming (i - 1))
   |> List.map fst
 
 (* XCL-FRQ, entry 23: tones the interval principle may never produce, at

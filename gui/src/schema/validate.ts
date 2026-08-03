@@ -517,14 +517,28 @@ export function validateProject(p: Project): Diagnostic[] {
     // Fig. 8-5's own well-formedness warning: a row with no allowed
     // successor at all is a dead end - the runtime still copes (falling
     // back to "INTERVAL RESTRICTIONS TOO STRICT"), but it's worth flagging.
-    // Checked against the *effective* matrix (chord-derived if applicable,
-    // then inverted if set) - the engine's own equivalent check runs against
-    // the already-inverted matrix too, so this has to match or the two could
-    // disagree on the exact same formula.
+    // Checked against the *effective* matrix (chord-derived if applicable) -
+    // inversion is no longer a separate step here, since the "Invert" button
+    // flips the composer's own cells directly, so `rows` is already final.
+    //
+    // Only flagged if the chain can actually land there, though: the engine
+    // only ever offers a row as the *first* interval when that row itself
+    // has a successor (see `interval_next`'s `HaveTone` step in
+    // `score_generation.ml`), so a dead-end row is never eligible to be
+    // chosen first - the only other way in is a transition from some other
+    // row, i.e. this row's own column having a checked cell somewhere. A
+    // dead-end row can never be a *source* of a transition either (no
+    // successor means no outgoing edges at all), so checking the column
+    // directly is enough - no need to trace multi-step paths. A row with no
+    // successor and no incoming transition can never be reached in the
+    // first place, so it's not a problem worth flagging.
     if (matrixShapeOk) {
       const matrixFieldKey = p.intervalMatrixSource.kind === "matrix" ? "matrix" : "chord";
-      effectiveIntervalMatrix(p)?.forEach((row, i) => {
-        if (!row.some((cell) => cell)) {
+      const matrix = effectiveIntervalMatrix(p);
+      matrix?.forEach((row, i) => {
+        const hasSuccessor = row.some((cell) => cell);
+        const isReachable = matrix.some((otherRow) => otherRow[i]);
+        if (!hasSuccessor && isReachable) {
           out.push(
             diag(
               "interval-matrix-row-has-no-successor",

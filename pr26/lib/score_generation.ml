@@ -758,7 +758,30 @@ let chord_next : har_state_t -> chord * har_state_t = function
    place that knows how [Ins]/[Ent]/[Dur]/[Per]/[Dyn] each condition on, or
    get conditioned by, one another - both density modes below just fold this
    over the composer's [hierarchy] list once per entry. *)
-let resolve_step ~perf_mode ~dyn_mode ~dur_relation ~reg_mode
+(* [max_notes], when given, caps how many notes [Ins] may claim for this
+   sub-pick - the remaining density budget still needed to fill the current
+   chord (EMR-3 8.16: "the chord size of the instrument last selected is
+   reduced if necessary to the remaining number of tones"). Passed by
+   [fill_subpicks] (both density modes that score a chord from several
+   sub-picks); [None] everywhere else (a single, ungrouped entry under
+   [InstrumentDensity] has no target to cap against - its own chordsize
+   simply *is* the note count).
+
+   This must happen here, at the point [nr_of_notes] is first decided -
+   rather than trimming it back down afterward, once the group's total is
+   known - because every per-note field below (Reg/Har/Per/Dyn/Dur, whichever
+   of them are still in this fold) draws exactly [nr_of_notes] independent
+   values right here, in this same pass. Trimming only the *count* afterward
+   still leaves those extra values already drawn: harmless for a value with
+   no memory (Alea, Ratio), but for anything with continuity across draws -
+   most of all HARMONY's row/matrix, an explicitly composer-designed
+   sequence - the discarded extra draws still advanced the underlying state,
+   so the *next* entry silently continues from wherever the wasted draws left
+   off instead of from the one note actually kept. Capping at the source
+   means never drawing more than will be used, so nothing is ever silently
+   discarded and no state ever advances further than what's visible in the
+   score. *)
+let resolve_step ~perf_mode ~dyn_mode ~dur_relation ~reg_mode ?max_notes
     (states, proto) elem =
   match elem with
   | Ins ->
@@ -766,10 +789,11 @@ let resolve_step ~perf_mode ~dyn_mode ~dur_relation ~reg_mode
         sel_sample_pred (ins_pred_from proto) states.instr_state
       in
       let (Instrument { chordsize = Chordsize { minsize; maxsize }; _ }) = v in
-      let n =
+      let n_raw =
         if minsize = maxsize then minsize
         else Random.int (maxsize - minsize + 1) + minsize
       in
+      let n = match max_notes with Some m -> min n_raw m | None -> n_raw in
       ( { states with instr_state = instr_state' },
         { proto with instrument = Some v; nr_of_notes = Some n } )
   | Ent -> (
@@ -970,9 +994,9 @@ let resolve_step ~perf_mode ~dyn_mode ~dur_relation ~reg_mode
             assert false)
 
 let resolve_entry ?(start = empty_proto) ~hierarchy ~perf_mode ~dyn_mode
-    ~dur_relation ~reg_mode states =
+    ~dur_relation ~reg_mode ?max_notes states =
   List.fold_left
-    (resolve_step ~perf_mode ~dyn_mode ~dur_relation ~reg_mode)
+    (resolve_step ~perf_mode ~dyn_mode ~dur_relation ~reg_mode ?max_notes)
     (states, start) hierarchy
 
 (** With [InstrumentDensity], every entry is its own timepoint - one instrument,
@@ -1124,7 +1148,7 @@ let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
     |> List.filter (fun e -> not (e = Reg && reg_extracted))
     |> List.filter (fun e -> not (e = Dur && dur_extracted))
   in
-  let resolve_subpick ?seed_entrydelay ~seeds states =
+  let resolve_subpick ?seed_entrydelay ?max_notes ~seeds states =
     let start =
       {
         empty_proto with
@@ -1138,7 +1162,7 @@ let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
       }
     in
     resolve_entry ~start ~hierarchy:subpick_hierarchy ~perf_mode ~dyn_mode
-      ~dur_relation ~reg_mode states
+      ~dur_relation ~reg_mode ?max_notes states
   in
   (* Every sub-pick's own instrument, once the group is fully resolved -
      needed by whichever of performance/dynamics/register/duration must
@@ -1182,7 +1206,8 @@ let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
        repeated instrument is provided with a comment"). *)
     let rec loop states total used acc settled =
       let states', proto =
-        resolve_subpick ?seed_entrydelay:settled ~seeds states
+        resolve_subpick ?seed_entrydelay:settled ~max_notes:(target - total)
+          ~seeds states
       in
       let picked =
         match proto.instrument with
@@ -1194,6 +1219,11 @@ let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
       let n = Option.value proto.nr_of_notes ~default:1 in
       let total' = total + n in
       let used' = picked :: used in
+      (* [Ins] was already capped to [target - total] above, so [total']
+         should already land exactly on [target] whenever this is the last
+         sub-pick needed - the further adjustment below is now just a
+         defensive no-op (kept rather than removed, in case [n] somehow still
+         overshoots), not the load-bearing trim it used to be. *)
       if total' >= target then
         let proto' =
           { proto with nr_of_notes = Some (n - (total' - target)) }
@@ -1545,7 +1575,7 @@ let resolve_layer_chord_density ~n_events ~hierarchy ~perf_mode ~dyn_mode
     |> List.filter (fun e -> not (e = Reg && reg_extracted))
     |> List.filter (fun e -> not (e = Dur && dur_extracted))
   in
-  let resolve_subpick ?seed_entrydelay ~seeds states =
+  let resolve_subpick ?seed_entrydelay ?max_notes ~seeds states =
     let start =
       {
         empty_proto with
@@ -1560,7 +1590,7 @@ let resolve_layer_chord_density ~n_events ~hierarchy ~perf_mode ~dyn_mode
       }
     in
     resolve_entry ~start ~hierarchy:subpick_hierarchy ~perf_mode ~dyn_mode
-      ~dur_relation ~reg_mode states
+      ~dur_relation ~reg_mode ?max_notes states
   in
   let instruments_of group =
     List.map
@@ -1586,7 +1616,8 @@ let resolve_layer_chord_density ~n_events ~hierarchy ~perf_mode ~dyn_mode
   let fill_subpicks states target ~seed ~next_seed ~seeds =
     let rec loop states total used acc settled =
       let states', proto =
-        resolve_subpick ?seed_entrydelay:settled ~seeds states
+        resolve_subpick ?seed_entrydelay:settled ~max_notes:(target - total)
+          ~seeds states
       in
       let picked =
         match proto.instrument with
@@ -1598,6 +1629,11 @@ let resolve_layer_chord_density ~n_events ~hierarchy ~perf_mode ~dyn_mode
       let n = Option.value proto.nr_of_notes ~default:1 in
       let total' = total + n in
       let used' = picked :: used in
+      (* [Ins] was already capped to [target - total] above, so [total']
+         should already land exactly on [target] whenever this is the last
+         sub-pick needed - the further adjustment below is now just a
+         defensive no-op (kept rather than removed, in case [n] somehow still
+         overshoots), not the load-bearing trim it used to be. *)
       if total' >= target then
         let proto' =
           { proto with nr_of_notes = Some (n - (total' - target)) }
@@ -2350,6 +2386,21 @@ let build_score cfg =
       (List.init cfg.n_variants (fun v -> v))
   in
   variants
+
+(* How many notes, across every variant/layer generated this run, hit
+   HARMONY's INTERVAL principle "INTERVAL RESTRICTIONS TOO STRICT" fallback
+   ([harmony_matrix_ok = false] - see [interval_next]/[note_problems]).
+   Always 0 for ROW/CHORD, which never set this flag false. Surfaced as a
+   run-level diagnostic (`--json`'s [render_json] in bin/main_sexp.ml) so the
+   composer sees it without reading the generated score's inline "#
+   IMPOSSIBLE" comments - a fact about *this run*, not about the formula's
+   static shape, so it necessarily comes from an actual generation rather
+   than [Structure_formula]'s own validation. *)
+let count_interval_restrictions_too_strict (variants : entry list list list) =
+  variants |> List.concat |> List.concat
+  |> List.concat_map (fun (e : entry) -> e.notes)
+  |> List.filter (fun (n : note) -> not n.harmony_matrix_ok)
+  |> List.length
 
 let build_constraint_map instrs =
   List.map

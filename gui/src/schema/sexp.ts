@@ -143,9 +143,13 @@ function emitChordTransposition(t: ChordTransposition): string {
  * HARMONY (EMR-3 8.2): ROW, INTERVAL and CHORD. The GUI's own emitter only
  * ever needs to write `(matrix (rows ...))` (dense) or `(matrix (chord
  * ...))` - whichever the composer is actually editing - since the engine
- * computes the derived form (and any inversion) at run time; `(matrix
- * (adjacency ...))` is a hand-written-file convenience the parser accepts
- * but this emitter never produces.
+ * computes the chord-derived form at run time; `(matrix (adjacency ...))` is
+ * a hand-written-file convenience the parser accepts but this emitter never
+ * produces. Inversion (BIT, entry 24) has no field of its own here: the GUI's
+ * "Invert" button flips the composer's own checkboxes directly (see
+ * `HarmonyScreen.tsx`), so whatever ends up in `rows` is already the final
+ * matrix - `invert-matrix` is simply omitted and the engine's own default
+ * (`no`) applies.
  */
 function emitHarmony(p: Project): string {
   if (p.harmonyPrinciple === "row") {
@@ -178,8 +182,7 @@ function emitHarmony(p: Project): string {
     `  (harmony\n` +
     `    (principle interval)\n` +
     `    (matrix ${matrixSexp})\n` +
-    `    (forbidden-tones (${p.forbiddenTones.join(" ")}))\n` +
-    `    (invert-matrix ${p.invertMatrix ? "yes" : "no"}))`
+    `    (forbidden-tones (${p.forbiddenTones.join(" ")})))`
   );
 }
 
