@@ -38,12 +38,18 @@ Should the composer be helped in some way to construct useful tables? If a param
 # TODOS
 
 
-
-[ ] interval principle
+[ ] invert matrix button move to matrix and update text when clicked
+[ ] warnings/errors on interval matrix should be displayed in harmony panel
+[ ] rest parameter
+[ ] state saving of selection principles for visualization of how structure
+formula unfolds
+[ ] remove "run" and "export formula"
+[ ] version management of structure formula?
 
 # DONE
 
 
+[x] interval principle
 [x] registers in instrument definitions are made up of octave and relative pitch
 (to be called like taht in the interface)
 [x] Call compass "pitch range"
