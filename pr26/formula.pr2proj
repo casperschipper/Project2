@@ -97,7 +97,14 @@
   ],
   "entrydelayTable": [
     [
-      3
+      3,
+      0,
+      1,
+      2,
+      4,
+      5,
+      6,
+      7
     ]
   ],
   "entrydelayEnsemble": {
@@ -107,9 +114,29 @@
     ]
   },
   "entrydelayPrinciple": {
-    "kind": "sequence",
-    "values": [
-      0
+    "kind": "tendency",
+    "sections": [
+      {
+        "portion": 1,
+        "startMin": 0,
+        "startMax": 0.1,
+        "endMin": 0,
+        "endMax": 1
+      },
+      {
+        "portion": 1,
+        "startMin": 0.5,
+        "startMax": 1,
+        "endMin": 0,
+        "endMax": 1
+      },
+      {
+        "portion": 1,
+        "startMin": 0.1,
+        "startMax": 0.2,
+        "endMin": 0.8,
+        "endMax": 1
+      }
     ]
   },
   "durations": [
@@ -123,7 +150,12 @@
   ],
   "durationTable": [
     [
-      4
+      4,
+      0,
+      5,
+      6,
+      1,
+      2
     ]
   ],
   "durationEnsemble": {
@@ -133,7 +165,23 @@
     ]
   },
   "durationPrinciple": {
-    "kind": "series"
+    "kind": "tendency",
+    "sections": [
+      {
+        "portion": 1,
+        "startMin": 0,
+        "startMax": 0.1,
+        "endMin": 0.8,
+        "endMax": 1
+      },
+      {
+        "portion": 1,
+        "startMin": 0.45,
+        "startMax": 0.6,
+        "endMin": 0,
+        "endMax": 1
+      }
+    ]
   },
   "dynamics": [
     "ppp",
@@ -146,18 +194,25 @@
   ],
   "dynamicsTable": [
     [
+      1,
+      2,
       3,
       4,
-      5
+      5,
+      6
     ]
   ],
   "dynamicsEnsemble": {
     "kind": "series"
   },
   "dynamicsPrinciple": {
-    "kind": "series"
+    "kind": "group",
+    "element": "series",
+    "repetition": "series",
+    "minRepetitions": 1,
+    "maxRepetitions": 4
   },
-  "dynamicsMode": "per-chord",
+  "dynamicsMode": "per-note",
   "performance": [
     "normal",
     "muted",
@@ -189,6 +244,17 @@
     {
       "kind": "pitch",
       "low": {
+        "octave": 3,
+        "pitch": 1
+      },
+      "high": {
+        "octave": 3,
+        "pitch": 12
+      }
+    },
+    {
+      "kind": "pitch",
+      "low": {
         "octave": 4,
         "pitch": 1
       },
@@ -196,11 +262,24 @@
         "octave": 4,
         "pitch": 12
       }
+    },
+    {
+      "kind": "pitch",
+      "low": {
+        "octave": 5,
+        "pitch": 1
+      },
+      "high": {
+        "octave": 5,
+        "pitch": 12
+      }
     }
   ],
   "registerTable": [
     [
-      0
+      0,
+      1,
+      2
     ]
   ],
   "registerEnsemble": {
@@ -210,25 +289,32 @@
     ]
   },
   "registerPrinciple": {
-    "kind": "tendency",
-    "sections": [
-      {
-        "portion": 1,
-        "startMin": 0,
-        "startMax": 0,
-        "endMin": 0,
-        "endMax": 1
-      },
-      {
-        "portion": 1,
-        "startMin": 0.5,
-        "startMax": 0.5,
-        "endMin": 0,
-        "endMax": 1
-      }
-    ]
+    "kind": "alea"
   },
-  "registerMode": "per-chord",
+  "registerMode": "per-note",
+  "restMode": {
+    "kind": "before-sound-entry",
+    "d1": 20,
+    "d2": 33
+  },
+  "rests": [
+    "2.0",
+    "3.0",
+    "4.0"
+  ],
+  "restTable": [
+    [
+      0,
+      1,
+      2
+    ]
+  ],
+  "restEnsemble": {
+    "kind": "alea"
+  },
+  "restPrinciple": {
+    "kind": "alea"
+  },
   "harmonyPrinciple": "interval",
   "row": [
     "1",
@@ -242,143 +328,143 @@
     "kind": "matrix",
     "rows": [
       [
-        false,
         true,
         false,
         false,
         false,
         false,
         false,
-        false,
-        false,
-        false,
-        false
-      ],
-      [
-        false,
-        false,
         true,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-      ],
-      [
-        false,
-        false,
-        false,
-        true,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-      ],
-      [
-        false,
-        false,
-        false,
-        false,
-        true,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-      ],
-      [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        false,
-        false,
-        false,
-        false,
-        false
-      ],
-      [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        false,
-        false,
-        false,
-        false
-      ],
-      [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        false,
-        false,
-        false
-      ],
-      [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        false,
-        false
-      ],
-      [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        false
-      ],
-      [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
         false,
         false,
         false,
         true
       ],
       [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      [
         true,
         false,
         false,
         false,
+        true,
+        false,
+        true,
         false,
         false,
         false,
+        false
+      ],
+      [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      [
+        true,
+        false,
+        false,
+        false,
+        true,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false
+      ],
+      [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false
+      ],
+      [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
         false,
         false,
         false,
