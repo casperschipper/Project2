@@ -1044,3 +1044,331 @@ let () =
           assert (List.mem "chord-principle-common-harmony-mismatch" ids)));
   print_endline
     "union common-harmony: CHORD-principle mismatch validation test passed"
+
+(* ---- REST (EMR-3 7.4) ---- *)
+
+(* A hand-built [duration sel_state] that always draws the same fixed
+   value, regardless of principle-continuity questions - lets the direct
+   [compute_rest_insertions] tests below hand-verify exact insertion
+   points/times without depending on any other part of the pipeline. *)
+let fixed_rest_state value =
+  Pr26.Score_generation.sel_init (Pr26.Selection.Sequence [ 0 ]) 1
+    (Pr26.Parameters.elements_of_array [| Pr26.Parameters.Duration value |])
+
+(* Sound-entry vs. general-entry divergence, and the "recomputed against
+   the current, already-shifted timeline" design: target 1 sustains from
+   1.0 to 5.0, concealing target 2's onset at 2.0. Sound-entry mode doesn't
+   care about sustain at all, so it gives every target its own rest.
+   General-entry mode must skip target 2 (still concealed by target 1's
+   sustain at the moment the search reaches it) and land on target 3
+   instead - proving concealment is evaluated live during the walk, not
+   from some list of "which targets are ever concealed" decided up front. *)
+let () =
+  let open Pr26.Score_generation in
+  let targets =
+    [|
+      { time = 0.0; sustain_until = 0.0 };
+      { time = 1.0; sustain_until = 5.0 };
+      { time = 2.0; sustain_until = 2.0 };
+      { time = 6.0; sustain_until = 6.0 };
+    |]
+  in
+  let before_indices insertions =
+    insertions |> List.map (fun (i : rest_insertion) -> i.before_index)
+  in
+  let sound_insertions, _ =
+    compute_rest_insertions ~variant_duration:10.0
+      ~rest_mode:(Pr26.Parameters.RestBeforeSoundEntry { d1 = 10.0; d2 = 10.0 })
+      ~targets (fixed_rest_state 0.5)
+  in
+  assert (before_indices sound_insertions = [ 1; 2; 3 ]);
+  let general_insertions, _ =
+    compute_rest_insertions ~variant_duration:10.0
+      ~rest_mode:
+        (Pr26.Parameters.RestBeforeGeneralEntry { d1 = 10.0; d2 = 10.0 })
+      ~targets (fixed_rest_state 0.5)
+  in
+  assert (before_indices general_insertions = [ 1; 3 ]);
+  print_endline
+    "compute_rest_insertions: sound-entry vs general-entry divergence test \
+     passed"
+
+(* Degenerate entry range (d1 = d2 = 0): the ALEA offset is exactly 0 every
+   time, so a naive "resume the next search from [found_idx]" would let the
+   very same target satisfy the search again forever. [idx] must advance to
+   [found_idx + 1] regardless, so this always terminates, touching every
+   target exactly once. The regression is really "this call returns at
+   all" - the strictly-increasing/full-coverage assertions below are the
+   easiest way to also confirm it did the *right* thing while it's at it. *)
+let () =
+  let open Pr26.Score_generation in
+  let targets =
+    [|
+      { time = 0.0; sustain_until = 0.0 };
+      { time = 1.0; sustain_until = 1.0 };
+      { time = 2.0; sustain_until = 2.0 };
+      { time = 3.0; sustain_until = 3.0 };
+      { time = 10.0; sustain_until = 10.0 };
+    |]
+  in
+  let insertions, _ =
+    compute_rest_insertions ~variant_duration:5.0
+      ~rest_mode:(Pr26.Parameters.RestBeforeSoundEntry { d1 = 0.0; d2 = 0.0 })
+      ~targets (fixed_rest_state 1.0)
+  in
+  assert (List.length insertions = 5);
+  let indices = insertions |> List.map (fun (i : rest_insertion) -> i.before_index) in
+  assert (indices = [ 0; 1; 2; 3; 4 ]);
+  print_endline
+    "compute_rest_insertions: degenerate d1=d2=0 termination test passed"
+
+(* Full-pipeline REST formula: one percussion instrument (avoids HARMONY/
+   pitch complications entirely), fixed entry delay and duration so every
+   entry's original (pre-rest) time is exactly predictable
+   (0, entrydelay, 2*entrydelay, ...), and a single fixed rest length so
+   the exact insertion point can be hand-derived from
+   [rest_offset_draw]'s own formula. [rest] is [("", "")] for REST off, or
+   a (principles-stanza, top-level-stanza) pair otherwise - mirrors
+   [build_common_harmony_formula]'s own "assemble a template from
+   parameters" shape. *)
+let build_rest_formula ~variant_duration ~entrydelay ~duration ~n_groups
+    ~instrument_table_sexp ~union_sexp ~rest =
+  let principle_stanza, top_stanza = rest in
+  let src =
+    Printf.sprintf
+      {|(structure-formula
+  (seed 3)
+  (variant-duration %f)
+  (n-variants 1)
+  (octave-division 12)
+
+  (dynamics (mf))
+  (dynamics-table (0))
+
+  (performance (normal))
+  (performance-table (0))
+
+  (number-of-instrument-groups %d)
+  (instruments
+    (instrument only
+      (chordsize 1 1)
+      (performance (normal))
+      (dynamics (mf))
+      (pitch-range percussion)
+      (durations 0.001 100.0)))
+  (instrument-table %s)
+
+  (entrydelays (%f))
+  (entrydelay-table (0))
+
+  (durations (%f))
+  (duration-table (0))
+
+  (registers ((pitch-range percussion)))
+  (register-table (0))
+
+  (harmony
+    (principle row)
+    (row (p))
+    (transposition none))
+
+  (principles
+    (instrument (ensemble series) (order series))
+    (entrydelay (ensemble series) (order series))
+    (performance (ensemble series) (order series) (mode per-chord))
+    (dynamics (ensemble series) (order series) (mode per-chord))
+    (duration (ensemble series) (order series) (relation (independent per-chord)))
+    (register (ensemble series) (order series) (mode per-chord))
+    %s)
+
+  (hierarchy (Ins Reg Har Per Dyn Ent Dur))
+  %s
+  (union %s)
+  (density instrument-density)
+)|}
+      variant_duration n_groups instrument_table_sexp entrydelay duration
+      principle_stanza top_stanza union_sexp
+  in
+  match Pr26.Sexp.of_string src with
+  | Error e -> failwith ("REST test formula failed to parse: " ^ e)
+  | Ok sexps -> (
+      match Pr26.Structure_formula.Parse.of_sexp sexps with
+      | Error (errors, _) ->
+          failwith
+            (Printf.sprintf "REST test formula failed to build: %s"
+               (errors
+               |> List.map (fun (d : Pr26.Parameters.diagnostic) ->
+                      Pr26.Parameters.problem_id d.problem)
+               |> String.concat ", "))
+      | Ok (sf, _warnings) -> sf)
+
+let rest_omitted = ("", "")
+let rest_explicit_off = ("", "(rest-mode off)")
+
+let rest_before_sound_entry ~d1 ~d2 ~rest_duration =
+  ( "(rest (ensemble (sequence 0)) (order series))",
+    Printf.sprintf
+      "(rest-mode (before-sound-entry %f %f))\n  (rests (%f))\n  (rest-table \
+       (0))"
+      d1 d2 rest_duration )
+
+(* REST off (whether the field is entirely absent, or explicitly written)
+   must be a complete no-op: no entry is ever marked [is_rest], and the
+   entry count/timing matches what the formula would produce with no REST
+   machinery at all. *)
+let () =
+  let check ~rest =
+    let sf =
+      build_rest_formula ~variant_duration:8.0 ~entrydelay:1.0 ~duration:0.3
+        ~n_groups:1 ~instrument_table_sexp:"(0)" ~union_sexp:"union" ~rest
+    in
+    let variants = Pr26.Score_generation.build_score sf in
+    let entries = List.hd (List.hd variants) in
+    assert (List.length entries = 8);
+    assert (List.for_all (fun (e : Pr26.Score_generation.entry) -> not e.is_rest) entries);
+    List.iteri
+      (fun i (e : Pr26.Score_generation.entry) ->
+        assert (Float.abs (e.time -. float_of_int i) < 1e-9))
+      entries
+  in
+  check ~rest:rest_omitted;
+  check ~rest:rest_explicit_off;
+  print_endline "REST off: no-op test passed (field omitted and explicit)"
+
+(* The load-bearing shift test: entries at 0..7 (entrydelay 1.0, 8 events),
+   REST at (before-sound-entry 50.0 50.0) with variant_duration 8.0 draws a
+   constant offset of 4.0 (50% of 8.0) from cursor 0.0 - so the first
+   qualifying original entry is index 4 (time 4.0), and no further entry
+   reaches the next provisional point (10.0) once shifted, so exactly one
+   rest is placed. Checked for both [Union] (one merged layer) and
+   [NoUnionPerLayer] (2 structurally-identical layers, each independently
+   getting the same rest at the same position) - exercising both of
+   [insert_rests_entries]'s call sites (3.6's [Union]/[NoUnionPerLayer]
+   branches) with one hand-derived shape. *)
+let () =
+  let check_layer (entries : Pr26.Score_generation.entry list) =
+    assert (List.length entries = 9);
+    let expected_times = [ 0.0; 1.0; 2.0; 3.0; 4.0; 6.0; 7.0; 8.0; 9.0 ] in
+    let expected_is_rest = [ false; false; false; false; true; false; false; false; false ] in
+    List.iter2
+      (fun (e : Pr26.Score_generation.entry) expected_t ->
+        assert (Float.abs (e.time -. expected_t) < 1e-9))
+      entries expected_times;
+    List.iter2
+      (fun (e : Pr26.Score_generation.entry) expected_r -> assert (e.is_rest = expected_r))
+      entries expected_is_rest;
+    let rest_entry = List.nth entries 4 in
+    assert (rest_entry.notes = []);
+    (match rest_entry.duration with
+    | Some (Duration d) -> assert (Float.abs (d -. 2.0) < 1e-9)
+    | None -> assert false)
+  in
+  let rest = rest_before_sound_entry ~d1:50.0 ~d2:50.0 ~rest_duration:2.0 in
+  let sf_union =
+    build_rest_formula ~variant_duration:8.0 ~entrydelay:1.0 ~duration:0.3
+      ~n_groups:1 ~instrument_table_sexp:"(0)" ~union_sexp:"union" ~rest
+  in
+  check_layer (List.hd (List.hd (Pr26.Score_generation.build_score sf_union)));
+  let sf_per_layer =
+    build_rest_formula ~variant_duration:8.0 ~entrydelay:1.0 ~duration:0.3
+      ~n_groups:2 ~instrument_table_sexp:"(0) (0)" ~union_sexp:"none" ~rest
+  in
+  let layers_per_layer = Pr26.Score_generation.build_score sf_per_layer |> List.hd in
+  assert (List.length layers_per_layer = 2);
+  List.iter check_layer layers_per_layer;
+  print_endline
+    "REST: rest shifts every following entry by exactly its own duration \
+     (Union and NoUnionPerLayer) test passed"
+
+(* union = common-harmony: REST must run per layer, between phase 1 and
+   phase 2's merge (3.6's [NoUnionCommonHarmony] branch/[insert_rests_
+   common_harmony_layer]) - checked structurally (at least one rest per
+   layer, every layer's own entries still strictly ascending in time)
+   rather than by hand-deriving exact positions, since phase 1's own
+   per-layer event counts aren't as trivially predictable as the
+   single-parameter formulas above. *)
+let () =
+  let src =
+    {|(structure-formula
+  (seed 5)
+  (variant-duration 2.0)
+  (n-variants 1)
+  (octave-division 12)
+
+  (dynamics (mf))
+  (dynamics-table (0))
+
+  (performance (normal))
+  (performance-table (0))
+
+  (number-of-instrument-groups 2)
+  (instruments
+    (instrument only
+      (chordsize 1 1)
+      (performance (normal))
+      (dynamics (mf))
+      (pitch-range (low (octave 1) (pitch 1)) (high (octave 8) (pitch 12)))
+      (durations 0.1 1.0)))
+  (instrument-table (0) (0))
+
+  (entrydelays (0.5 0.3))
+  (entrydelay-table (0) (1))
+
+  (durations (0.05))
+  (duration-table (0))
+
+  (registers ((pitch-range (low (octave 1) (pitch 1)) (high (octave 8) (pitch 12)))))
+  (register-table (0))
+
+  (harmony
+    (principle row)
+    (row (1 2 3 4))
+    (transposition none))
+
+  (rest-mode (before-sound-entry 20.0 20.0))
+  (rests (0.1))
+  (rest-table (0))
+
+  (principles
+    (instrument (ensemble series) (order series))
+    (entrydelay (ensemble combination) (order series))
+    (performance (ensemble series) (order series) (mode per-chord))
+    (dynamics (ensemble series) (order series) (mode per-chord))
+    (duration (ensemble series) (order series) (relation (independent per-chord)))
+    (register (ensemble series) (order series) (mode per-chord))
+    (rest (ensemble (sequence 0)) (order series)))
+
+  (hierarchy (Ins Reg Per Dyn Ent Dur Har))
+  (union common-harmony)
+  (density instrument-density)
+)|}
+  in
+  let sf =
+    match Pr26.Sexp.of_string src with
+    | Error e -> failwith ("parse error: " ^ e)
+    | Ok sexps -> (
+        match Pr26.Structure_formula.Parse.of_sexp sexps with
+        | Error (errors, _) ->
+            failwith
+              (Printf.sprintf "common-harmony REST formula failed to build: %s"
+                 (errors
+                 |> List.map (fun (d : Pr26.Parameters.diagnostic) ->
+                        Pr26.Parameters.problem_id d.problem)
+                 |> String.concat ", "))
+        | Ok (sf, _warnings) -> sf)
+  in
+  let layers = Pr26.Score_generation.build_score sf |> List.hd in
+  assert (List.length layers = 2);
+  List.iter
+    (fun (entries : Pr26.Score_generation.entry list) ->
+      assert (List.exists (fun (e : Pr26.Score_generation.entry) -> e.is_rest) entries);
+      let rec ascending = function
+        | (a : Pr26.Score_generation.entry) :: (b :: _ as rest) ->
+            a.time <= b.time && ascending rest
+        | _ -> true
+      in
+      assert (ascending entries))
+    layers;
+  print_endline
+    "REST: union common-harmony per-layer insertion (phase 1 -> phase 2 \
+     seam) test passed"

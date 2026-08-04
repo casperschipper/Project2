@@ -94,6 +94,20 @@ export type DurationRelation =
   | { kind: "equals-entry" }
   | { kind: "shorter-than-entry"; mode: NoteMode };
 
+/**
+ * REST (EMR-3 7.4): a standalone post-processing pass, never part of the
+ * hierarchy - it inserts silence into an already-fully-resolved timeline,
+ * shifting everything after it later. `d1`/`d2` are the "entry range": a
+ * percentage-of-variant-duration window (0-100) the next rest's offset is
+ * drawn from. "Before a sound entry" places a rest before the next tone
+ * onset regardless of what else is sustaining; "before a general entry"
+ * skips onsets still concealed by an earlier tone's sustain.
+ */
+export type RestMode =
+  | { kind: "off" }
+  | { kind: "before-sound-entry"; d1: number; d2: number }
+  | { kind: "before-general-entry"; d1: number; d2: number };
+
 export type Density =
   | { kind: "instrument-density" }
   | { kind: "autonomous"; low: number; high: number; principle: Principle }
@@ -172,14 +186,15 @@ export function registerLabel(r: Register): string {
 /** Rows are groups; cells are 0-based indices into the parameter's own list. */
 export type Table = number[][];
 
-/** The six parameters that carry a principles block. */
+/** The seven parameters that carry a principles block. */
 export type ParamId =
   | "instrument"
   | "entrydelay"
   | "performance"
   | "dynamics"
   | "duration"
-  | "register";
+  | "register"
+  | "rest";
 
 export type Project = {
   formatVersion: 1;
@@ -259,6 +274,15 @@ export type Project = {
   registerEnsemble: Ensemble;
   registerPrinciple: Principle;
   registerMode: NoteMode;
+
+  // --- rest (EMR-3 7.4) ------------------------------------------------
+  /** Optional, defaulting to off - see `RestMode`. When off, `rests`/
+   * `restTable`/`restEnsemble`/`restPrinciple` are not emitted at all. */
+  restMode: RestMode;
+  rests: string[];
+  restTable: Table;
+  restEnsemble: Ensemble;
+  restPrinciple: Principle;
 
   // --- harmony (ROW and INTERVAL - see harmony.md) -----------------------
   harmonyPrinciple: HarmonyPrinciple;

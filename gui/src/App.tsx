@@ -13,6 +13,7 @@ import {
   DURATION,
   DYNAMICS,
   PERFORMANCE,
+  REST,
 } from "./screens/ParameterScreen";
 import {
   chooseOutputDir,
@@ -270,6 +271,7 @@ export function App() {
           {screen === "dynamics" && <ParameterScreen config={DYNAMICS} />}
           {screen === "performance" && <ParameterScreen config={PERFORMANCE} />}
           {screen === "register" && <RegisterScreen />}
+          {screen === "rest" && <ParameterScreen config={REST} />}
           {screen === "harmony" && <HarmonyScreen />}
           {screen === "output" && <OutputScreen />}
         </main>

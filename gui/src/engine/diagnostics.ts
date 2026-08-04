@@ -18,6 +18,7 @@ export type ScreenId =
   | "dynamics"
   | "performance"
   | "register"
+  | "rest"
   | "harmony"
   | "output";
 
@@ -29,6 +30,7 @@ export const SCREENS: { id: ScreenId; label: string }[] = [
   { id: "dynamics", label: "Dynamics" },
   { id: "performance", label: "Performance" },
   { id: "register", label: "Register" },
+  { id: "rest", label: "Rest" },
   { id: "harmony", label: "Harmony" },
   { id: "output", label: "Output" },
 ];
@@ -46,6 +48,10 @@ export function screenOf(d: Diagnostic): ScreenId {
   const head = path.split(/[.[]/)[0];
 
   if (path.startsWith("duration.relation")) return "structure";
+  // REST's own mode + entry-range live on the Structure screen, alongside
+  // union/hierarchy (see StructureScreen.tsx) - only its list/table/
+  // ensemble/order belong to the Rest screen itself.
+  if (path.startsWith("rest.rest-mode")) return "structure";
 
   switch (head) {
     case "global":
@@ -67,6 +73,8 @@ export function screenOf(d: Diagnostic): ScreenId {
       return "performance";
     case "register":
       return "register";
+    case "rest":
+      return "rest";
     case "harmony":
       return "harmony";
     default:

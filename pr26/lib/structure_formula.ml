@@ -102,6 +102,15 @@ type structure_formula = {
   union : union;
   density : vertical_density;
   hierarchy : hierarchy;
+  (* REST (EMR-3 7.4): never part of [hierarchy] - a standalone
+     post-processing pass, not a resolution step (see [rest_mode]). Reuses
+     [duration] verbatim for its own "how long" draws, and the same
+     list/table/ensemble/order machinery as every other parameter. *)
+  rest_list : duration parameter_list;
+  rest_table : ptable;
+  rest_combination : combination;
+  rest_principle : selection_principle;
+  rest_mode : rest_mode;
 }
 
 (* When a combination is requested but the two tables' row counts don't
@@ -159,7 +168,8 @@ let mk_structure_formula ~seed ~variant_duration ~n_variants ~instr_list
     ~reg_list ~register_table ~register_principle ~register_combination
     ~register_mode ~harmony ~tr ~union ~hierarchy
     ~density ~dur_list ~dur_table ~duration_combination
-    ~duration_relation_mode ~duration_principle =
+    ~duration_relation_mode ~duration_principle ~rest_list ~rest_table
+    ~rest_combination ~rest_principle ~rest_mode =
   let hierarchy_errors =
     match (density, hierarchy) with
     | InstrumentDensity, first :: _ ->
@@ -397,12 +407,33 @@ let mk_structure_formula ~seed ~variant_duration ~n_variants ~instr_list
                })
     | HarmRow _ | HarmInterval _ -> []
   in
+  (* REST is never in [hierarchy] (see [rest_mode]), so it needs no
+     hierarchy-position validation of its own - just the same
+     combination/ratio-coverage checks every other list/table/ensemble
+     parameter gets, and only when it's actually switched on. *)
+  let rest_combination_errors =
+    match rest_mode with
+    | RestOff -> []
+    | RestBeforeSoundEntry _ | RestBeforeGeneralEntry _ ->
+        check_combination
+          ~combination_loc:[ Key KRest; Key KCombination ]
+          ~instr_table_loc:[ Key KInstrument; Key KTable ]
+          ~other_table_loc:[ Key KRest; Key KTable ]
+          instr_table rest_table rest_combination
+  in
+  let rest_ratio_coverage_errors =
+    match rest_mode with
+    | RestOff -> []
+    | RestBeforeSoundEntry _ | RestBeforeGeneralEntry _ ->
+        check_ratio_coverage [ Key KRest; Key KTable ] rest_table rest_principle
+  in
   let all_diags =
     hierarchy_errors @ chord_density_consistency_errors
     @ common_harmony_chord_consistency_errors @ common_harmony_hierarchy_errors
     @ combination_errors @ performance_membership_errors
     @ dynamics_membership_errors @ ratio_coverage_errors
     @ per_note_ordering_errors @ interval_matrix_warnings @ chord_table_errors
+    @ rest_combination_errors @ rest_ratio_coverage_errors
   in
   match
     List.partition
@@ -449,6 +480,11 @@ let mk_structure_formula ~seed ~variant_duration ~n_variants ~instr_list
             duration_relation_mode;
             duration_principle;
             duration_combination;
+            rest_list;
+            rest_table;
+            rest_combination;
+            rest_principle;
+            rest_mode;
           },
           warnings )
   | errors, warnings -> Error (errors, warnings)
@@ -639,6 +675,24 @@ module Parse = struct
         fail
           "duration relation expects (independent per-chord|per-note), \
            equals-entry, or (shorter-than-entry per-chord|per-note)"
+
+  (* REST-MODE (EMR-3 7.4): 'off', or 'before-sound-entry'/'before-general-
+     entry' with the "entry range" (d1, d2) as two percentages of
+     variant-duration - see [rest_mode]. *)
+  let parse_rest_mode = function
+    | [ Sexp.Atom "off" ] -> Ok RestOff
+    | [ Sexp.List (Sexp.Atom "before-sound-entry" :: [ d1; d2 ]) ] ->
+        let* d1 = require_float d1 in
+        let* d2 = require_float d2 in
+        lift (mk_rest_before_sound_entry ~d1 ~d2)
+    | [ Sexp.List (Sexp.Atom "before-general-entry" :: [ d1; d2 ]) ] ->
+        let* d1 = require_float d1 in
+        let* d2 = require_float d2 in
+        lift (mk_rest_before_general_entry ~d1 ~d2)
+    | _ ->
+        fail
+          "rest-mode expects off, (before-sound-entry D1 D2), or \
+           (before-general-entry D1 D2)"
 
   let parse_tendency_section = function
     | Sexp.List (Sexp.Atom "section" :: Sexp.Atom portion_s :: rest) -> (
@@ -1074,6 +1128,38 @@ module Parse = struct
         (let* args = require_field "duration-table" items in
          parse_table args)
     in
+    (* REST (EMR-3 7.4): optional, defaulting to off - existing formulas
+       written before this field existed still mean exactly what they
+       always meant, no rests at all. [rests]/[rest-table] are only
+       required once [rest-mode] actually turns REST on. *)
+    let* rest_mode =
+      in_loc [ Key KRest; Key KRestMode ]
+        (optional_field "rest-mode" ~default:RestOff items parse_rest_mode)
+    in
+    let* rest_list =
+      in_loc [ Key KRest; Key KList ]
+        (match rest_mode with
+        | RestOff -> Ok (ParameterList [||])
+        | RestBeforeSoundEntry _ | RestBeforeGeneralEntry _ ->
+            let* args = require_field "rests" items in
+            let* floats =
+              match args with
+              | [ Sexp.List inner ] -> inner |> List.map require_float |> sequence
+              | _ -> fail "rests expects (rests (...))"
+            in
+            let* durs =
+              floats |> List.map (fun f -> lift (mk_duration f)) |> sequence
+            in
+            Ok (ParameterList (Array.of_list durs)))
+    in
+    let* rest_table =
+      in_loc [ Key KRest; Key KTable ]
+        (match rest_mode with
+        | RestOff -> Ok (Table [||])
+        | RestBeforeSoundEntry _ | RestBeforeGeneralEntry _ ->
+            let* args = require_field "rest-table" items in
+            parse_table args)
+    in
     let* perf_list =
       in_loc
         [ Key KPerformance; Key KList ]
@@ -1356,6 +1442,24 @@ module Parse = struct
       in
       Ok (ens, samp, rel)
     in
+    (* REST's own list/table/ensemble/order machinery is identical to every
+       other parameter's - [parse_param_principles] reused unmodified,
+       exactly like entry delay - but the whole "rest" principles block is
+       only required when [rest-mode] actually turns REST on. *)
+    let* rest_combination, rest_principle =
+      match rest_mode with
+      | RestOff -> Ok (NoCombination EnsembleGroupAlea, Alea)
+      | RestBeforeSoundEntry _ | RestBeforeGeneralEntry _ ->
+          let rest_floats =
+            let (ParameterList rest_arr) = rest_list in
+            rest_arr |> Array.to_list |> List.map (fun (Duration f) -> f)
+          in
+          parse_param_principles KRest
+            ~resolve_ratio_index:
+              (resolve_index_or_float
+                 (fun s -> ParseError (Printf.sprintf "unknown rest %S" s))
+                 rest_floats)
+    in
     let* union =
       in_loc [ Key KUnion ]
         (let* args = require_field "union" items in
@@ -1392,7 +1496,8 @@ module Parse = struct
       ~register_table ~register_principle ~register_combination
       ~register_mode ~harmony ~tr ~union ~density
       ~hierarchy ~dur_list ~dur_table ~duration_combination
-      ~duration_relation_mode ~duration_principle
+      ~duration_relation_mode ~duration_principle ~rest_list ~rest_table
+      ~rest_combination ~rest_principle ~rest_mode
 
   let read_file path =
     let ic = open_in path in

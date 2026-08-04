@@ -3,7 +3,7 @@ import { Field, Section } from "../components/Field";
 import { HierarchyEditor } from "../components/ListEditors";
 import { PrincipleEditor } from "../components/PrincipleEditor";
 import { intervalMatrixWouldLoseData, resizeIntervalMatrix } from "../schema/defaults";
-import type { DurationRelation } from "../schema/types";
+import type { DurationRelation, RestMode } from "../schema/types";
 
 /**
  * The structure screen holds the decisions that shape the piece as a whole -
@@ -13,7 +13,7 @@ import type { DurationRelation } from "../schema/types";
  * the other screens are allowed to say.
  */
 export function StructureScreen() {
-  const { project, update } = useStore();
+  const { project, update, setScreen } = useStore();
 
   return (
     <div className="screen">
@@ -300,6 +300,84 @@ export function StructureScreen() {
             <div className="field__hint" style={{ marginTop: 8 }}>
               Harmony must come last in the hierarchy under common harmony, since it resolves
               once, after every layer's own rhythm is already fixed.
+            </div>
+          )}
+        </Field>
+      </Section>
+
+      <Section title="Rest">
+        <Field
+          label="Rest mode"
+          helpKey="fields/rest-mode"
+          path="rest.rest-mode"
+          hint="Whether autonomous rests are inserted into the timeline at all, and, if so, whether they may land on an entry still concealed by an earlier tone's sustain."
+        >
+          <select
+            style={{ width: 340 }}
+            value={project.restMode.kind}
+            onChange={(e) =>
+              update((p) => {
+                const kind = e.target.value as RestMode["kind"];
+                p.restMode = kind === "off" ? { kind: "off" } : { kind, d1: 5, d2: 20 };
+              })
+            }
+          >
+            <option value="off">Off — no rests are inserted</option>
+            <option value="before-sound-entry">
+              Before a sound entry — placed before the next tone onset, regardless of sustain
+            </option>
+            <option value="before-general-entry">
+              Before a general entry — skips onsets still concealed by an earlier tone's sustain
+            </option>
+          </select>
+
+          {project.restMode.kind !== "off" && (
+            <div className="field__row" style={{ marginTop: 8 }}>
+              <span className="faint" style={{ width: 130 }}>
+                Entry range (%)
+              </span>
+              <input
+                type="number"
+                className="input--tiny"
+                min={0}
+                max={100}
+                value={project.restMode.d1}
+                onChange={(e) =>
+                  update((p) => {
+                    if (p.restMode.kind !== "off") p.restMode.d1 = Number(e.target.value);
+                  })
+                }
+              />
+              <span className="faint">to</span>
+              <input
+                type="number"
+                className="input--tiny"
+                min={0}
+                max={100}
+                value={project.restMode.d2}
+                onChange={(e) =>
+                  update((p) => {
+                    if (p.restMode.kind !== "off") p.restMode.d2 = Number(e.target.value);
+                  })
+                }
+              />
+            </div>
+          )}
+
+          {project.restMode.kind !== "off" && (
+            <div className="field__hint" style={{ marginTop: 8 }}>
+              Percentages of the variant duration: each rest's placement is drawn from this
+              window and added onward from the last one. Rest lengths and their own order are
+              set on the{" "}
+              <button
+                type="button"
+                className="btn btn--ghost btn--small"
+                style={{ display: "inline" }}
+                onClick={() => setScreen("rest")}
+              >
+                Rest screen
+              </button>
+              .
             </div>
           )}
         </Field>

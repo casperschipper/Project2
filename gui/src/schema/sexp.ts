@@ -8,6 +8,7 @@ import type {
   PitchRange,
   Principle,
   Project,
+  RestMode,
   Table,
 } from "./types";
 
@@ -106,6 +107,20 @@ function emitRelation(r: DurationRelation): string {
       return `(independent ${r.mode})`;
     case "shorter-than-entry":
       return `(shorter-than-entry ${r.mode})`;
+  }
+}
+
+/** REST-MODE (EMR-3 7.4). Mirrors `emitRelation`'s shape - a bare atom for
+ * the no-argument case, a parenthesised form carrying its own arguments
+ * otherwise. */
+function emitRestMode(r: RestMode): string {
+  switch (r.kind) {
+    case "off":
+      return "off";
+    case "before-sound-entry":
+      return `(before-sound-entry ${fmt(r.d1)} ${fmt(r.d2)})`;
+    case "before-general-entry":
+      return `(before-general-entry ${fmt(r.d1)} ${fmt(r.d2)})`;
   }
 }
 
@@ -239,6 +254,16 @@ export function toSexp(p: Project): string {
   parts.push(emitTable("register-table", p.registerTable));
   parts.push("");
 
+  // REST (EMR-3 7.4): optional, defaulting to off - only emitted at all
+  // once the composer actually turns it on, so every project that never
+  // touches REST keeps emitting exactly what it always emitted.
+  if (p.restMode.kind !== "off") {
+    parts.push(`  (rest-mode ${emitRestMode(p.restMode)})`);
+    parts.push(`  (rests (${p.rests.join(" ")}))`);
+    parts.push(emitTable("rest-table", p.restTable));
+    parts.push("");
+  }
+
   parts.push(emitHarmony(p));
   parts.push("");
 
@@ -288,6 +313,17 @@ export function toSexp(p: Project): string {
       )}) (mode ${p.registerMode})`,
       2,
     ),
+    ...(p.restMode.kind !== "off"
+      ? [
+          sexpList(
+            "rest ",
+            `(ensemble ${emitEnsemble(p.restEnsemble)}) (order ${emitPrinciple(
+              p.restPrinciple,
+            )})`,
+            2,
+          ),
+        ]
+      : []),
   ].join("\n");
   parts.push(`  (principles\n${principles})`);
   parts.push("");

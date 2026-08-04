@@ -152,6 +152,12 @@ export function defaultProject(): Project {
     registerPrinciple: { kind: "series" },
     registerMode: "per-chord",
 
+    restMode: { kind: "off" },
+    rests: ["0.5", "1.0"],
+    restTable: [[0, 1]],
+    restEnsemble: { kind: "alea" },
+    restPrinciple: { kind: "alea" },
+
     harmonyPrinciple: "row",
     row: ["1", "2", "3", "p", "5", "7", "9", "11", "12", "4", "6", "8", "10"],
     transposition: "none",

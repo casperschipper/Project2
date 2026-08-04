@@ -1,0 +1,402 @@
+{
+  "formatVersion": 1,
+  "seed": 2,
+  "variantDuration": "120.0",
+  "numberOfVariants": 1,
+  "octaveDivision": 12,
+  "hierarchy": [
+    "Ins",
+    "Reg",
+    "Har",
+    "Per",
+    "Dyn",
+    "Ent",
+    "Dur"
+  ],
+  "union": "none",
+  "density": {
+    "kind": "autonomous",
+    "low": 1,
+    "high": 1,
+    "principle": {
+      "kind": "group",
+      "element": "series",
+      "repetition": "series",
+      "minRepetitions": 1,
+      "maxRepetitions": 4
+    }
+  },
+  "durationRelation": {
+    "kind": "independent",
+    "mode": "per-note"
+  },
+  "startIndex": 0,
+  "comment": "",
+  "outputDir": "/Users/casperschipper/devel/Projekt2/pr26",
+  "numberOfInstrumentGroups": 1,
+  "instruments": [
+    {
+      "name": "piano",
+      "chordSizeMin": 1,
+      "chordSizeMax": 6,
+      "performance": [
+        "normal",
+        "muted",
+        "overtone1"
+      ],
+      "dynamics": [
+        "p",
+        "mf",
+        "f",
+        "ppp",
+        "pp",
+        "ff",
+        "fff"
+      ],
+      "pitchRange": {
+        "kind": "pitch",
+        "low": {
+          "octave": 1,
+          "pitch": 1
+        },
+        "high": {
+          "octave": 6,
+          "pitch": 12
+        }
+      },
+      "durationMin": "0.001",
+      "durationMax": "16.0"
+    }
+  ],
+  "instrumentTable": [
+    [
+      0
+    ]
+  ],
+  "instrumentGroupNames": [
+    "piano"
+  ],
+  "instrumentEnsemble": {
+    "kind": "sequence",
+    "values": [
+      0
+    ]
+  },
+  "instrumentPrinciple": {
+    "kind": "series"
+  },
+  "entrydelays": [
+    "0.01",
+    "0.02",
+    "0.03",
+    "0.1",
+    "0.5",
+    "0.6",
+    "0.7",
+    "0.8"
+  ],
+  "entrydelayTable": [
+    [
+      3
+    ]
+  ],
+  "entrydelayEnsemble": {
+    "kind": "sequence",
+    "values": [
+      0
+    ]
+  },
+  "entrydelayPrinciple": {
+    "kind": "sequence",
+    "values": [
+      0
+    ]
+  },
+  "durations": [
+    "0.01",
+    "0.02",
+    "0.1",
+    "0.2",
+    "0.3",
+    "0.5",
+    "2.0"
+  ],
+  "durationTable": [
+    [
+      4
+    ]
+  ],
+  "durationEnsemble": {
+    "kind": "sequence",
+    "values": [
+      0
+    ]
+  },
+  "durationPrinciple": {
+    "kind": "series"
+  },
+  "dynamics": [
+    "ppp",
+    "pp",
+    "p",
+    "mf",
+    "f",
+    "ff",
+    "fff"
+  ],
+  "dynamicsTable": [
+    [
+      3,
+      4,
+      5
+    ]
+  ],
+  "dynamicsEnsemble": {
+    "kind": "series"
+  },
+  "dynamicsPrinciple": {
+    "kind": "series"
+  },
+  "dynamicsMode": "per-chord",
+  "performance": [
+    "normal",
+    "muted",
+    "overtone1"
+  ],
+  "performanceTable": [
+    [
+      0,
+      1,
+      2
+    ]
+  ],
+  "performanceEnsemble": {
+    "kind": "sequence",
+    "values": [
+      0
+    ]
+  },
+  "performancePrinciple": {
+    "kind": "sequence",
+    "values": [
+      0,
+      1,
+      2
+    ]
+  },
+  "performanceMode": "per-chord",
+  "registers": [
+    {
+      "kind": "pitch",
+      "low": {
+        "octave": 4,
+        "pitch": 1
+      },
+      "high": {
+        "octave": 4,
+        "pitch": 12
+      }
+    }
+  ],
+  "registerTable": [
+    [
+      0
+    ]
+  ],
+  "registerEnsemble": {
+    "kind": "sequence",
+    "values": [
+      0
+    ]
+  },
+  "registerPrinciple": {
+    "kind": "tendency",
+    "sections": [
+      {
+        "portion": 1,
+        "startMin": 0,
+        "startMax": 0,
+        "endMin": 0,
+        "endMax": 1
+      },
+      {
+        "portion": 1,
+        "startMin": 0.5,
+        "startMax": 0.5,
+        "endMin": 0,
+        "endMax": 1
+      }
+    ]
+  },
+  "registerMode": "per-chord",
+  "harmonyPrinciple": "interval",
+  "row": [
+    "1",
+    "8",
+    "2",
+    "5",
+    "7"
+  ],
+  "transposition": "series",
+  "intervalMatrixSource": {
+    "kind": "matrix",
+    "rows": [
+      [
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      [
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      [
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      [
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false
+      ],
+      [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false
+      ],
+      [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false
+      ],
+      [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false
+      ],
+      [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true
+      ],
+      [
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    ]
+  },
+  "forbiddenTones": [],
+  "chords": [
+    [
+      "1",
+      "3",
+      "5"
+    ]
+  ],
+  "chordOrder": {
+    "kind": "series"
+  },
+  "chordTransposition": "none",
+  "invertMatrix": false
+}

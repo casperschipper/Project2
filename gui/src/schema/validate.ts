@@ -327,6 +327,37 @@ export function validateProject(p: Project): Diagnostic[] {
   // --- lists ----------------------------------------------------------
   checkTimeList("entrydelay", p.entrydelays, "entry delay", out);
   checkTimeList("duration", p.durations, "duration", out);
+  if (p.restMode.kind !== "off") {
+    checkTimeList("rest", p.rests, "rest", out);
+  }
+
+  // REST's own d1/d2 "entry range" (EMR-3 7.4): percentages of variant
+  // duration, 0-100, with d2 not below d1 - mirrors the engine's own
+  // `mk_rest_range` exactly, including sharing its two diagnostic ids, so
+  // one explanation serves both.
+  if (p.restMode.kind === "before-sound-entry" || p.restMode.kind === "before-general-entry") {
+    const { d1, d2 } = p.restMode;
+    const base = [key("rest"), key("rest-mode")];
+    if (d1 < 0 || d1 > 100 || d2 < 0 || d2 > 100) {
+      out.push(
+        diag(
+          "rest-range-out-of-bounds",
+          "error",
+          base,
+          "rest entry-range must be given as percentages of variant duration, 0-100",
+        ),
+      );
+    } else if (d2 < d1) {
+      out.push(
+        diag(
+          "rest-range-max-below-min",
+          "error",
+          base,
+          "rest entry-range's second percentage must not be below the first",
+        ),
+      );
+    }
+  }
 
   if (p.dynamics.length === 0) {
     out.push(diag("empty-list", "error", [key("dynamics"), key("list")], "the dynamics list is empty"));
@@ -610,6 +641,12 @@ export function validateProject(p: Project): Diagnostic[] {
     { paramKey: "register", table: p.registerTable, listLength: p.registers.length, listName: "register" },
     out,
   );
+  if (p.restMode.kind !== "off") {
+    checkTable(
+      { paramKey: "rest", table: p.restTable, listLength: p.rests.length, listName: "rest" },
+      out,
+    );
+  }
 
   // --- principles and ensembles ---------------------------------------
   checkPrinciple("instrument", p.instrumentPrinciple, p.instruments.length, out);
@@ -618,6 +655,9 @@ export function validateProject(p: Project): Diagnostic[] {
   checkPrinciple("dynamics", p.dynamicsPrinciple, p.dynamics.length, out);
   checkPrinciple("performance", p.performancePrinciple, p.performance.length, out);
   checkPrinciple("register", p.registerPrinciple, p.registers.length, out);
+  if (p.restMode.kind !== "off") {
+    checkPrinciple("rest", p.restPrinciple, p.rests.length, out);
+  }
 
   checkEnsemble("instrument", p.instrumentEnsemble, p.instrumentTable.length, out);
   checkEnsemble("entrydelay", p.entrydelayEnsemble, p.entrydelayTable.length, out);
@@ -625,6 +665,9 @@ export function validateProject(p: Project): Diagnostic[] {
   checkEnsemble("dynamics", p.dynamicsEnsemble, p.dynamicsTable.length, out);
   checkEnsemble("performance", p.performanceEnsemble, p.performanceTable.length, out);
   checkEnsemble("register", p.registerEnsemble, p.registerTable.length, out);
+  if (p.restMode.kind !== "off") {
+    checkEnsemble("rest", p.restEnsemble, p.restTable.length, out);
+  }
 
   // The engine parses the instrument ensemble with a selector that has no
   // `combination` case, so this would be a bare parse error with no
@@ -649,6 +692,9 @@ export function validateProject(p: Project): Diagnostic[] {
     ["dynamics", p.dynamicsEnsemble, p.dynamicsTable],
     ["performance", p.performanceEnsemble, p.performanceTable],
     ["register", p.registerEnsemble, p.registerTable],
+    ...(p.restMode.kind !== "off"
+      ? ([["rest", p.restEnsemble, p.restTable]] as Array<[string, Ensemble, Table]>)
+      : []),
   ];
   for (const [name, ens, table] of combinationParams) {
     if (ens.kind === "combination" && table.length !== p.instrumentTable.length) {

@@ -17,7 +17,7 @@ import type { Ensemble, NoteMode, Principle, Project, Table } from "../schema/ty
  */
 
 export type ParameterConfig = {
-  paramId: "entrydelay" | "duration" | "dynamics" | "performance";
+  paramId: "entrydelay" | "duration" | "dynamics" | "performance" | "rest";
   title: string;
   intro: string;
   /** Singular noun for one element, used in tooltips. */
@@ -238,6 +238,31 @@ export const DYNAMICS: ParameterConfig = {
     table: (p, v) => (p.dynamicsTable = v),
     ensemble: (p, v) => (p.dynamicsEnsemble = v),
     principle: (p, v) => (p.dynamicsPrinciple = v),
+  },
+};
+
+export const REST: ParameterConfig = {
+  paramId: "rest",
+  title: "Rest",
+  intro:
+    "How long an autonomous rest lasts, once one is placed. Rests are never part of the hierarchy - whether they're placed at all, and where, is switched on and configured on the Structure screen.",
+  valueLabel: "rest length",
+  listLabel: "Rest lengths",
+  listHelpKey: "fields/rest-list",
+  listHint: "Seconds. Decimals (0.25) and fractions (1/4) are both accepted.",
+  numeric: true,
+  bulkPlaceholder: "0.5 1.0 2.0",
+  get: {
+    list: (p) => p.rests,
+    table: (p) => p.restTable,
+    ensemble: (p) => p.restEnsemble,
+    principle: (p) => p.restPrinciple,
+  },
+  set: {
+    list: (p, v) => (p.rests = v),
+    table: (p, v) => (p.restTable = v),
+    ensemble: (p, v) => (p.restEnsemble = v),
+    principle: (p, v) => (p.restPrinciple = v),
   },
 };
 

@@ -48,6 +48,12 @@ type entry = {
   pitch : pitch option;
   (* see [note.instrument_repeated] - true if any note in this entry is. *)
   instrument_repeated : bool;
+  (* [true] iff this is a REST (EMR-3 7.4), spliced in by
+     [insert_rests_entries]/[insert_rests_common_harmony_layer] - never a
+     genuinely resolved entry (those always have [notes <> []]). Every
+     other field mirrors an empty/silent event: [notes = []],
+     [duration = Some (Duration <rest length>)], everything else [None]. *)
+  is_rest : bool;
 }
 
 (* Extract all elements from any ensemble as a flat array. Each element
@@ -350,6 +356,16 @@ type continuing_state = {
      bespoke, order-preserving stream (EMR-3 8.2), never an Alea/Series/
      Tendency draw - see [row_stream] and [interval_next]. *)
   har_state : har_state_t;
+  (* REST (EMR-3 7.4): unlike every field above, never threaded through
+     [advance_all_windows] or [resolve_layer_groups]'s fold - REST never
+     enters the hierarchy at all (see [rest_mode]), so it is only ever
+     read/written directly by [insert_rests_entries]/
+     [insert_rests_common_harmony_layer]. Each of those calls [sel_draw]
+     once per rest placed, which already advances a [Tendency] window per
+     draw (appropriate for a one-shot-per-rest value) - the same reason
+     [har_state] needs no [advance_all_windows] entry either. *)
+  rest_state : duration sel_state;
+  rest_last_arr : duration element array;
   instr_arr : instrument array;
   (* The array each state above was most recently built against. Compared
      against the next layer's own array by [continue_or_restart]: EMR-3
@@ -423,6 +439,8 @@ let initial_continuing_state ~tr (harmony : harmony_principle) :
     dur_state = SAlea (alea_init [||]);
     reg_state = SAlea (alea_init [||]);
     har_state = initial_har_state ~tr harmony;
+    rest_state = SAlea (alea_init [||]);
+    rest_last_arr = [||];
     instr_arr = [||];
     instr_last_arr = [||];
     ed_last_arr = [||];
@@ -2073,25 +2091,46 @@ let uniform_value get = function
 (* One group (one or more sub-picks sharing one timepoint - see
    [resolve_layer_autonomous]) becomes one [entry]: its notes are every
    sub-pick's notes concatenated, all stamped with the group's single [time];
-   [entrydelay] is likewise the group's, never any individual sub-pick's. *)
+   [entrydelay] is likewise the group's, never any individual sub-pick's.
+   An empty [protos] list is a REST (EMR-3 7.4) - never a genuine resolved
+   group (every density mode enforces at least one note), so it's a safe,
+   unambiguous signal. This is also exactly what a "rest" [common_harmony_group]
+   (see [mk_rest_common_harmony_group]) degenerates to once
+   [split_by_layer] converts it, so one branch here covers both paths. *)
 let entry_of_group time (Entrydelay ed) (protos : proto list) : entry =
-  let notes =
-    protos
-    |> List.concat_map notes_of_proto
-    |> List.map (fun (n : note) -> { n with time })
-  in
-  {
-    time;
-    entrydelay = ed;
-    notes;
-    instrument = uniform_value (fun (n : note) -> n.instrument) notes;
-    performance = uniform_value (fun (n : note) -> n.performance) notes;
-    dynamic = uniform_value (fun (n : note) -> n.dynamic) notes;
-    duration = uniform_value (fun (n : note) -> n.duration) notes;
-    pitch = uniform_value (fun (n : note) -> n.pitch) notes;
-    instrument_repeated =
-      List.exists (fun (n : note) -> n.instrument_repeated) notes;
-  }
+  match protos with
+  | [] ->
+      {
+        time;
+        entrydelay = ed;
+        notes = [];
+        instrument = None;
+        performance = None;
+        dynamic = None;
+        duration = Some (Duration ed);
+        pitch = None;
+        instrument_repeated = false;
+        is_rest = true;
+      }
+  | _ :: _ ->
+      let notes =
+        protos
+        |> List.concat_map notes_of_proto
+        |> List.map (fun (n : note) -> { n with time })
+      in
+      {
+        time;
+        entrydelay = ed;
+        notes;
+        instrument = uniform_value (fun (n : note) -> n.instrument) notes;
+        performance = uniform_value (fun (n : note) -> n.performance) notes;
+        dynamic = uniform_value (fun (n : note) -> n.dynamic) notes;
+        duration = uniform_value (fun (n : note) -> n.duration) notes;
+        pitch = uniform_value (fun (n : note) -> n.pitch) notes;
+        instrument_repeated =
+          List.exists (fun (n : note) -> n.instrument_repeated) notes;
+        is_rest = false;
+      }
 
 (* Pure fold, harmony-independent: sums each group's own (single, shared)
    entry delay into a running absolute time. Split out from the old
@@ -2118,6 +2157,182 @@ let entries_of_timed_groups (timed : (float * entrydelay * proto list) list) :
 
 let resolve_times (groups : (entrydelay * proto list) list) : entry list =
   groups |> timed_groups_of |> entries_of_timed_groups
+
+(* ---- REST (EMR-3 7.4) ----
+   A standalone post-processing pass, run once per layer after every other
+   parameter is already resolved (never part of [hierarchy] - see
+   [rest_mode]). The search is a single left-to-right walk over that
+   layer's ORIGINAL, no-rest entries: a running [shift] (total silence
+   decided-on so far) is added to each original entry's own [time] when
+   checking it against the search, but no original entry is ever actually
+   moved during the walk. Only [apply_rest_insertions], at the very end,
+   builds the real rest-bearing list with every downstream entry's true
+   final shifted time - see the plan's own "searched-for against the
+   original timeline" design note. *)
+
+(* The minimal shape the search needs - both [entry] and
+   [common_harmony_group] adapt down to this, so the algorithm itself
+   doesn't depend on either. *)
+type rest_target = { time : float; sustain_until : float }
+
+type rest_insertion = {
+  before_index : int;
+  rest_time : float;
+  rest_duration : float;
+}
+
+let rest_offset_draw ~d1 ~d2 ~variant_duration =
+  (d1 +. Random.float (d2 -. d1)) /. 100.0 *. variant_duration
+
+(* [shift]: total silence inserted so far, applied to every not-yet-
+   processed target's own (unmoved) [time]/[sustain_until]. [cursor]: where
+   the next ALEA offset is measured from (the end of the just-placed rest,
+   in final/shifted time). [running_max]: high-water mark of (shifted)
+   [sustain_until] seen so far, carried continuously through the scan - an
+   early long-sustaining entry can still cover a much later one, and
+   general-entry status is recomputed fresh on every search rather than
+   precomputed once (an earlier rest can free a later entry from an
+   earlier tone's sustain shadow). [idx] only ever advances (to
+   [found_idx + 1], never back to [found_idx]) so this always terminates in
+   O(n), even in the degenerate case [d1 = d2 = 0] where the ALEA offset is
+   exactly 0 and would otherwise let the same entry satisfy the search
+   again forever. *)
+let compute_rest_insertions ~variant_duration ~(rest_mode : rest_mode)
+    ~(targets : rest_target array) (dstate : duration sel_state) :
+    rest_insertion list * duration sel_state =
+  match rest_mode with
+  | RestOff -> ([], dstate)
+  | RestBeforeSoundEntry { d1; d2 } | RestBeforeGeneralEntry { d1; d2 } ->
+      let is_general =
+        match rest_mode with
+        | RestBeforeGeneralEntry _ -> true
+        | RestBeforeSoundEntry _ -> false
+        | RestOff -> assert false
+      in
+      let n = Array.length targets in
+      let rec loop idx shift cursor running_max insertions dstate =
+        if idx >= n then (List.rev insertions, dstate)
+        else
+          let provisional =
+            cursor +. rest_offset_draw ~d1 ~d2 ~variant_duration
+          in
+          let rec scan j running_max =
+            if j >= n then None
+            else
+              let cur_time = targets.(j).time +. shift in
+              let cur_sustain = targets.(j).sustain_until +. shift in
+              let satisfies =
+                cur_time >= provisional
+                && ((not is_general) || cur_time > running_max)
+              in
+              if satisfies then Some (j, running_max)
+              else scan (j + 1) (Float.max running_max cur_sustain)
+          in
+          match scan idx running_max with
+          | None -> (List.rev insertions, dstate)
+          | Some (found_idx, running_max_before_found) ->
+              let (Duration rest_dur), dstate' = sel_draw dstate in
+              let rest_time = targets.(found_idx).time +. shift in
+              let shift' = shift +. rest_dur in
+              let running_max' =
+                Float.max running_max_before_found
+                  (targets.(found_idx).sustain_until +. shift')
+              in
+              let insertion =
+                { before_index = found_idx; rest_time; rest_duration = rest_dur }
+              in
+              loop (found_idx + 1) shift' (rest_time +. rest_dur) running_max'
+                (insertion :: insertions) dstate'
+      in
+      loop 0 0.0 0.0 neg_infinity [] dstate
+
+(* Splices [insertions] (strictly increasing [before_index]) into [elems],
+   producing the real final list: every element from [elems] carries its
+   true shifted time, and each rest sits immediately before the element it
+   was found in front of. Generic in ['a] so both adapters below (entry /
+   common_harmony_group) can share it. *)
+let apply_rest_insertions ~(shift_time : float -> 'a -> 'a)
+    ~(mk_rest : time:float -> duration:float -> 'a)
+    (insertions : rest_insertion list) (elems : 'a array) : 'a list =
+  let n = Array.length elems in
+  let rec pass_through i limit shift acc =
+    if i >= limit then acc
+    else pass_through (i + 1) limit shift (shift_time shift elems.(i) :: acc)
+  in
+  let rec go idx shift insertions acc =
+    match insertions with
+    | { before_index; rest_time; rest_duration } :: rest ->
+        let acc = pass_through idx before_index shift acc in
+        let acc = mk_rest ~time:rest_time ~duration:rest_duration :: acc in
+        go before_index (shift +. rest_duration) rest acc
+    | [] -> List.rev (pass_through idx n shift acc)
+  in
+  go 0 0.0 insertions []
+
+(* ---- Adapter A: [entry list] (for [Union] and [NoUnionPerLayer]) ---- *)
+
+let rest_target_of_entry (e : entry) : rest_target =
+  let max_dur =
+    e.notes
+    |> List.fold_left
+         (fun acc (n : note) ->
+           let (Duration d) = n.duration in
+           Float.max acc d)
+         0.0
+  in
+  { time = e.time; sustain_until = e.time +. max_dur }
+
+(* Every note in [e.notes] was already stamped with its own absolute [time]
+   when the entry was first built (see [entry_of_group]) - long before
+   REST ever runs - so shifting the entry's own [time] alone would leave
+   each note's [time] stale. Both matter downstream: [Midi_export] and the
+   note-level score rows read [note.time] directly, never [entry.time]. *)
+let shift_entry_time shift (e : entry) : entry =
+  {
+    e with
+    time = e.time +. shift;
+    notes =
+      e.notes |> List.map (fun (n : note) -> { n with time = n.time +. shift });
+  }
+
+let mk_rest_entry ~time ~duration : entry =
+  {
+    time;
+    entrydelay = duration;
+    notes = [];
+    instrument = None;
+    performance = None;
+    dynamic = None;
+    duration = Some (Duration duration);
+    pitch = None;
+    instrument_repeated = false;
+    is_rest = true;
+  }
+
+(* [n] (for a possible TENDENCY window) uses this layer's own current entry
+   count as a stand-in - the true rest count is only known after running,
+   and the manual already treats TENDENCY as not a sensible REST order
+   anyway. *)
+let insert_rests_entries ~variant_duration ~rest_mode ~rest_arr
+    ~rest_principle (continuing : continuing_state) (entries : entry list) :
+    entry list * continuing_state =
+  match rest_mode with
+  | RestOff -> (entries, continuing)
+  | RestBeforeSoundEntry _ | RestBeforeGeneralEntry _ ->
+      let n = List.length entries in
+      let rest_state =
+        continue_or_restart ~principle:rest_principle ~n
+          ~last_arr:continuing.rest_last_arr ~arr:rest_arr continuing.rest_state
+      in
+      let targets = entries |> List.map rest_target_of_entry |> Array.of_list in
+      let insertions, rest_state' =
+        compute_rest_insertions ~variant_duration ~rest_mode ~targets rest_state
+      in
+      let entries' =
+        apply_rest_insertions ~shift_time:shift_entry_time ~mk_rest:mk_rest_entry
+          insertions (Array.of_list entries)
+      in
+      (entries', { continuing with rest_state = rest_state'; rest_last_arr = rest_arr })
 
 (* Builds [states0] (continuing every parameter's own selection cycle across
    layers exactly as before) and dispatches to the right density's resolver,
@@ -2155,6 +2370,10 @@ let resolve_layer_groups ~n_events ~variant_n_events ~hierarchy ~instr_arr
         continue_or_restart ~principle:reg_principle ~n:variant_n_events
           ~last_arr:continuing.reg_last_arr ~arr:reg_arr continuing.reg_state;
       har_state = continuing.har_state;
+      (* REST never enters this fold (see [continuing_state.rest_state]) -
+         pure pass-through so this record literal stays exhaustive. *)
+      rest_state = continuing.rest_state;
+      rest_last_arr = continuing.rest_last_arr;
       instr_arr = Array.map value_from_element instr_arr;
       instr_last_arr = instr_arr;
       ed_last_arr = ed_arr;
@@ -2316,11 +2535,81 @@ let split_by_layer ~n_layers (merged : common_harmony_group list) :
                 entry_of_group g.ch_time g.ch_entrydelay g.ch_protos))
   |> Array.to_list
 
+(* ---- Adapter B: [common_harmony_group list] (for [NoUnionCommonHarmony],
+   run between phase 1 and phase 2 - see [generate_score_hierarchical]). ---- *)
+
+let rest_target_of_common_harmony_group (g : common_harmony_group) :
+    rest_target =
+  let dur_of_note_value = function
+    | Shared (Duration d) -> d
+    | PerNote ds -> ds |> List.fold_left (fun acc (Duration d) -> Float.max acc d) 0.0
+  in
+  let max_dur =
+    g.ch_protos
+    |> List.fold_left
+         (fun acc (p : proto) ->
+           match p.duration with
+           | None -> acc
+           | Some dv -> Float.max acc (dur_of_note_value dv))
+         0.0
+  in
+  { time = g.ch_time; sustain_until = g.ch_time +. max_dur }
+
+let shift_ch_group_time shift (g : common_harmony_group) =
+  { g with ch_time = g.ch_time +. shift }
+
+let mk_rest_common_harmony_group ~layer_idx ~time ~duration :
+    common_harmony_group =
+  {
+    ch_layer = layer_idx;
+    ch_seq = 0 (* renumbered below, see [insert_rests_common_harmony_layer] *);
+    ch_time = time;
+    ch_entrydelay = Entrydelay duration;
+    ch_protos = [];
+  }
+
+(* [ch_seq] MUST be renumbered after splicing - it's this layer's own
+   position in its pre-merge chronological sequence, consulted by both
+   [compare_common_harmony_groups]'s cross-layer tie-break and
+   [split_by_layer]'s restore-order sort; a spliced-in rest has no
+   "original" position, and every later group's own has shifted. *)
+let insert_rests_common_harmony_layer ~variant_duration ~rest_mode ~rest_arr
+    ~rest_principle ~layer_idx (continuing : continuing_state)
+    (groups : common_harmony_group list) :
+    common_harmony_group list * continuing_state =
+  match rest_mode with
+  | RestOff -> (groups, continuing)
+  | RestBeforeSoundEntry _ | RestBeforeGeneralEntry _ ->
+      let n = List.length groups in
+      let rest_state =
+        continue_or_restart ~principle:rest_principle ~n
+          ~last_arr:continuing.rest_last_arr ~arr:rest_arr continuing.rest_state
+      in
+      let targets =
+        groups |> List.map rest_target_of_common_harmony_group |> Array.of_list
+      in
+      let insertions, rest_state' =
+        compute_rest_insertions ~variant_duration ~rest_mode ~targets rest_state
+      in
+      let spliced =
+        apply_rest_insertions ~shift_time:shift_ch_group_time
+          ~mk_rest:(mk_rest_common_harmony_group ~layer_idx)
+          insertions (Array.of_list groups)
+      in
+      let renumbered = spliced |> List.mapi (fun seq g -> { g with ch_seq = seq }) in
+      (renumbered, { continuing with rest_state = rest_state'; rest_last_arr = rest_arr })
+
 let zip6 a b c d e f =
   List.map2
     (fun (x, y) (z, (w, (v, u))) -> (x, y, z, w, v, u))
     (List.combine a b)
     (List.combine c (List.combine d (List.combine e f)))
+
+let zip7 a b c d e f g =
+  List.map2
+    (fun (x, y) (z, (w, (v, (u, t)))) -> (x, y, z, w, v, u, t))
+    (List.combine a b)
+    (List.combine c (List.combine d (List.combine e (List.combine f g))))
 
 (* TENDENCY's window schedule is scoped to one variant by definition (EMR-3
    p.47: its "number of results" is the total for "the given variant") -
@@ -2346,6 +2635,8 @@ let start_new_variant ~variant_n_events (continuing : continuing_state) =
     dyn_state = reset_if_tendency continuing.dyn_state continuing.dyn_last_arr;
     dur_state = reset_if_tendency continuing.dur_state continuing.dur_last_arr;
     reg_state = reset_if_tendency continuing.reg_state continuing.reg_last_arr;
+    rest_state =
+      reset_if_tendency continuing.rest_state continuing.rest_last_arr;
     (* CHORD's order-of-chords is the one [har_state_t] case with a real
        [sel_state] of its own (ROW/INTERVAL are each their own bespoke
        stream, untouched by any of this) - the table itself never changes
@@ -2367,8 +2658,8 @@ let generate_score_hierarchical ~variant_duration ~instrument_ensemble
     ~instrument_principle ~entry_delay_ensemble ~entry_delay_principle
     ~perf_ensemble ~perf_principle ~perf_mode ~dyn_ensemble ~dyn_principle
     ~dyn_mode ~dur_ensemble ~dur_principle ~dur_relation ~reg_ensemble
-    ~reg_principle ~reg_mode ~union ~hierarchy ~density
-    (continuing : continuing_state) =
+    ~reg_principle ~reg_mode ~rest_ensemble ~rest_principle ~rest_mode ~union
+    ~hierarchy ~density (continuing : continuing_state) =
   match union with
   | Union ->
       let entr_arr = ensemble_values_union entry_delay_ensemble in
@@ -2377,6 +2668,7 @@ let generate_score_hierarchical ~variant_duration ~instrument_ensemble
       let dyn_arr = ensemble_values_union dyn_ensemble in
       let dur_arr = ensemble_values_union dur_ensemble in
       let reg_arr = ensemble_values_union reg_ensemble in
+      let rest_arr = ensemble_values_union rest_ensemble in
       let n_events =
         calculate_number_of_events variant_duration entry_delay_principle
           entr_arr
@@ -2391,7 +2683,11 @@ let generate_score_hierarchical ~variant_duration ~instrument_ensemble
           ~dur_principle ~dur_relation ~reg_arr ~reg_principle ~reg_mode
  ~density continuing
       in
-      ([ entries ], continuing')
+      let entries', continuing'' =
+        insert_rests_entries ~variant_duration ~rest_mode ~rest_arr
+          ~rest_principle continuing' entries
+      in
+      ([ entries' ], continuing'')
   | NoUnionPerLayer ->
       let instr_arrays = ensemble_values_no_union instrument_ensemble in
       let entr_arrays = ensemble_values_no_union entry_delay_ensemble in
@@ -2399,9 +2695,10 @@ let generate_score_hierarchical ~variant_duration ~instrument_ensemble
       let dyn_arrays = ensemble_values_no_union dyn_ensemble in
       let dur_arrays = ensemble_values_no_union dur_ensemble in
       let reg_arrays = ensemble_values_no_union reg_ensemble in
+      let rest_arrays = ensemble_values_no_union rest_ensemble in
       let layer_inputs =
-        zip6 instr_arrays entr_arrays perf_arrays dyn_arrays dur_arrays
-          reg_arrays
+        zip7 instr_arrays entr_arrays perf_arrays dyn_arrays dur_arrays
+          reg_arrays rest_arrays
       in
       (* TENDENCY's window schedule is sized from the whole variant's total
          event count (EMR-3 p.47: "N = number of time-points in variant"),
@@ -2410,7 +2707,7 @@ let generate_score_hierarchical ~variant_duration ~instrument_ensemble
       let variant_n_events =
         layer_inputs
         |> List.fold_left
-             (fun acc (_, entr_arr, _, _, _, _) ->
+             (fun acc (_, entr_arr, _, _, _, _, _) ->
                acc
                + calculate_number_of_events variant_duration
                    entry_delay_principle entr_arr)
@@ -2420,7 +2717,13 @@ let generate_score_hierarchical ~variant_duration ~instrument_ensemble
       let continuing', layers =
         List.fold_left_map
           (fun continuing
-               (instr_arr, entr_arr, perf_arr, dyn_arr, dur_arr, reg_arr) ->
+               ( instr_arr,
+                 entr_arr,
+                 perf_arr,
+                 dyn_arr,
+                 dur_arr,
+                 reg_arr,
+                 rest_arr ) ->
             let n_events =
               calculate_number_of_events variant_duration
                 entry_delay_principle entr_arr
@@ -2434,7 +2737,11 @@ let generate_score_hierarchical ~variant_duration ~instrument_ensemble
                 ~dur_arr ~dur_principle ~dur_relation ~reg_arr ~reg_principle
                 ~reg_mode ~density continuing
             in
-            (continuing', entries))
+            let entries', continuing'' =
+              insert_rests_entries ~variant_duration ~rest_mode ~rest_arr
+                ~rest_principle continuing' entries
+            in
+            (continuing'', entries'))
           continuing layer_inputs
       in
       (layers, continuing')
@@ -2445,6 +2752,7 @@ let generate_score_hierarchical ~variant_duration ~instrument_ensemble
       let dyn_arrays = ensemble_values_no_union dyn_ensemble in
       let dur_arrays = ensemble_values_no_union dur_ensemble in
       let reg_arrays = ensemble_values_no_union reg_ensemble in
+      let rest_arrays = ensemble_values_no_union rest_ensemble in
       let layer_inputs =
         zip6 instr_arrays entr_arrays perf_arrays dyn_arrays dur_arrays
           reg_arrays
@@ -2486,10 +2794,27 @@ let generate_score_hierarchical ~variant_duration ~instrument_ensemble
                (continuing', groups))
              continuing
       in
+      (* REST (EMR-3 7.4): runs per layer, after phase 1 but before phase 2's
+         merge - "REST at last place but one, HARMONY last" under common
+         harmony (this is the whole reason REST needs its own pipeline seam
+         here rather than living inside phase 1's own per-layer fold). *)
+      let continuing_after_rest, per_layer_groups_rested =
+        List.combine per_layer_groups rest_arrays
+        |> List.mapi (fun i x -> (i, x))
+        |> List.fold_left_map
+             (fun continuing (layer_idx, (groups, rest_arr)) ->
+               let groups', continuing' =
+                 insert_rests_common_harmony_layer ~variant_duration ~rest_mode
+                   ~rest_arr ~rest_principle ~layer_idx continuing groups
+               in
+               (continuing', groups'))
+             continuing_after_phase1
+      in
       (* Phase 2: merge every layer's groups into one true-chronological
          sequence and run HARMONY exactly once across it. *)
       let merged_with_harmony, continuing_final =
-        resolve_common_harmony_merged per_layer_groups continuing_after_phase1
+        resolve_common_harmony_merged per_layer_groups_rested
+          continuing_after_rest
       in
       (* Phase 3: split back apart into each layer's own original order. *)
       let layers =
@@ -2581,6 +2906,27 @@ let build_score cfg =
     ensemble_for ~label:"register" ~to_string:reg_to_string cfg.reg_list
       cfg.register_table cfg.register_combination
   in
+  (* [ensemble_for]'s [NoCombination] branch calls [construct_ensemble]
+     EAGERLY (not deferred per-variant). When REST is off, [rest_list]/
+     [rest_table] are deliberately empty (see [Structure_formula.Parse]'s
+     REST parsing) - calling [construct_ensemble] on a zero-row table to
+     select [cfg.n_variants * uncombined_group_count] (always >= 1) groups
+     from it would very likely crash, even though the result is never read.
+     This guard sidesteps [construct_ensemble] entirely in that case -
+     [ensemble_values_no_union] still needs one (empty) group per layer,
+     matching [uncombined_group_count], so every zip/combine against the
+     other per-layer arrays stays aligned regardless of REST's own mode. *)
+  let rest_ensemble_for =
+    match cfg.rest_mode with
+    | RestOff ->
+        fun _ ->
+          Ensemble
+            (List.init uncombined_group_count (fun i ->
+                 IndexedEnsembleGroup { index = i; group = EnsembleGroup [||] }))
+    | RestBeforeSoundEntry _ | RestBeforeGeneralEntry _ ->
+        ensemble_for ~label:"rest" ~to_string:dur_to_string cfg.rest_list
+          cfg.rest_table cfg.rest_combination
+  in
   let continuing0 = initial_continuing_state ~tr:cfg.tr cfg.harmony in
   (* One [generate_score_hierarchical] call per variant, [continuing]
      threaded from the last variant into the next exactly as it already
@@ -2606,6 +2952,8 @@ let build_score cfg =
             ~dur_relation:cfg.duration_relation_mode
             ~reg_ensemble:(reg_ensemble_for v)
             ~reg_principle:cfg.register_principle ~reg_mode:cfg.register_mode
+            ~rest_ensemble:(rest_ensemble_for v)
+            ~rest_principle:cfg.rest_principle ~rest_mode:cfg.rest_mode
  ~union:cfg.union
             ~hierarchy:cfg.hierarchy ~density:cfg.density continuing
         in
@@ -2764,8 +3112,28 @@ let note_header =
 let opt_to_string to_string = function Some v -> to_string v | None -> "-"
 let instrument_name_opt = opt_to_string (fun (InstrumentName n) -> n)
 
+(* A REST (EMR-3 7.4) has no notes at all - shown as its own row (7 columns,
+   matching [note_cells]'s shape so column alignment stays correct) rather
+   than simply vanishing from the score. *)
+let rest_cells ~entrydelay (e : entry) =
+  let dur_str =
+    match e.duration with
+    | Some (Duration d) -> Printf.sprintf "%.3f" d
+    | None -> "-"
+  in
+  [
+    Printf.sprintf "%.3f" e.time;
+    Printf.sprintf "%.3f" entrydelay;
+    dur_str;
+    "REST";
+    "-";
+    "-";
+    "-";
+  ]
+
 let cells_for_entry_notes (e : entry) =
-  List.map (fun (n : note) -> note_cells ~entrydelay:e.entrydelay n) e.notes
+  if e.is_rest then [ rest_cells ~entrydelay:e.entrydelay e ]
+  else List.map (fun (n : note) -> note_cells ~entrydelay:e.entrydelay n) e.notes
 
 let write_notes_score filename instrs (layers : entry list list) =
   let constraint_map = build_constraint_map instrs in
@@ -2780,17 +3148,21 @@ let write_notes_score filename instrs (layers : entry list list) =
       Printf.fprintf oc "# layer %d\n" i;
       entries
       |> List.iter (fun (e : entry) ->
-          e.notes
-          |> List.iter (fun note ->
-              Printf.fprintf oc "%s"
-                (Table.render_row widths
-                   (note_cells ~entrydelay:e.entrydelay note));
-              (match note_problems constraint_map note with
-              | [] -> ()
-              | problems ->
-                  Printf.fprintf oc " # IMPOSSIBLE: %s"
-                    (String.concat ", " problems));
-              Printf.fprintf oc "\n")))
+          if e.is_rest then
+            Printf.fprintf oc "%s\n"
+              (Table.render_row widths (rest_cells ~entrydelay:e.entrydelay e))
+          else
+            e.notes
+            |> List.iter (fun note ->
+                Printf.fprintf oc "%s"
+                  (Table.render_row widths
+                     (note_cells ~entrydelay:e.entrydelay note));
+                (match note_problems constraint_map note with
+                | [] -> ()
+                | problems ->
+                    Printf.fprintf oc " # IMPOSSIBLE: %s"
+                      (String.concat ", " problems));
+                Printf.fprintf oc "\n")))
     layers;
   close_out oc
 
@@ -2822,7 +3194,7 @@ let write_entries_score filename instrs ~density (layers : entry list list) =
       Printf.sprintf "%.3f" e.time;
       Printf.sprintf "%.3f" e.entrydelay;
       opt_to_string (fun (Duration d) -> Printf.sprintf "%.3f" d) e.duration;
-      instrument_name_opt e.instrument;
+      (if e.is_rest then "REST" else instrument_name_opt e.instrument);
       string_of_int (List.length e.notes);
       density_cell density e;
       opt_to_string Performance.to_string e.performance;
@@ -2861,17 +3233,22 @@ let write_entries_score filename instrs ~density (layers : entry list list) =
       |> List.iter (fun (e : entry) ->
           Printf.fprintf oc "%s\n"
             (Table.render_row entry_widths (entry_cells e));
-          e.notes
-          |> List.iter (fun note ->
-              Printf.fprintf oc "    %s"
-                (Table.render_row note_widths
-                   (note_cells ~entrydelay:e.entrydelay note));
-              (match note_problems constraint_map note with
-              | [] -> ()
-              | problems ->
-                  Printf.fprintf oc " # IMPOSSIBLE: %s"
-                    (String.concat ", " problems));
-              Printf.fprintf oc "\n")))
+          if e.is_rest then
+            Printf.fprintf oc "    %s\n"
+              (Table.render_row note_widths
+                 (rest_cells ~entrydelay:e.entrydelay e))
+          else
+            e.notes
+            |> List.iter (fun note ->
+                Printf.fprintf oc "    %s"
+                  (Table.render_row note_widths
+                     (note_cells ~entrydelay:e.entrydelay note));
+                (match note_problems constraint_map note with
+                | [] -> ()
+                | problems ->
+                    Printf.fprintf oc " # IMPOSSIBLE: %s"
+                      (String.concat ", " problems));
+                Printf.fprintf oc "\n")))
     layers;
   close_out oc
 

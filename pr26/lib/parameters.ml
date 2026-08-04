@@ -14,6 +14,19 @@ type entrydelay =
       float (* how much time passes from this event to the one that follows *)
 
 type duration = Duration of float (* duration fo the tone *)
+
+(* EMR-3 7.4: never a hierarchy_elem - REST is a standalone post-processing
+   pass, run per layer once every other parameter is already resolved, not
+   a resolution step of its own ("REST always comes last and has no part
+   in the hierarchy"). [d1]/[d2] are the "entry range": percentages of
+   variant_duration the next rest-candidate offset is ALEA-drawn from. *)
+type rest_range_reason = RestRangeOutOfBounds | RestRangeMaxBelowMin
+
+type rest_mode =
+  | RestOff
+  | RestBeforeSoundEntry of { d1 : float; d2 : float }
+  | RestBeforeGeneralEntry of { d1 : float; d2 : float }
+
 type hierarchy_elem = Ins | Per | Dyn | Dur | Ent | Reg | Har
 
 (* | Int *)
@@ -70,6 +83,7 @@ type problem =
   | IntervalRestrictionsTooStrict of int
   | HarmonyRequiresHarLast
   | ChordPrincipleCommonHarmonyMismatch
+  | InvalidRestRange of rest_range_reason
 
 (* The hierarchy must be a permutation of [all_hierarchy_elems]: every
    parameter controls exactly one resolution step, so a missing one would
@@ -194,6 +208,11 @@ let display_problem p =
        and resolve first (EMR-3 9.2); union = common-harmony requires \
        HARMONY to resolve last, across a merged cross-layer timeline \
        (EMR-3 6.2's \"s=1\") - the two are mutually exclusive"
+  | InvalidRestRange RestRangeOutOfBounds ->
+      "rest entry-range must be given as percentages of variant duration, \
+       0-100"
+  | InvalidRestRange RestRangeMaxBelowMin ->
+      "rest entry-range's second percentage must not be below the first"
 
 (* Closed vocabulary of path components identifying where in a
    structure_formula (and, one level down, in the composer's sexp) a
@@ -241,6 +260,8 @@ type key =
   | KForbiddenTones
   | KInvertMatrix
   | KOrder
+  | KRest
+  | KRestMode
 
 type segment = Key of key | Index of int
 type location = segment list
@@ -301,6 +322,8 @@ let key_to_string = function
   | KForbiddenTones -> "forbidden-tones"
   | KInvertMatrix -> "invert-matrix"
   | KOrder -> "order"
+  | KRest -> "rest"
+  | KRestMode -> "rest-mode"
 
 let segment_to_string = function
   | Key k -> key_to_string k
@@ -386,6 +409,8 @@ let problem_id = function
   | IntervalRestrictionsTooStrict _ -> "interval-restrictions-too-strict"
   | HarmonyRequiresHarLast -> "harmony-requires-har-last"
   | ChordPrincipleCommonHarmonyMismatch -> "chord-principle-common-harmony-mismatch"
+  | InvalidRestRange RestRangeOutOfBounds -> "rest-range-out-of-bounds"
+  | InvalidRestRange RestRangeMaxBelowMin -> "rest-range-max-below-min"
 
 (* Minimal JSON writing. Only what the diagnostic shape needs - there is no
    json library in this project's dependencies and pulling one in for three
@@ -470,7 +495,7 @@ let json_of_problem_data p =
   | InstrumentDensityRequiresInsFirst | InvalidDurationRange _
   | PerNoteRequiresInsFirst | EmptyChordTable | HarmonyRequiresHarFirst
   | ChordPrincipleDensityMismatch | HarmonyRequiresHarLast
-  | ChordPrincipleCommonHarmonyMismatch ->
+  | ChordPrincipleCommonHarmonyMismatch | InvalidRestRange _ ->
       json_obj []
 
 (* [location] is emitted both as the structured segment list (which the GUI
@@ -517,6 +542,20 @@ let mk_entrydelay ed =
 
 let mk_duration d =
   if d < 0.0 then Error (NegativeDuration d) else Ok (Duration d)
+
+let mk_rest_range ~d1 ~d2 =
+  if d1 < 0.0 || d1 > 100.0 || d2 < 0.0 || d2 > 100.0 then
+    Error (InvalidRestRange RestRangeOutOfBounds)
+  else if d2 < d1 then Error (InvalidRestRange RestRangeMaxBelowMin)
+  else Ok (d1, d2)
+
+let mk_rest_before_sound_entry ~d1 ~d2 =
+  mk_rest_range ~d1 ~d2
+  |> Result.map (fun (d1, d2) -> RestBeforeSoundEntry { d1; d2 })
+
+let mk_rest_before_general_entry ~d1 ~d2 =
+  mk_rest_range ~d1 ~d2
+  |> Result.map (fun (d1, d2) -> RestBeforeGeneralEntry { d1; d2 })
 
 (* This is the full list of parameters, currently a should only be instr or entrydelay *)
 type 'a parameter_list = ParameterList of 'a Array.t
