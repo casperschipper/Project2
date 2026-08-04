@@ -72,8 +72,6 @@ Should the composer be helped in some way to construct useful tables? If a param
 # TODOS
 
 
-[ ] invert matrix button move to matrix and update text when clicked
-[ ] warnings/errors on interval matrix should be displayed in harmony panel
 [ ] rest parameter
 [ ] state saving of selection principles for visualization of how structure
 formula unfolds
@@ -83,6 +81,9 @@ formula unfolds
 # DONE
 
 
+[x] warnings/errors on interval matrix should be displayed in harmony panel
+[x] Shared harmony across layers
+[x] invert matrix button move to matrix and update text when clicked
 [x] interval principle
 [x] registers in instrument definitions are made up of octave and relative pitch
 (to be called like taht in the interface)

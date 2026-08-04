@@ -11,7 +11,7 @@ import { defaultProject, derivePerformanceList } from "../schema/defaults";
 import { toSexp } from "../schema/sexp";
 import { validateProject } from "../schema/validate";
 import type { Diagnostic, EngineResult, Project } from "../schema/types";
-import { runEngine, chooseOutputDir } from "../engine/backend";
+import { runEngine } from "../engine/backend";
 import type { ScreenId } from "../engine/diagnostics";
 
 type HelpTarget = { key: string; title: string } | null;
@@ -30,9 +30,15 @@ type Store = {
 
   engineResult: EngineResult | null;
   running: boolean;
+  /** True from the moment an edit changes what should be rendered until the
+   * debounced live run actually starts (or [forceRender] is called) - i.e.
+   * the displayed output no longer matches the current formula, but nothing
+   * is in flight yet either. */
+  pending: boolean;
   /** True when GUI errors are blocking the engine run. */
   blocked: boolean;
-  run: () => void;
+  /** Skips the rest of the debounce wait and renders immediately. */
+  forceRender: () => void;
 
   screen: ScreenId;
   setScreen: (s: ScreenId) => void;
@@ -137,49 +143,59 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [sexp],
   );
 
-  // Live background validation: always ephemeral (see runEngine/run_engine),
-  // so typing never touches a real file.
+  // Live background validation: writes to the project's own output
+  // directory once one is set (see the "set output directory" control),
+  // so persisted score/entries/MIDI output stays current automatically as
+  // the composer types - there is no separate explicit "Run" trigger.
+  // Before an output directory is chosen, this still runs (against a
+  // throwaway/ephemeral location - see runEngine/run_engine) purely for
+  // live diagnostics, so typing never touches a real file until the
+  // composer has actually picked one.
   const runLive = useCallback(() => {
     if (blocked) {
       setEngineResult(null);
       return;
     }
-    runWith(undefined);
-  }, [blocked, runWith]);
+    runWith(project.outputDir ?? undefined);
+  }, [blocked, project.outputDir, runWith]);
 
-  /**
-   * The explicit Run button: persists score/entries/MIDI output to a real
-   * folder, rather than the throwaway one live validation uses. The folder
-   * is chosen once (a native picker) and then remembered on the project -
-   * saving the project remembers it too, so reopening the same formula
-   * later keeps writing to the same place without asking again.
-   */
-  const run = useCallback(async () => {
-    if (blocked) {
-      setEngineResult(null);
-      return;
-    }
-    let dir = project.outputDir;
-    if (!dir) {
-      const chosen = await chooseOutputDir();
-      if (!chosen) return;
-      dir = chosen;
-      update((p) => (p.outputDir = chosen));
-    }
-    runWith(dir);
-  }, [blocked, project.outputDir, update, runWith]);
+  // [pending] is the visible half of the debounce below: true the instant an
+  // edit invalidates the last render, false again once a live run actually
+  // starts (whether because the 5s wait elapsed or [forceRender] skipped it).
+  const [pending, setPending] = useState(false);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Validate continuously in the background. The engine is fast and cheap, so
-  // the composer sees consequences as they type rather than on demand; the
-  // explicit Run button remains for when they want to force it.
+  const clearPendingTimer = useCallback(() => {
+    if (debounceTimer.current !== null) {
+      clearTimeout(debounceTimer.current);
+      debounceTimer.current = null;
+    }
+  }, []);
+
+  // Validate continuously in the background, debounced: the timer resets on
+  // every edit, so it only actually fires once typing pauses for 5s - not on
+  // every keystroke, and not repeatedly while nothing is changing (each
+  // effect run replaces, rather than adds to, the previous timer).
   useEffect(() => {
     if (blocked) {
       setEngineResult(null);
+      setPending(false);
       return;
     }
-    const timer = setTimeout(runLive, 400);
-    return () => clearTimeout(timer);
-  }, [runLive, blocked]);
+    setPending(true);
+    debounceTimer.current = setTimeout(() => {
+      debounceTimer.current = null;
+      setPending(false);
+      runLive();
+    }, 5000);
+    return clearPendingTimer;
+  }, [runLive, blocked, clearPendingTimer]);
+
+  const forceRender = useCallback(() => {
+    clearPendingTimer();
+    setPending(false);
+    runLive();
+  }, [clearPendingTimer, runLive]);
 
   const diagnostics = useMemo(() => {
     const engine = engineResult
@@ -202,8 +218,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       diagnostics,
       engineResult,
       running,
+      pending,
       blocked,
-      run,
+      forceRender,
       screen,
       setScreen,
       help,
@@ -221,8 +238,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       diagnostics,
       engineResult,
       running,
+      pending,
       blocked,
-      run,
+      forceRender,
       screen,
       help,
       openHelp,

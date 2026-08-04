@@ -14,7 +14,13 @@ import {
   DYNAMICS,
   PERFORMANCE,
 } from "./screens/ParameterScreen";
-import { isTauri, openProjectFile, saveProjectFile, writeProjectFile } from "./engine/backend";
+import {
+  chooseOutputDir,
+  isTauri,
+  openProjectFile,
+  saveProjectFile,
+  writeProjectFile,
+} from "./engine/backend";
 import { defaultProject } from "./schema/defaults";
 import type { Project } from "./schema/types";
 
@@ -26,13 +32,14 @@ export function App() {
     help,
     openHelp,
     closeHelp,
-    run,
     running,
+    pending,
     blocked,
+    forceRender,
     engineResult,
     project,
+    update,
     replaceProject,
-    sexp,
     dirty,
     markSaved,
   } = useStore();
@@ -80,8 +87,13 @@ export function App() {
     }
   };
 
-  const exportSexp = () =>
-    saveProjectFile(sexp, (fileName?.replace(/\.pr2proj$/, "") ?? "formula") + ".sexp");
+  /** The only affordance for where persisted output (score/entries/MIDI)
+   * goes - once set, live background validation writes there automatically
+   * on every edit, so there is no separate explicit "Run" step. */
+  const setOutputDir = async () => {
+    const dir = await chooseOutputDir();
+    if (dir) update((p) => (p.outputDir = dir));
+  };
 
   // Cmd+S (or Ctrl+S) saves without reaching for the mouse, exactly like
   // `save` above: silent once a path is known, a dialog only the first time.
@@ -164,6 +176,13 @@ export function App() {
           )}
         </div>
 
+        <SyncStatus
+          running={running}
+          pending={pending}
+          blocked={blocked}
+          onForceRender={forceRender}
+        />
+
         <RunStatus
           running={running}
           blocked={blocked}
@@ -191,17 +210,17 @@ export function App() {
         >
           Save As…
         </button>
-        <button type="button" className="btn btn--ghost btn--small" onClick={exportSexp}>
-          Export formula
-        </button>
         <button
           type="button"
-          className="btn btn--primary"
-          onClick={run}
-          disabled={running || blocked}
-          title={blocked ? "Resolve the errors first" : "Run the engine now"}
+          className="btn btn--ghost btn--small"
+          onClick={setOutputDir}
+          title={
+            project.outputDir
+              ? `Score, entries and MIDI are written to ${project.outputDir}`
+              : "Choose where score, entries and MIDI files are written"
+          }
         >
-          {running ? "Running…" : "Run"}
+          {project.outputDir ? "Change output directory…" : "Set output directory…"}
         </button>
         <button
           type="button"
@@ -303,6 +322,71 @@ function NavItem({
         </span>
       )}
     </button>
+  );
+}
+
+/**
+ * Whether what's on screen still matches the current formula: green once a
+ * live run has actually reflected the latest edit, red while an edit is
+ * sitting in the debounce wait (see `state/store.tsx`'s `pending`), orange
+ * while a run is actively in flight. Deliberately separate from `RunStatus`
+ * below - that one reports the *content* of the last completed run (errors,
+ * warnings), this one reports the *freshness* of that content, which can
+ * disagree with it (recent edits can leave stale errors on screen for up to
+ * the debounce wait).
+ */
+function SyncStatus({
+  running,
+  pending,
+  blocked,
+  onForceRender,
+}: {
+  running: boolean;
+  pending: boolean;
+  blocked: boolean;
+  onForceRender: () => void;
+}) {
+  // Checked before [pending]: while blocked, nothing is scheduled to render
+  // at all (the debounce effect skips scheduling one), regardless of
+  // whatever [pending] happens to hold - and forcing can't help here either,
+  // since `runLive` itself refuses to run while blocked.
+  if (blocked) {
+    return (
+      <div className="status" title="Fix the errors below to render">
+        <span className="status__dot status__dot--error" />
+        Blocked
+      </div>
+    );
+  }
+
+  if (running) {
+    return (
+      <div className="status" title="Rendering the current formula">
+        <span className="status__dot status__dot--computing" />
+        Rendering…
+      </div>
+    );
+  }
+
+  if (pending) {
+    return (
+      <button
+        type="button"
+        className="btn btn--ghost btn--small status"
+        onClick={onForceRender}
+        title="Edits are waiting to render (up to 5s) - click to render now"
+      >
+        <span className="status__dot status__dot--error" />
+        Render now
+      </button>
+    );
+  }
+
+  return (
+    <div className="status" title="Output matches the current formula">
+      <span className="status__dot status__dot--ok" />
+      Rendered
+    </div>
   );
 }
 

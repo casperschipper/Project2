@@ -77,11 +77,11 @@ export function OutputScreen() {
       <div className="field" style={{ marginBottom: 20 }}>
         <div className="field__row" style={{ flexWrap: "wrap" }}>
           <span className="faint">
-            Run writes score, entries and MIDI files to:{" "}
+            Score, entries and MIDI files are written to:{" "}
             {project.outputDir ? (
               <code>{project.outputDir}</code>
             ) : (
-              "not chosen yet — the first Run will ask"
+              "not chosen yet — nothing is written to disk until you choose a folder"
             )}
           </span>
           <button type="button" className="btn btn--ghost btn--small" onClick={changeOutputDir}>
