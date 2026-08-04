@@ -14,10 +14,22 @@ A parameter that is not combined means:
 - independent of instrument
 *)
 
+(* EMR-3 6.2, call 13's "s" sub-field - three modes, not two:
+   - [Union] (s=0): every group merges into a single ensemble, one layer.
+   - [NoUnionCommonHarmony] (s=1): groups stay separate (one layer each),
+     and everything except HARMONY resolves independently per layer - but
+     HARMONY is forced last and resolved exactly once, after every layer
+     is fitted together into one true-chronological timeline, so a single
+     continuous row/interval stream walks across all layers' notes in real
+     time order.
+   - [NoUnionPerLayer] (s=2): groups stay separate, but HARMONY keeps
+     whatever hierarchy position the composer gave it and resolves inside
+     each layer's own pass, in that layer's own internal order (this is
+     what the old, only, [NoUnion] constructor already meant). *)
 type union =
   | Union
-  (* ensemble groups merged into a single unit, no layers *)
-  | NoUnion
+  | NoUnionCommonHarmony
+  | NoUnionPerLayer
 
 (* MOD-DUR / MOD-DYN / MOD-PERF (EMR-3 7.3/7.5/7.6): one shared mechanism,
    reused by duration, dynamics and performance alike - a parameter is
@@ -197,6 +209,52 @@ let mk_structure_formula ~seed ~variant_duration ~n_variants ~instr_list
         ]
     | (HarmRow _ | HarmInterval _), (Autonomous _ | InstrumentDensity) -> []
   in
+  (* CHORD makes HARMONY decide density and resolve *first* (EMR-3 9.2);
+     union = common-harmony (EMR-3 6.2's "s=1") forces HARMONY to resolve
+     *last*, across a cross-layer merged timeline. These are structurally
+     incompatible - rejected directly, independent of what the hierarchy
+     says, so the composer gets one clear explanation instead of two
+     conflicting "Har must be first"/"Har must be last" positional errors
+     that would otherwise both fire for every possible hierarchy ordering.
+     Mirrors [chord_density_consistency_errors]'s own two-directional
+     shape. *)
+  let common_harmony_chord_consistency_errors =
+    match (harmony, union) with
+    | HarmChord _, NoUnionCommonHarmony ->
+        [
+          {
+            location = [ Key KUnion ];
+            severity = Severity.Error;
+            problem = ChordPrincipleCommonHarmonyMismatch;
+          };
+          {
+            location = [ Key KHarmony; Key KPrinciple ];
+            severity = Severity.Error;
+            problem = ChordPrincipleCommonHarmonyMismatch;
+          };
+        ]
+    | _ -> []
+  in
+  (* union = common-harmony requires Har last in the hierarchy (see
+     [Score_generation]'s common-harmony merge pass for why: it filters
+     Har out of every layer's own pass and resolves it once, afterward,
+     over the merged timeline). Skipped when HarmChord is also active -
+     that combination is already rejected outright above, independent of
+     hierarchy content, so this would otherwise just add a redundant,
+     confusing second error. *)
+  let common_harmony_hierarchy_errors =
+    match (union, harmony, List.rev hierarchy) with
+    | NoUnionCommonHarmony, (HarmRow _ | HarmInterval _), last :: _
+      when last <> Har ->
+        [
+          {
+            location = [ Key KHierarchy ];
+            severity = Severity.Error;
+            problem = HarmonyRequiresHarLast;
+          };
+        ]
+    | _ -> []
+  in
   let combination_errors =
     check_combination
       ~combination_loc:[ Key KEntrydelay; Key KCombination ]
@@ -340,10 +398,11 @@ let mk_structure_formula ~seed ~variant_duration ~n_variants ~instr_list
     | HarmRow _ | HarmInterval _ -> []
   in
   let all_diags =
-    hierarchy_errors @ chord_density_consistency_errors @ combination_errors
-    @ performance_membership_errors @ dynamics_membership_errors
-    @ ratio_coverage_errors @ per_note_ordering_errors
-    @ interval_matrix_warnings @ chord_table_errors
+    hierarchy_errors @ chord_density_consistency_errors
+    @ common_harmony_chord_consistency_errors @ common_harmony_hierarchy_errors
+    @ combination_errors @ performance_membership_errors
+    @ dynamics_membership_errors @ ratio_coverage_errors
+    @ per_note_ordering_errors @ interval_matrix_warnings @ chord_table_errors
   in
   match
     List.partition
@@ -1301,9 +1360,10 @@ module Parse = struct
       in_loc [ Key KUnion ]
         (let* args = require_field "union" items in
          match args with
-         | [ Sexp.Atom "none" ] -> Ok NoUnion
+         | [ Sexp.Atom "none" ] -> Ok NoUnionPerLayer
          | [ Sexp.Atom "union" ] -> Ok Union
-         | _ -> fail "union expects 'none' or 'union'")
+         | [ Sexp.Atom "common-harmony" ] -> Ok NoUnionCommonHarmony
+         | _ -> fail "union expects 'none', 'union', or 'common-harmony'")
     in
     let* density =
       in_loc [ Key KDensity ]

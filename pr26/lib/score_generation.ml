@@ -781,6 +781,130 @@ let chord_next : har_state_t -> chord * har_state_t = function
    means never drawing more than will be used, so nothing is ever silently
    discarded and no state ever advances further than what's visible in the
    score. *)
+(* [Har]'s own resolution step, extracted as a standalone function so it can
+   be reused both from [resolve_step]'s [Har] case (unchanged) and from the
+   merged, cross-layer pass union = common-harmony (EMR-3 6.2's "s=1")
+   requires - see [resolve_common_harmony_merged]. Reads/writes only
+   [states.har_state] and [proto.register]/[proto.nr_of_notes]; no other
+   hierarchy element's state and no layer-identity dependency of any kind,
+   so lifting it out here is pure code motion, not a behavior change. *)
+let resolve_harmony (states : continuing_state) (proto : proto) :
+    continuing_state * proto =
+  (* EMR-3 fig 7-6: "if REGISTER precedes HARMONY, a 0-pitch is selected
+     for the 0,0 register" - once [Reg] has already fixed a percussion
+     register, HARMONY's role is trivial and the row stream isn't
+     consumed at all for this entry (it stays in sync for the *next*
+     entry, whichever value it would have produced here is simply never
+     needed). Otherwise pull the next row value(s) as normal - [Har]'s
+     only conditioning is the symmetric check in [har_pred_from], for
+     when [Reg] hasn't run yet but did contain a percussion pick. *)
+  let forced_percussion =
+    match proto.register with
+    | Some (Shared PercussionRegister) -> true
+    | Some (PerNote rs) -> List.for_all register_is_percussion rs
+    | _ -> false
+  in
+  if forced_percussion then
+    let n = Option.value proto.nr_of_notes ~default:1 in
+    let v, oks =
+      ( PerNote (List.init n (fun _ -> RowPercussion)),
+        PerNote (List.init n (fun _ -> true)) )
+    in
+    ( states,
+      {
+        proto with
+        harmony = Some v;
+        harmony_ok = Some oks;
+        harmony_matrix_ok = Some oks;
+      } )
+  else
+    let pred = har_pred_from proto in
+    let n = Option.value proto.nr_of_notes ~default:1 in
+    (* EMR-3's ROW (entry 19) and INTERVAL (entries 21-24) have no "per
+       chord" call number between them: every note in a chord always
+       gets its own successive value, ignoring the entry-point boundary
+       entirely. (A genuine shared-per-chord harmony is a distinct,
+       not-yet-implemented CHORD principle, not a mode of either.) *)
+    (match states.har_state with
+    | HarRow seq ->
+        (* [row_stream] is infinite (it keeps re-transposing once the row
+           is used up), but every pass preserves which entries are
+           [RowPercussion] vs [Tone] - a composer-written row with no
+           [Tone] at all (or none at all matching a fixed non-percussion
+           register) would make [pred] unsatisfiable forever. Cap the
+           search instead of risking an infinite loop; beyond the cap,
+           accept the next value anyway and flag it not-ok, mirroring
+           EMR-3's own "wrong pitch... provided with a comment"
+           fallback. *)
+        let max_tries = 10_000 in
+        let draw_one st =
+          let rec try_next tries st =
+            let hd, tl =
+              match Seq.uncons st with
+              | Some (hd, tl) -> (hd, tl)
+              | None -> assert false
+            in
+            if pred hd then (hd, tl, true)
+            else if tries >= max_tries then (hd, tl, false)
+            else try_next (tries + 1) tl
+          in
+          try_next 0 st
+        in
+        let vs, oks, seq' =
+          List.init n (fun _ -> ())
+          |> List.fold_left
+               (fun (acc, oks_acc, st) () ->
+                 let hd, tl, ok = draw_one st in
+                 (hd :: acc, ok :: oks_acc, tl))
+               ([], [], seq)
+        in
+        let v = PerNote (List.rev vs) and oks = PerNote (List.rev oks) in
+        ( { states with har_state = HarRow seq' },
+          {
+            proto with
+            harmony = Some v;
+            harmony_ok = Some oks;
+            harmony_matrix_ok =
+              Some (PerNote (List.init n (fun _ -> true)));
+          } )
+    | HarInterval { tr; matrix; forbidden; phase; seen_since_reset } ->
+        let vs, oks, matrix_oks, phase', seen' =
+          List.init n (fun _ -> ())
+          |> List.fold_left
+               (fun (acc, oks_acc, matrix_oks_acc, phase, seen) () ->
+                 let v, ok, matrix_ok, phase', seen' =
+                   interval_next ~tr ~matrix ~forbidden ~pred ~phase
+                     ~seen_since_reset:seen
+                 in
+                 ( v :: acc,
+                   ok :: oks_acc,
+                   matrix_ok :: matrix_oks_acc,
+                   phase',
+                   seen' ))
+               ([], [], [], phase, seen_since_reset)
+        in
+        let v = PerNote (List.rev vs)
+        and oks = PerNote (List.rev oks)
+        and matrix_oks = PerNote (List.rev matrix_oks) in
+        ( {
+            states with
+            har_state =
+              HarInterval
+                { tr; matrix; forbidden; phase = phase'; seen_since_reset = seen' };
+          },
+          {
+            proto with
+            harmony = Some v;
+            harmony_ok = Some oks;
+            harmony_matrix_ok = Some matrix_oks;
+          } )
+    | HarChord _ ->
+        (* Unreachable: [Har] never appears in [subpick_hierarchy] under
+           CHORD (see [resolve_layer_chord_density]) - its value is
+           always a whole-group fact, seeded into every sub-pick before
+           its own fold runs, never drawn inside [resolve_step] itself. *)
+        assert false)
+
 let resolve_step ~perf_mode ~dyn_mode ~dur_relation ~reg_mode ?max_notes
     (states, proto) elem =
   match elem with
@@ -877,121 +1001,7 @@ let resolve_step ~perf_mode ~dyn_mode ~dur_relation ~reg_mode ?max_notes
       in
       ( { states with reg_state = reg_state' },
         { proto with register = Some v; register_ok = Some oks } )
-  | Har ->
-      (* EMR-3 fig 7-6: "if REGISTER precedes HARMONY, a 0-pitch is selected
-         for the 0,0 register" - once [Reg] has already fixed a percussion
-         register, HARMONY's role is trivial and the row stream isn't
-         consumed at all for this entry (it stays in sync for the *next*
-         entry, whichever value it would have produced here is simply never
-         needed). Otherwise pull the next row value(s) as normal - [Har]'s
-         only conditioning is the symmetric check in [har_pred_from], for
-         when [Reg] hasn't run yet but did contain a percussion pick. *)
-      let forced_percussion =
-        match proto.register with
-        | Some (Shared PercussionRegister) -> true
-        | Some (PerNote rs) -> List.for_all register_is_percussion rs
-        | _ -> false
-      in
-      if forced_percussion then
-        let n = Option.value proto.nr_of_notes ~default:1 in
-        let v, oks =
-          ( PerNote (List.init n (fun _ -> RowPercussion)),
-            PerNote (List.init n (fun _ -> true)) )
-        in
-        ( states,
-          {
-            proto with
-            harmony = Some v;
-            harmony_ok = Some oks;
-            harmony_matrix_ok = Some oks;
-          } )
-      else
-        let pred = har_pred_from proto in
-        let n = Option.value proto.nr_of_notes ~default:1 in
-        (* EMR-3's ROW (entry 19) and INTERVAL (entries 21-24) have no "per
-           chord" call number between them: every note in a chord always
-           gets its own successive value, ignoring the entry-point boundary
-           entirely. (A genuine shared-per-chord harmony is a distinct,
-           not-yet-implemented CHORD principle, not a mode of either.) *)
-        (match states.har_state with
-        | HarRow seq ->
-            (* [row_stream] is infinite (it keeps re-transposing once the row
-               is used up), but every pass preserves which entries are
-               [RowPercussion] vs [Tone] - a composer-written row with no
-               [Tone] at all (or none at all matching a fixed non-percussion
-               register) would make [pred] unsatisfiable forever. Cap the
-               search instead of risking an infinite loop; beyond the cap,
-               accept the next value anyway and flag it not-ok, mirroring
-               EMR-3's own "wrong pitch... provided with a comment"
-               fallback. *)
-            let max_tries = 10_000 in
-            let draw_one st =
-              let rec try_next tries st =
-                let hd, tl =
-                  match Seq.uncons st with
-                  | Some (hd, tl) -> (hd, tl)
-                  | None -> assert false
-                in
-                if pred hd then (hd, tl, true)
-                else if tries >= max_tries then (hd, tl, false)
-                else try_next (tries + 1) tl
-              in
-              try_next 0 st
-            in
-            let vs, oks, seq' =
-              List.init n (fun _ -> ())
-              |> List.fold_left
-                   (fun (acc, oks_acc, st) () ->
-                     let hd, tl, ok = draw_one st in
-                     (hd :: acc, ok :: oks_acc, tl))
-                   ([], [], seq)
-            in
-            let v = PerNote (List.rev vs) and oks = PerNote (List.rev oks) in
-            ( { states with har_state = HarRow seq' },
-              {
-                proto with
-                harmony = Some v;
-                harmony_ok = Some oks;
-                harmony_matrix_ok =
-                  Some (PerNote (List.init n (fun _ -> true)));
-              } )
-        | HarInterval { tr; matrix; forbidden; phase; seen_since_reset } ->
-            let vs, oks, matrix_oks, phase', seen' =
-              List.init n (fun _ -> ())
-              |> List.fold_left
-                   (fun (acc, oks_acc, matrix_oks_acc, phase, seen) () ->
-                     let v, ok, matrix_ok, phase', seen' =
-                       interval_next ~tr ~matrix ~forbidden ~pred ~phase
-                         ~seen_since_reset:seen
-                     in
-                     ( v :: acc,
-                       ok :: oks_acc,
-                       matrix_ok :: matrix_oks_acc,
-                       phase',
-                       seen' ))
-                   ([], [], [], phase, seen_since_reset)
-            in
-            let v = PerNote (List.rev vs)
-            and oks = PerNote (List.rev oks)
-            and matrix_oks = PerNote (List.rev matrix_oks) in
-            ( {
-                states with
-                har_state =
-                  HarInterval
-                    { tr; matrix; forbidden; phase = phase'; seen_since_reset = seen' };
-              },
-              {
-                proto with
-                harmony = Some v;
-                harmony_ok = Some oks;
-                harmony_matrix_ok = Some matrix_oks;
-              } )
-        | HarChord _ ->
-            (* Unreachable: [Har] never appears in [subpick_hierarchy] under
-               CHORD (see [resolve_layer_chord_density]) - its value is
-               always a whole-group fact, seeded into every sub-pick before
-               its own fold runs, never drawn inside [resolve_step] itself. *)
-            assert false)
+  | Har -> resolve_harmony states proto
 
 let resolve_entry ?(start = empty_proto) ~hierarchy ~perf_mode ~dyn_mode
     ~dur_relation ~reg_mode ?max_notes states =
@@ -2083,23 +2093,45 @@ let entry_of_group time (Entrydelay ed) (protos : proto list) : entry =
       List.exists (fun (n : note) -> n.instrument_repeated) notes;
   }
 
-(* Pure fold: sums each group's own (single, shared) entry delay into a
-   running absolute time, stamping that time onto the finished entry. *)
-let resolve_times (groups : (entrydelay * proto list) list) : entry list =
-  let _, entries =
+(* Pure fold, harmony-independent: sums each group's own (single, shared)
+   entry delay into a running absolute time. Split out from the old
+   [resolve_times] so union = common-harmony's phase 1 can compute every
+   layer's group timestamps *before* HARMONY has run (needed to merge-sort
+   across layers - see [resolve_common_harmony_merged]), while s=0/s=2
+   still convert straight through to entries via [resolve_times] below. *)
+let timed_groups_of (groups : (entrydelay * proto list) list) :
+    (float * entrydelay * proto list) list =
+  let _, timed =
     List.fold_left
       (fun (t, acc) (ed, protos) ->
         let (Entrydelay edf) = ed in
-        (t +. edf, entry_of_group t ed protos :: acc))
+        (t +. edf, (t, ed, protos) :: acc))
       (0.0, []) groups
   in
-  List.rev entries
+  List.rev timed
 
-let calculate_layer_hierarchical ~n_events ~variant_n_events ~hierarchy
-    ~instr_arr ~instr_principle ~ed_arr ~ed_principle ~perf_arr ~perf_principle
+(* Harmony-dependent: every proto in [timed] must already be fully resolved
+   (every field [Some]) - see [notes_of_proto]'s asserts. *)
+let entries_of_timed_groups (timed : (float * entrydelay * proto list) list) :
+    entry list =
+  timed |> List.map (fun (t, ed, protos) -> entry_of_group t ed protos)
+
+let resolve_times (groups : (entrydelay * proto list) list) : entry list =
+  groups |> timed_groups_of |> entries_of_timed_groups
+
+(* Builds [states0] (continuing every parameter's own selection cycle across
+   layers exactly as before) and dispatches to the right density's resolver,
+   returning the still-un-timed [groups] shape. Shared by
+   [calculate_layer_hierarchical] (s=0/s=2, timed and converted to entries
+   immediately) and [calculate_layer_common_harmony_phase1] (union =
+   common-harmony/s=1, timed but harmony deliberately left unresolved - see
+   there). *)
+let resolve_layer_groups ~n_events ~variant_n_events ~hierarchy ~instr_arr
+    ~instr_principle ~ed_arr ~ed_principle ~perf_arr ~perf_principle
     ~perf_mode ~dyn_arr ~dyn_principle ~dyn_mode ~dur_arr ~dur_principle
     ~dur_relation ~reg_arr ~reg_principle ~reg_mode ~density
-    (continuing : continuing_state) =
+    (continuing : continuing_state) :
+    (entrydelay * proto list) list * continuing_state =
   let states0 =
     {
       instr_state =
@@ -2132,20 +2164,157 @@ let calculate_layer_hierarchical ~n_events ~variant_n_events ~hierarchy
       reg_last_arr = reg_arr;
     }
   in
+  match density with
+  | InstrumentDensity ->
+      resolve_layer_instrument_density ~n_events ~hierarchy ~perf_mode
+        ~dyn_mode ~dur_relation ~reg_mode states0
+  | Autonomous { low; high; selection_principle } ->
+      resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
+        ~dur_relation ~reg_mode ~low ~high ~selection_principle states0
+  | ChordDensity ->
+      resolve_layer_chord_density ~n_events ~hierarchy ~perf_mode ~dyn_mode
+        ~dur_relation ~reg_mode states0
+
+let calculate_layer_hierarchical ~n_events ~variant_n_events ~hierarchy
+    ~instr_arr ~instr_principle ~ed_arr ~ed_principle ~perf_arr ~perf_principle
+    ~perf_mode ~dyn_arr ~dyn_principle ~dyn_mode ~dur_arr ~dur_principle
+    ~dur_relation ~reg_arr ~reg_principle ~reg_mode ~density
+    (continuing : continuing_state) =
   let groups, states' =
-    match density with
-    | InstrumentDensity ->
-        resolve_layer_instrument_density ~n_events ~hierarchy ~perf_mode
-          ~dyn_mode ~dur_relation ~reg_mode states0
-    | Autonomous { low; high; selection_principle } ->
-        resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
-          ~dur_relation ~reg_mode ~low ~high ~selection_principle
-          states0
-    | ChordDensity ->
-        resolve_layer_chord_density ~n_events ~hierarchy ~perf_mode ~dyn_mode
-          ~dur_relation ~reg_mode states0
+    resolve_layer_groups ~n_events ~variant_n_events ~hierarchy ~instr_arr
+      ~instr_principle ~ed_arr ~ed_principle ~perf_arr ~perf_principle
+      ~perf_mode ~dyn_arr ~dyn_principle ~dyn_mode ~dur_arr ~dur_principle
+      ~dur_relation ~reg_arr ~reg_principle ~reg_mode ~density continuing
   in
   (resolve_times groups, states')
+
+(* ---- union = common-harmony (EMR-3 6.2's "s=1"): merge every layer's
+   entries into one true-chronological timeline and run HARMONY exactly
+   once across it, instead of once per layer. ---- *)
+
+(* One entry point (group), tagged for the merge/harmonize/split pipeline
+   common-harmony needs. [ch_layer]/[ch_seq] are pure bookkeeping (never a
+   musical property) so the final per-layer split doesn't have to rely on
+   subtle stable-sort-preserves-input-order reasoning to be obviously
+   correct. *)
+type common_harmony_group = {
+  ch_layer : int;
+  ch_seq : int; (* this group's position within its own layer's own
+                   chronological sequence, before merging *)
+  ch_time : float;
+  ch_entrydelay : entrydelay;
+  ch_protos : proto list; (* harmony NOT yet resolved on any of these *)
+}
+
+(* Resolves one layer's hierarchy in full EXCEPT harmony (filtered out of
+   [hierarchy] before it ever reaches [resolve_layer_groups] - this is what
+   makes every other parameter resolve independently per layer, exactly as
+   s=2 does, while leaving HARMONY for the later merged pass). Since [Har]
+   never runs here, [continuing.har_state] passes through this layer's own
+   fold completely untouched - only instr/ed/perf/dyn/dur/reg state actually
+   advance, exactly mirroring how s=2 already threads those six across
+   layers. Neither [resolve_layer_instrument_density] nor
+   [resolve_layer_autonomous] has any special-cased dependency on [Har]'s
+   *presence* in [hierarchy] beyond folding over whatever elements are
+   actually there, so passing a [Har]-filtered hierarchy in naturally and
+   correctly excludes [Har]'s fold step from every sub-pick. *)
+let calculate_layer_common_harmony_phase1 ~layer_idx ~n_events
+    ~variant_n_events ~hierarchy ~instr_arr ~instr_principle ~ed_arr
+    ~ed_principle ~perf_arr ~perf_principle ~perf_mode ~dyn_arr
+    ~dyn_principle ~dyn_mode ~dur_arr ~dur_principle ~dur_relation ~reg_arr
+    ~reg_principle ~reg_mode ~density (continuing : continuing_state) :
+    common_harmony_group list * continuing_state =
+  (match density with
+  | ChordDensity ->
+      (* Unreachable: rejected at formula-load time - see
+         [common_harmony_chord_consistency_errors] in structure_formula.ml.
+         CHORD's own harmony resolution ([chord_next]) is a single-pass,
+         whole-group mechanism fundamentally incompatible with a deferred,
+         cross-layer merge - [resolve_harmony] would even [assert false] on
+         [HarChord] if this were ever reached. *)
+      assert false
+  | InstrumentDensity | Autonomous _ -> ());
+  let hierarchy_no_har = List.filter (fun e -> e <> Har) hierarchy in
+  let groups, states' =
+    resolve_layer_groups ~n_events ~variant_n_events
+      ~hierarchy:hierarchy_no_har ~instr_arr ~instr_principle ~ed_arr
+      ~ed_principle ~perf_arr ~perf_principle ~perf_mode ~dyn_arr
+      ~dyn_principle ~dyn_mode ~dur_arr ~dur_principle ~dur_relation ~reg_arr
+      ~reg_principle ~reg_mode ~density continuing
+  in
+  let tagged =
+    timed_groups_of groups
+    |> List.mapi (fun seq (t, ed, protos) ->
+           {
+             ch_layer = layer_idx;
+             ch_seq = seq;
+             ch_time = t;
+             ch_entrydelay = ed;
+             ch_protos = protos;
+           })
+  in
+  (tagged, states')
+
+(* Tie-break for simultaneous cross-layer entries (unspecified by the
+   manual): sort by [(time, layer index, within-layer sequence number)]
+   lexicographically - an explicit, total comparator, not a reliance on
+   sort-stability behavior. *)
+let compare_common_harmony_groups a b =
+  match Float.compare a.ch_time b.ch_time with
+  | 0 -> (
+      match compare a.ch_layer b.ch_layer with
+      | 0 -> compare a.ch_seq b.ch_seq
+      | c -> c)
+  | c -> c
+
+(* Merges every layer's phase-1 groups into one true-chronological-order
+   sequence and runs a SINGLE HARMONY pass across it, so one continuous
+   row/interval-matrix walk crosses layer boundaries in true time order
+   instead of restarting, or running once per layer. Outer fold walks
+   merged groups in true-time order; inner fold walks each group's own
+   protos (sub-picks) in their original within-group order - the same
+   granularity [resolve_step]'s [Har] case already used (once per proto,
+   not once per group). Threading the whole [continuing_state] (not just
+   [har_state]) through both folds is harmless: [resolve_harmony] only ever
+   changes [har_state], so every other field simply passes through
+   untouched. *)
+let resolve_common_harmony_merged
+    (per_layer_groups : common_harmony_group list list)
+    (continuing : continuing_state) :
+    common_harmony_group list * continuing_state =
+  let merged =
+    per_layer_groups |> List.concat |> List.sort compare_common_harmony_groups
+  in
+  let states', merged_rev =
+    List.fold_left
+      (fun (states, acc) group ->
+        let states', protos_rev =
+          List.fold_left
+            (fun (states, protos_acc) proto ->
+              let states', proto' = resolve_harmony states proto in
+              (states', proto' :: protos_acc))
+            (states, []) group.ch_protos
+        in
+        (states', { group with ch_protos = List.rev protos_rev } :: acc))
+      (continuing, []) merged
+  in
+  (List.rev merged_rev, states')
+
+(* Restores each layer's own original declaration order (not the merged/
+   sorted order) by re-grouping on [ch_layer] and sorting each bucket by
+   [ch_seq], then converts each (now fully harmony-resolved) group to its
+   final [entry]. *)
+let split_by_layer ~n_layers (merged : common_harmony_group list) :
+    entry list list =
+  let arr = Array.make n_layers [] in
+  List.iter (fun g -> arr.(g.ch_layer) <- g :: arr.(g.ch_layer)) merged;
+  arr
+  |> Array.map (fun groups_rev ->
+         groups_rev
+         |> List.sort (fun a b -> compare a.ch_seq b.ch_seq)
+         |> List.map (fun g ->
+                entry_of_group g.ch_time g.ch_entrydelay g.ch_protos))
+  |> Array.to_list
 
 let zip6 a b c d e f =
   List.map2
@@ -2223,7 +2392,7 @@ let generate_score_hierarchical ~variant_duration ~instrument_ensemble
  ~density continuing
       in
       ([ entries ], continuing')
-  | NoUnion ->
+  | NoUnionPerLayer ->
       let instr_arrays = ensemble_values_no_union instrument_ensemble in
       let entr_arrays = ensemble_values_no_union entry_delay_ensemble in
       let perf_arrays = ensemble_values_no_union perf_ensemble in
@@ -2269,6 +2438,65 @@ let generate_score_hierarchical ~variant_duration ~instrument_ensemble
           continuing layer_inputs
       in
       (layers, continuing')
+  | NoUnionCommonHarmony ->
+      let instr_arrays = ensemble_values_no_union instrument_ensemble in
+      let entr_arrays = ensemble_values_no_union entry_delay_ensemble in
+      let perf_arrays = ensemble_values_no_union perf_ensemble in
+      let dyn_arrays = ensemble_values_no_union dyn_ensemble in
+      let dur_arrays = ensemble_values_no_union dur_ensemble in
+      let reg_arrays = ensemble_values_no_union reg_ensemble in
+      let layer_inputs =
+        zip6 instr_arrays entr_arrays perf_arrays dyn_arrays dur_arrays
+          reg_arrays
+      in
+      let variant_n_events =
+        layer_inputs
+        |> List.fold_left
+             (fun acc (_, entr_arr, _, _, _, _) ->
+               acc
+               + calculate_number_of_events variant_duration
+                   entry_delay_principle entr_arr)
+             0
+      in
+      let continuing = start_new_variant ~variant_n_events continuing in
+      (* Phase 1: every layer resolves everything EXCEPT harmony,
+         independently - [har_state] passes through this whole fold
+         untouched (only instr/ed/perf/dyn/dur/reg state actually advance
+         per layer). *)
+      let continuing_after_phase1, per_layer_groups =
+        layer_inputs |> List.mapi (fun i x -> (i, x))
+        |> List.fold_left_map
+             (fun continuing
+                  ( layer_idx,
+                    (instr_arr, entr_arr, perf_arr, dyn_arr, dur_arr, reg_arr)
+                  ) ->
+               let n_events =
+                 calculate_number_of_events variant_duration
+                   entry_delay_principle entr_arr
+               in
+               let groups, continuing' =
+                 calculate_layer_common_harmony_phase1 ~layer_idx ~n_events
+                   ~variant_n_events ~hierarchy ~instr_arr
+                   ~instr_principle:instrument_principle ~ed_arr:entr_arr
+                   ~ed_principle:entry_delay_principle ~perf_arr
+                   ~perf_principle ~perf_mode ~dyn_arr ~dyn_principle
+                   ~dyn_mode ~dur_arr ~dur_principle ~dur_relation ~reg_arr
+                   ~reg_principle ~reg_mode ~density continuing
+               in
+               (continuing', groups))
+             continuing
+      in
+      (* Phase 2: merge every layer's groups into one true-chronological
+         sequence and run HARMONY exactly once across it. *)
+      let merged_with_harmony, continuing_final =
+        resolve_common_harmony_merged per_layer_groups continuing_after_phase1
+      in
+      (* Phase 3: split back apart into each layer's own original order. *)
+      let layers =
+        split_by_layer ~n_layers:(List.length layer_inputs)
+          merged_with_harmony
+      in
+      (layers, continuing_final)
 
 let build_score cfg =
   Random.init cfg.seed;
@@ -2290,7 +2518,7 @@ let build_score cfg =
   let uncombined_group_count =
     match cfg.union with
     | Union -> 1
-    | NoUnion -> cfg.number_of_instrument_groups
+    | NoUnionPerLayer | NoUnionCommonHarmony -> cfg.number_of_instrument_groups
   in
   (* An uncombined parameter's ensemble is drawn *once*, for the whole run,
      requesting [cfg.n_variants] times as many groups as one variant needs -

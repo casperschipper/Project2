@@ -270,16 +270,38 @@ export function StructureScreen() {
           label="Union"
           helpKey="fields/union"
           path="union"
-          hint="Whether the instrument groups are merged into one layer or each becomes a layer of its own."
+          hint="Whether the instrument groups are merged into one layer, kept as separate layers with their own independent harmony, or kept as separate layers that still share one continuous harmony stream."
         >
           <select
             style={{ width: 340 }}
             value={project.union}
-            onChange={(e) => update((p) => (p.union = e.target.value as "none" | "union"))}
+            onChange={(e) => {
+              const next = e.target.value as "none" | "union" | "common-harmony";
+              update((p) => {
+                p.union = next;
+                // CHORD forces Har first; union = common-harmony forces Har
+                // last - mutually exclusive (validate.ts also enforces
+                // this).
+                if (next === "common-harmony" && p.harmonyPrinciple === "chord") {
+                  p.harmonyPrinciple = "row";
+                  p.density = { kind: "instrument-density" };
+                }
+              });
+            }}
           >
-            <option value="none">None — one layer per instrument group</option>
-            <option value="union">Union — groups are combined</option>
+            <option value="none">None — one layer per instrument group, each with its own harmony</option>
+            <option value="union">Union — groups are combined into one layer</option>
+            <option value="common-harmony">
+              Common harmony — separate layers, one shared harmony stream across all of them
+            </option>
           </select>
+
+          {project.union === "common-harmony" && (
+            <div className="field__hint" style={{ marginTop: 8 }}>
+              Harmony must come last in the hierarchy under common harmony, since it resolves
+              once, after every layer's own rhythm is already fixed.
+            </div>
+          )}
         </Field>
       </Section>
 

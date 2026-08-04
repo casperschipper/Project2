@@ -192,7 +192,13 @@ export type Project = {
   numberOfVariants: number;
   octaveDivision: number;
   hierarchy: HierarchyElem[];
-  union: "none" | "union";
+  /** EMR-3 6.2, call 13's "s" sub-field - three modes: "union" (s=0, every
+   * group merges into one layer), "common-harmony" (s=1, layers stay
+   * separate but HARMONY resolves once, after they're merged into one
+   * chronological timeline - forcing Har last in the hierarchy), "none"
+   * (s=2, layers stay separate and HARMONY resolves inside each layer's
+   * own pass, wherever the composer put it). */
+  union: "none" | "union" | "common-harmony";
   density: Density;
   durationRelation: DurationRelation;
   /** GUI-only: display indices as 0- or 1-based. Emission is always 0-based. */

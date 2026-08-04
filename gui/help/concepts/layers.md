@@ -4,13 +4,13 @@
 
 A layer is the unit of coherence in PROJECT TWO. Within a layer, entry delays come from one entry-delay ensemble, dynamics from one dynamics ensemble, instruments from one instrument ensemble, and each of these is read by a single [selection principle](concepts/selection-principles) whose state runs continuously from the beginning of the variant to the end. Whatever guarantees a principle offers — that `series` will use everything, that `tendency` will describe an arc — hold *within a layer*, and not across layers.
 
-A layer is based either on a single group from the ensemble or on the [union](fields/union) of several groups. Union merges everything into one pool and therefore always yields exactly one layer. Without union, each group in the instrument ensemble becomes its own layer, so [number of instrument groups](fields/number-of-instrument-groups) is effectively the number of layers.
+A layer is based either on a single group from the ensemble or on the [union](fields/union) of several groups. Union merges everything into one pool and therefore always yields exactly one layer. Without union, each group in the instrument ensemble becomes its own layer, so [number of instrument groups](fields/number-of-instrument-groups) is effectively the number of layers - this is true of both "without union" settings, `none` and `common-harmony`; they form layers identically and differ only in whether HARMONY is one of the things each layer does independently (see [union](fields/union) for that distinction).
 
-Layers are simultaneous, not consecutive. All layers of a variant share the same [variant duration](fields/variant-duration) and the same metronome tempo, and each independently fills that duration with its own succession of entry points. For the printed parts they are merged so that all time values appear in chronological order; conceptually they remain separate musics that happen at the same time.
+Layers are simultaneous, not consecutive. All layers of a variant share the same [variant duration](fields/variant-duration) and the same metronome tempo, and each independently fills that duration with its own succession of entry points. In the printed parts each layer is still written out as its own block; conceptually they remain separate musics that happen at the same time - `common-harmony` is the one exception that ties their *pitches* back together across that separation, without touching anything else about how they're printed or timed.
 
 ## Layers and instrument groups
 
-Without union, the correspondence is direct: one instrument group, one layer. The layer's instrumentation is exactly the instruments named in that group.
+Without union (either sub-setting), the correspondence is direct: one instrument group, one layer. The layer's instrumentation is exactly the instruments named in that group.
 
 What the *other* parameters contribute to each layer depends on [combination](concepts/union-and-combination):
 
@@ -19,7 +19,7 @@ What the *other* parameters contribute to each layer depends on [combination](co
 
 ## Example
 
-Instrument table with three rows; number of instrument groups = 2; union off; combination on for entry delay.
+Instrument table with three rows; number of instrument groups = 2; union set to `none`; combination on for entry delay.
 
 Ensemble selection picks instrument rows 1 and 2, so two layers arise.
 
@@ -31,8 +31,8 @@ The two run concurrently over the same 30 seconds: a sparse guitar layer against
 
 ## Practical consequences
 
-- If you want polyphony in the sense of independent simultaneous strands, do **not** use union.
-- A `sequence` or `tendency` placed on a parameter behaves independently in each layer — two layers on the same tendency will trace the same arc but sample it at different rates, because their event counts differ.
+- If you want polyphony in the sense of independent simultaneous strands, do **not** use union - pick `none` for fully independent layers, or `common-harmony` if you want them independent in everything except pitch.
+- A `sequence` or `tendency` placed on a parameter behaves independently in each layer — two layers on the same tendency will trace the same arc but sample it at different rates, because their event counts differ. Under `common-harmony`, HARMONY is the one exception: it doesn't run per layer at all, so this doesn't apply to it - see [union](fields/union).
 - Comments (wrong elements) are local to a layer. A layer whose instrument group and dynamics group do not match will produce them steadily while its neighbour produces none.
 
 ## Related
@@ -40,3 +40,4 @@ The two run concurrently over the same 30 seconds: a sparse guitar layer against
 - [union and combination](concepts/union-and-combination)
 - [density](concepts/density)
 - [number of instrument groups](fields/number-of-instrument-groups)
+- [harmony principle](fields/harmony-principle)

@@ -882,6 +882,48 @@ export function validateProject(p: Project): Diagnostic[] {
     );
   }
 
+  // union = common-harmony forces Har last in the hierarchy (EMR-3 6.2's
+  // "s=1"): everything else resolves per layer first, then HARMONY runs
+  // once across all layers merged into one chronological timeline. Skipped
+  // when CHORD is also active - that combination is rejected outright
+  // below, independent of hierarchy content, so this would otherwise just
+  // add a redundant, confusing second error.
+  if (
+    p.union === "common-harmony" &&
+    p.harmonyPrinciple !== "chord" &&
+    posOf("Har") !== p.hierarchy.length - 1
+  ) {
+    out.push(
+      diag(
+        "harmony-requires-har-last",
+        "error",
+        [key("hierarchy")],
+        "union = common-harmony (EMR-3 6.2's \"s=1\") forces HARMONY to resolve " +
+          "once, after every other parameter and across all layers merged in " +
+          "true chronological order - Har must be last in the hierarchy",
+      ),
+    );
+  }
+  // CHORD forces Har first (EMR-3 9.2); union = common-harmony forces Har
+  // last (EMR-3 6.2's "s=1") - mutually exclusive, rejected directly rather
+  // than letting two contradictory positional errors both fire.
+  if (p.harmonyPrinciple === "chord" && p.union === "common-harmony") {
+    const message =
+      "the CHORD principle makes HARMONY decide vertical density itself and " +
+      "resolve first (EMR-3 9.2); union = common-harmony requires HARMONY to " +
+      "resolve last, across a merged cross-layer timeline (EMR-3 6.2's " +
+      '"s=1") - the two are mutually exclusive';
+    out.push(diag("chord-principle-common-harmony-mismatch", "error", [key("union")], message));
+    out.push(
+      diag(
+        "chord-principle-common-harmony-mismatch",
+        "error",
+        [key("harmony"), key("principle")],
+        message,
+      ),
+    );
+  }
+
   // Per-note parameters need the chord size, which only exists once an
   // instrument has been chosen.
   if (p.performanceMode === "per-note" && insPos > posOf("Per")) {

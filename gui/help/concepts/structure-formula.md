@@ -16,7 +16,7 @@ Instrument is the odd one out, because the instruments themselves carry properti
 
 **[Hierarchy](hierarchy).** The order in which the parameters are resolved for each event. The first is free and imposes conditions; every later one draws under the conditions already fixed. Reversing two entries produces a genuinely different piece, not a reshuffled one.
 
-**[Union](union) and [combination](combination).** Two switches at the group level. Combination makes a parameter follow the instrument parameter's choice of groups instead of choosing its own. Union decides whether the selected groups are merged into a single pool — one [layer](layers) — or kept apart, one layer each. Together with [number of instrument groups](fields/number-of-instrument-groups) they determine the polyphonic shape of the variant.
+**[Union](union) and [combination](combination).** Two switches at the group level. Combination makes a parameter follow the instrument parameter's choice of groups instead of choosing its own. Union decides whether the selected groups are merged into a single pool — one [layer](layers) — or kept apart, one layer each; kept apart, a further choice is whether each layer's HARMONY runs independently or all layers share one harmony stream (`common-harmony`). Together with [number of instrument groups](fields/number-of-instrument-groups) they determine the polyphonic shape of the variant.
 
 **[Vertical density](vertical-density).** How many tones begin at each entry point: either a range plus a principle of its own, or derived from the chord size of whichever instrument is chosen.
 

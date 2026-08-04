@@ -731,3 +731,316 @@ let () =
   | Ok _ -> assert false
   | Error ids -> assert (List.mem "chord-too-long" ids));
   print_endline "chord principle: empty/oversized chord table test passed"
+
+(* ---- union = common-harmony (EMR-3 6.2's "s=1") ---- *)
+
+(* A row of 4 distinct pitches, transposition none (so the row_stream just
+   repeats [1;2;3;4;1;2;3;4;...] forever) - deliberately simple so a
+   "which position in the cycle is this" check is a one-line assertion.
+   [n_groups]/[instrument_table_sexp]/[entrydelays_sexp]/
+   [entrydelay_table_sexp] let the 2-layer interleaving tests and the
+   1-layer regression test share one template; entry delay is combined
+   1:1 with the instrument groups so each layer gets its own constant,
+   deterministic entry delay (and thus fully predictable, distinct
+   per-layer absolute times) rather than an ensemble-shuffled one. *)
+let common_harmony_formula_sexp ~union_sexp ~n_groups ~instrument_table_sexp
+    ~entrydelays_sexp ~entrydelay_table_sexp ~hierarchy_sexp =
+  Printf.sprintf
+    {|(structure-formula
+  (seed 5)
+  (variant-duration 2.0)
+  (n-variants 1)
+  (octave-division 12)
+
+  (dynamics (mf))
+  (dynamics-table (0))
+
+  (performance (normal))
+  (performance-table (0))
+
+  (number-of-instrument-groups %d)
+  (instruments
+    (instrument only
+      (chordsize 1 1)
+      (performance (normal))
+      (dynamics (mf))
+      (pitch-range (low (octave 1) (pitch 1)) (high (octave 8) (pitch 12)))
+      (durations 0.1 1.0)))
+  (instrument-table %s)
+
+  (entrydelays %s)
+  (entrydelay-table %s)
+
+  (durations (0.2))
+  (duration-table (0))
+
+  (registers ((pitch-range (low (octave 1) (pitch 1)) (high (octave 8) (pitch 12)))))
+  (register-table (0))
+
+  (harmony
+    (principle row)
+    (row (1 2 3 4))
+    (transposition none))
+
+  (principles
+    (instrument (ensemble series) (order series))
+    (entrydelay (ensemble combination) (order series))
+    (performance (ensemble series) (order series) (mode per-chord))
+    (dynamics (ensemble series) (order series) (mode per-chord))
+    (duration (ensemble series) (order series) (relation (independent per-chord)))
+    (register (ensemble series) (order series) (mode per-chord)))
+
+  (hierarchy %s)
+  (union %s)
+  (density instrument-density)
+)|}
+    n_groups instrument_table_sexp entrydelays_sexp entrydelay_table_sexp
+    hierarchy_sexp union_sexp
+
+let build_common_harmony_formula ~union_sexp ~n_groups ~instrument_table_sexp
+    ~entrydelays_sexp ~entrydelay_table_sexp ~hierarchy_sexp =
+  let src =
+    common_harmony_formula_sexp ~union_sexp ~n_groups ~instrument_table_sexp
+      ~entrydelays_sexp ~entrydelay_table_sexp ~hierarchy_sexp
+  in
+  match Pr26.Sexp.of_string src with
+  | Error e -> Error [ "parse error: " ^ e ]
+  | Ok sexps -> (
+      match Pr26.Structure_formula.Parse.of_sexp sexps with
+      | Error (errors, _) ->
+          Error
+            (errors
+            |> List.map (fun (d : Pr26.Parameters.diagnostic) ->
+                   Pr26.Parameters.problem_id d.problem))
+      | Ok (sf, _warnings) -> Ok sf)
+
+let two_layer_common_harmony_formula ~union_sexp =
+  match
+    build_common_harmony_formula ~union_sexp ~n_groups:2
+      ~instrument_table_sexp:"(0) (0)" ~entrydelays_sexp:"(0.5 0.3)"
+      ~entrydelay_table_sexp:"(0) (1)"
+      ~hierarchy_sexp:"(Ins Reg Per Dyn Ent Dur Har)"
+  with
+  | Ok sf -> sf
+  | Error ids ->
+      failwith
+        (Printf.sprintf "common-harmony test formula failed to build: %s"
+           (String.concat ", " ids))
+
+(* Flattens one variant's layers into (time, layer_idx) - tagged steps,
+   sorted by (time, layer_idx) - the same tie-break
+   [compare_common_harmony_groups] uses internally - so the test can read
+   notes off in true chronological order regardless of which layer produced
+   them, without needing to hand-predict exact absolute times. *)
+let true_time_order_steps (layers : Pr26.Score_generation.entry list list) =
+  layers
+  |> List.mapi (fun layer_idx entries ->
+         entries
+         |> List.concat_map (fun (e : Pr26.Score_generation.entry) ->
+                e.notes
+                |> List.map (fun (n : Pr26.Score_generation.note) ->
+                       match n.pitch with
+                       | Pitched { step = Step s; _ } -> (e.time, layer_idx, s)
+                       | Percussion -> failwith "unexpected percussion")))
+  |> List.concat |> List.sort compare
+  |> List.map (fun (_, _, s) -> s)
+
+let row_next n = (n mod 4) + 1
+
+let is_unbroken_cycle steps =
+  let rec go = function
+    | a :: (b :: _ as rest) -> b = row_next a && go rest
+    | _ -> true
+  in
+  go steps
+
+(* The load-bearing test: with 2 layers whose entries deliberately
+   interleave in real time (layer A ticks every 0.5s, layer B every 0.3s),
+   union = common-harmony must produce one unbroken walk through the row
+   when notes are read back in TRUE chronological order, regardless of
+   which layer produced each one - proving harmony is a single continuous
+   stream across the merged timeline, not one stream per layer. *)
+let () =
+  let sf = two_layer_common_harmony_formula ~union_sexp:"common-harmony" in
+  let variants = Pr26.Score_generation.build_score sf in
+  assert (List.length variants = 1);
+  let layers = List.hd variants in
+  assert (List.length layers = 2);
+  let steps = true_time_order_steps layers in
+  assert (List.length steps >= 8);
+  assert (is_unbroken_cycle steps);
+  print_endline
+    "union common-harmony: true-chronological cross-layer harmony test \
+     passed"
+
+(* The precise contrast: the *same* formula under union = none (s=2,
+   "harmony per layer") must NOT show that same unbroken pattern when read
+   in the same true-time order, since each layer ran its own independent
+   pass through the row (both starting the row over from the top, since
+   [har_state] still threads across layers in layer-declaration order, not
+   time order). Also checks conservation: the same total note count comes
+   out of both runs for the same seed - the merge/split roundtrip drops or
+   duplicates nothing. *)
+let () =
+  let sf_common = two_layer_common_harmony_formula ~union_sexp:"common-harmony" in
+  let sf_none = two_layer_common_harmony_formula ~union_sexp:"none" in
+  let layers_common = List.hd (Pr26.Score_generation.build_score sf_common) in
+  let layers_none = List.hd (Pr26.Score_generation.build_score sf_none) in
+  let steps_none = true_time_order_steps layers_none in
+  assert (not (is_unbroken_cycle steps_none));
+  let total_notes layers =
+    layers
+    |> List.concat_map (fun (es : Pr26.Score_generation.entry list) ->
+           es |> List.concat_map (fun (e : Pr26.Score_generation.entry) -> e.notes))
+    |> List.length
+  in
+  assert (total_notes layers_common = total_notes layers_none);
+  print_endline
+    "union common-harmony vs none: contrast and conservation test passed"
+
+(* Single-layer regression: with nothing to interleave, the merge/split
+   machinery must degenerate to an identity transform - common-harmony and
+   per-layer must produce byte-identical output for the same seed. *)
+let () =
+  let one_layer ~union_sexp =
+    match
+      build_common_harmony_formula ~union_sexp ~n_groups:1
+        ~instrument_table_sexp:"(0)" ~entrydelays_sexp:"(0.5)"
+        ~entrydelay_table_sexp:"(0)"
+        ~hierarchy_sexp:"(Ins Reg Per Dyn Ent Dur Har)"
+    with
+    | Ok sf -> sf
+    | Error ids ->
+        failwith
+          (Printf.sprintf "common-harmony test formula failed to build: %s"
+             (String.concat ", " ids))
+  in
+  let layers_common =
+    List.hd (Pr26.Score_generation.build_score (one_layer ~union_sexp:"common-harmony"))
+  in
+  let layers_none =
+    List.hd (Pr26.Score_generation.build_score (one_layer ~union_sexp:"none"))
+  in
+  assert (layers_common = layers_none);
+  print_endline "union common-harmony: single-layer regression test passed"
+
+(* Grammar backward compatibility: (union none) must still mean exactly
+   what it means today (s=2), and the new (union common-harmony) atom must
+   parse. *)
+let () =
+  let sf_none =
+    match
+      build_common_harmony_formula ~union_sexp:"none" ~n_groups:1
+        ~instrument_table_sexp:"(0)" ~entrydelays_sexp:"(0.5)"
+        ~entrydelay_table_sexp:"(0)"
+        ~hierarchy_sexp:"(Ins Reg Har Per Dyn Ent Dur)"
+    with
+    | Ok sf -> sf
+    | Error ids -> failwith ("expected (union none) to parse: " ^ String.concat ", " ids)
+  in
+  assert (sf_none.union = Pr26.Structure_formula.NoUnionPerLayer);
+  let sf_common =
+    match
+      build_common_harmony_formula ~union_sexp:"common-harmony" ~n_groups:1
+        ~instrument_table_sexp:"(0)" ~entrydelays_sexp:"(0.5)"
+        ~entrydelay_table_sexp:"(0)"
+        ~hierarchy_sexp:"(Ins Reg Per Dyn Ent Dur Har)"
+    with
+    | Ok sf -> sf
+    | Error ids ->
+        failwith ("expected (union common-harmony) to parse: " ^ String.concat ", " ids)
+  in
+  assert (sf_common.union = Pr26.Structure_formula.NoUnionCommonHarmony);
+  print_endline "union: grammar backward-compatibility test passed"
+
+(* HARMONY must be last in the hierarchy under common-harmony (EMR-3 6.2's
+   "s=1"). *)
+let () =
+  (match
+     build_common_harmony_formula ~union_sexp:"common-harmony" ~n_groups:1
+       ~instrument_table_sexp:"(0)" ~entrydelays_sexp:"(0.5)"
+       ~entrydelay_table_sexp:"(0)"
+       ~hierarchy_sexp:"(Ins Reg Har Per Dyn Ent Dur)"
+   with
+  | Ok _ -> assert false
+  | Error ids -> assert (List.mem "harmony-requires-har-last" ids));
+  (match
+     build_common_harmony_formula ~union_sexp:"common-harmony" ~n_groups:1
+       ~instrument_table_sexp:"(0)" ~entrydelays_sexp:"(0.5)"
+       ~entrydelay_table_sexp:"(0)"
+       ~hierarchy_sexp:"(Ins Reg Per Dyn Ent Dur Har)"
+   with
+  | Error ids ->
+      failwith ("expected Har-last hierarchy to be valid: " ^ String.concat ", " ids)
+  | Ok _ -> ());
+  print_endline "union common-harmony: hierarchy validation test passed"
+
+(* CHORD forces Har first (EMR-3 9.2); common-harmony forces Har last -
+   mutually exclusive, rejected outright regardless of what the hierarchy
+   says (a hierarchy satisfying CHORD's own Har-first rule must still be
+   rejected, proving the check doesn't depend on hierarchy content). *)
+let () =
+  let src =
+    {|(structure-formula
+  (seed 5)
+  (variant-duration 8.0)
+  (octave-division 12)
+
+  (dynamics (mf))
+  (dynamics-table (0))
+
+  (performance (normal))
+  (performance-table (0))
+
+  (number-of-instrument-groups 1)
+  (instruments
+    (instrument piano
+      (chordsize 1 2)
+      (performance (normal))
+      (dynamics (mf))
+      (pitch-range (low (octave 1) (pitch 1)) (high (octave 8) (pitch 12)))
+      (durations 0.1 1.0)))
+  (instrument-table (0))
+
+  (entrydelays (0.5))
+  (entrydelay-table (0))
+
+  (durations (0.2))
+  (duration-table (0))
+
+  (registers ((pitch-range (low (octave 1) (pitch 1)) (high (octave 8) (pitch 12)))))
+  (register-table (0))
+
+  (harmony
+    (principle chord)
+    (chords ((1 3)))
+    (order alea)
+    (transposition none))
+
+  (principles
+    (instrument (ensemble (sequence 0)) (order alea))
+    (entrydelay (ensemble (sequence 0)) (order series))
+    (performance (ensemble (sequence 0)) (order series) (mode per-chord))
+    (dynamics (ensemble series) (order series) (mode per-chord))
+    (duration (ensemble (sequence 0)) (order series) (relation (independent per-note)))
+    (register (ensemble (sequence 0)) (order alea) (mode per-note)))
+
+  (hierarchy (Har Ins Reg Per Dyn Ent Dur))
+  (union common-harmony)
+  (density chord-density)
+)|}
+  in
+  (match Pr26.Sexp.of_string src with
+  | Error e -> failwith ("parse error: " ^ e)
+  | Ok sexps -> (
+      match Pr26.Structure_formula.Parse.of_sexp sexps with
+      | Ok _ -> assert false
+      | Error (errors, _) ->
+          let ids =
+            errors
+            |> List.map (fun (d : Pr26.Parameters.diagnostic) ->
+                   Pr26.Parameters.problem_id d.problem)
+          in
+          assert (List.mem "chord-principle-common-harmony-mismatch" ids)));
+  print_endline
+    "union common-harmony: CHORD-principle mismatch validation test passed"

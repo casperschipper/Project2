@@ -68,6 +68,8 @@ type problem =
   | HarmonyRequiresHarFirst
   | ChordPrincipleDensityMismatch
   | IntervalRestrictionsTooStrict of int
+  | HarmonyRequiresHarLast
+  | ChordPrincipleCommonHarmonyMismatch
 
 (* The hierarchy must be a permutation of [all_hierarchy_elems]: every
    parameter controls exactly one resolution step, so a missing one would
@@ -182,6 +184,16 @@ let display_problem p =
          forbidden tone). Try loosening the matrix or the forbidden-tones \
          list."
         count
+  | HarmonyRequiresHarLast ->
+      "union = common-harmony (EMR-3 6.2's \"s=1\") forces HARMONY to \
+       resolve once, after every other parameter and across all layers \
+       merged in true chronological order - Har must be last in the \
+       hierarchy"
+  | ChordPrincipleCommonHarmonyMismatch ->
+      "the CHORD principle makes HARMONY decide vertical density itself \
+       and resolve first (EMR-3 9.2); union = common-harmony requires \
+       HARMONY to resolve last, across a merged cross-layer timeline \
+       (EMR-3 6.2's \"s=1\") - the two are mutually exclusive"
 
 (* Closed vocabulary of path components identifying where in a
    structure_formula (and, one level down, in the composer's sexp) a
@@ -372,6 +384,8 @@ let problem_id = function
   | HarmonyRequiresHarFirst -> "harmony-requires-har-first"
   | ChordPrincipleDensityMismatch -> "chord-principle-density-mismatch"
   | IntervalRestrictionsTooStrict _ -> "interval-restrictions-too-strict"
+  | HarmonyRequiresHarLast -> "harmony-requires-har-last"
+  | ChordPrincipleCommonHarmonyMismatch -> "chord-principle-common-harmony-mismatch"
 
 (* Minimal JSON writing. Only what the diagnostic shape needs - there is no
    json library in this project's dependencies and pulling one in for three
@@ -455,7 +469,8 @@ let json_of_problem_data p =
   | InvalidPitchRange | InvalidRegister | DuplicateHierarchy
   | InstrumentDensityRequiresInsFirst | InvalidDurationRange _
   | PerNoteRequiresInsFirst | EmptyChordTable | HarmonyRequiresHarFirst
-  | ChordPrincipleDensityMismatch ->
+  | ChordPrincipleDensityMismatch | HarmonyRequiresHarLast
+  | ChordPrincipleCommonHarmonyMismatch ->
       json_obj []
 
 (* [location] is emitted both as the structured segment list (which the GUI

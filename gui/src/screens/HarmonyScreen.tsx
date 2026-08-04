@@ -63,6 +63,10 @@ export function HarmonyScreen() {
                 // the UI in the first place).
                 if (next === "chord") {
                   p.density = { kind: "chord-density" };
+                  // CHORD forces Har first; union = common-harmony forces Har
+                  // last - mutually exclusive (validate.ts also enforces
+                  // this).
+                  if (p.union === "common-harmony") p.union = "none";
                 } else if (p.density.kind === "chord-density") {
                   p.density = { kind: "instrument-density" };
                 }
