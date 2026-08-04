@@ -37,5 +37,26 @@ Some observations:
 * As we cannot know the number of rests really, we cannot use TENDENCY mask.
 * you will have some variance based on what random intervals are picked.
 
+# Technical notes
+
+I imagine that it would be best to integrate the concept of "REST" as a kind of entry, that has no other property than an entry delay and a time. 
+
+A open question:
+- Should you already compute the entries to be "general entries" or "sound entries", or can better we derive that "in the moment" we need it?
+
+There is also some another comment regarding common harmony and performance parameters. It seems that with some setttings, the hiearchy needs to be validated:
+  - (a) "no union, layers with common harmony" (see 6.2);
+  Since the common harmony of several layers cannot be computed until
+  the rhythmic context (including rests) has been established, REST
+  1s computed in this case at the last place but one, HARMONY coming
+  last.
+  - (b) "performance per rest" (see 7.6);
+  Since performance cannot be computed until the rests have been
+  established, REST is computed at the last place but one,
+  PERFORMANCE coming last.
+  (c) combination of (a) and (b);
+  order of the last three REST, PERFORMANCE, HARMONY
+I assume this can just be done as a validation of the structure formula and its hierarchy. It should throw an error with the suggestions from above if the hierarchy is incorrect.
+
 
 
