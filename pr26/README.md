@@ -75,11 +75,11 @@ Should the composer be helped in some way to construct useful tables? If a param
 [ ] rest parameter
 [ ] state saving of selection principles for visualization of how structure
 formula unfolds
-[ ] remove "run" and "export formula"
 [ ] version management of structure formula?
 
 # DONE
 
+[x] remove "run" and "export formula"
 
 [x] warnings/errors on interval matrix should be displayed in harmony panel
 [x] Shared harmony across layers

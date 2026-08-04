@@ -161,7 +161,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   // [pending] is the visible half of the debounce below: true the instant an
   // edit invalidates the last render, false again once a live run actually
-  // starts (whether because the 5s wait elapsed or [forceRender] skipped it).
+  // starts (whether because the 750ms wait elapsed or [forceRender] skipped it).
   const [pending, setPending] = useState(false);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -173,7 +173,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Validate continuously in the background, debounced: the timer resets on
-  // every edit, so it only actually fires once typing pauses for 5s - not on
+  // every edit, so it only actually fires once typing pauses for 750ms - not on
   // every keystroke, and not repeatedly while nothing is changing (each
   // effect run replaces, rather than adds to, the previous timer).
   useEffect(() => {
@@ -187,7 +187,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       debounceTimer.current = null;
       setPending(false);
       runLive();
-    }, 5000);
+    }, 750);
     return clearPendingTimer;
   }, [runLive, blocked, clearPendingTimer]);
 

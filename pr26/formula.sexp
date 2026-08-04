@@ -25,7 +25,7 @@
   (instrument-table
     (0))
 
-  (entrydelays (0.0 0.02 0.03 0.1 0.5 0.6 0.7 0.8))
+  (entrydelays (0.01 0.02 0.03 0.1 0.5 0.6 0.7 0.8))
   (entrydelay-table
     (3))
 
@@ -34,36 +34,34 @@
     (4))
 
   (registers (
-    (pitch-range (low (octave 3) (pitch 1)) (high (octave 3) (pitch 11)))
-    (pitch-range (low (octave 4) (pitch 1)) (high (octave 4) (pitch 11)))
-    (pitch-range (low (octave 5) (pitch 1)) (high (octave 5) (pitch 11)))))
+    (pitch-range (low (octave 4) (pitch 1)) (high (octave 4) (pitch 12)))))
   (register-table
-    (0 1 2))
+    (0))
 
   (harmony
     (principle interval)
     (matrix (rows (
-        (0 0 0 0 0 0 1 0 0 0 1)
-        (0 0 0 0 0 0 0 0 0 0 0)
-        (0 0 0 0 0 0 0 0 0 0 0)
-        (0 0 0 0 0 0 0 0 0 0 0)
-        (0 0 0 0 0 0 0 0 0 0 0)
-        (0 0 0 0 0 0 0 0 0 0 0)
+        (0 1 0 0 0 0 0 0 0 0 0)
+        (0 0 1 0 0 0 0 0 0 0 0)
+        (0 0 0 1 0 0 0 0 0 0 0)
+        (0 0 0 0 1 0 0 0 0 0 0)
+        (0 0 0 0 0 1 0 0 0 0 0)
+        (0 0 0 0 0 0 1 0 0 0 0)
+        (0 0 0 0 0 0 0 1 0 0 0)
+        (0 0 0 0 0 0 0 0 1 0 0)
+        (0 0 0 0 0 0 0 0 0 1 0)
+        (0 0 0 0 0 0 0 0 0 0 1)
         (1 0 0 0 0 0 0 0 0 0 0)
-        (0 0 0 0 0 0 0 0 0 0 0)
-        (0 0 0 0 0 0 0 0 0 0 0)
-        (0 0 0 0 0 0 0 0 0 0 0)
-        (1 0 0 0 0 0 0 0 0 0 1)
       )))
     (forbidden-tones ()))
 
   (principles
     (instrument (ensemble (sequence 0)) (order series))
-    (entrydelay (ensemble (sequence 0)) (order (group (element series) (repetition series) (repetitions 3 5))))
+    (entrydelay (ensemble (sequence 0)) (order (sequence (0))))
     (performance (ensemble (sequence 0)) (order (sequence (0 1 2))) (mode per-chord))
     (dynamics (ensemble series) (order series) (mode per-chord))
     (duration (ensemble (sequence 0)) (order series) (relation (independent per-note)))
-    (register (ensemble (sequence 0)) (order (group (element series) (repetition series) (repetitions 1 5))) (mode per-note)))
+    (register (ensemble (sequence 0)) (order (tendency (section 1.0 (start 0.0 0.0) (end 0.0 1.0)) (section 1.0 (start 0.5 0.5) (end 0.0 1.0)))) (mode per-chord)))
 
   (hierarchy (Ins Reg Har Per Dyn Ent Dur))
   (union none)

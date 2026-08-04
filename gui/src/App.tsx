@@ -374,7 +374,7 @@ function SyncStatus({
         type="button"
         className="btn btn--ghost btn--small status"
         onClick={onForceRender}
-        title="Edits are waiting to render (up to 5s) - click to render now"
+        title="Edits are waiting to render (up to 750ms) - click to render now"
       >
         <span className="status__dot status__dot--error" />
         Render now
