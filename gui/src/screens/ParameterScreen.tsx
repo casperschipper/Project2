@@ -5,7 +5,7 @@ import { TableEditor } from "../components/TableEditor";
 import { TokenListEditor } from "../components/ListEditors";
 import { EnsembleEditor, PrincipleEditor } from "../components/PrincipleEditor";
 import { parseTimeValue } from "../schema/validate";
-import type { Ensemble, NoteMode, Principle, Project, Table } from "../schema/types";
+import type { Ensemble, NoteMode, Principle, Project, RestMode, Table } from "../schema/types";
 
 /**
  * The four parameter screens - entry delay, duration, dynamics, performance -
@@ -37,6 +37,10 @@ export type ParameterConfig = {
     helpKey: string;
     label: string;
   };
+  /** A parameter-specific block rendered above the List section - REST's
+   * own mode + entry-range switch, which none of the other four
+   * parameters have an equivalent of. */
+  Extra?: React.ComponentType;
   get: {
     list: (p: Project) => string[];
     table: (p: Project) => Table;
@@ -62,6 +66,8 @@ export function ParameterScreen({ config }: { config: ParameterConfig }) {
     <div className="screen">
       <h1 className="screen__title">{config.title}</h1>
       <p className="screen__intro">{config.intro}</p>
+
+      {config.Extra && <config.Extra />}
 
       <Section title="List — the supply of values">
         <Field
@@ -241,11 +247,91 @@ export const DYNAMICS: ParameterConfig = {
   },
 };
 
+/** REST's own mode + entry-range switch (EMR-3 7.4) - unlike the other four
+ * parameters' extra fields (which are all a plain per-chord/per-note mode,
+ * handled generically via `config.mode`), REST's switch has its own
+ * conditional numeric pair, so it gets a bespoke component instead. */
+function RestModeSection() {
+  const { project, update } = useStore();
+
+  return (
+    <Section title="Mode — whether and where rests are placed">
+      <Field
+        label="Rest mode"
+        helpKey="fields/rest-mode"
+        path="rest.rest-mode"
+        hint="Whether autonomous rests are inserted into the timeline at all, and, if so, whether they may land on an entry still concealed by an earlier tone's sustain."
+      >
+        <select
+          style={{ width: 340 }}
+          value={project.restMode.kind}
+          onChange={(e) =>
+            update((p) => {
+              const kind = e.target.value as RestMode["kind"];
+              p.restMode = kind === "off" ? { kind: "off" } : { kind, d1: 5, d2: 20 };
+            })
+          }
+        >
+          <option value="off">Off — no rests are inserted</option>
+          <option value="before-sound-entry">
+            Before a sound entry — placed before the next tone onset, regardless of sustain
+          </option>
+          <option value="before-general-entry">
+            Before a general entry — skips onsets still concealed by an earlier tone's sustain
+          </option>
+        </select>
+
+        {project.restMode.kind !== "off" && (
+          <div className="field__row" style={{ marginTop: 8 }}>
+            <span className="faint" style={{ width: 130 }}>
+              Entry range (%)
+            </span>
+            <input
+              type="number"
+              className="input--tiny"
+              min={0}
+              max={100}
+              value={project.restMode.d1}
+              onChange={(e) =>
+                update((p) => {
+                  if (p.restMode.kind !== "off") p.restMode.d1 = Number(e.target.value);
+                })
+              }
+            />
+            <span className="faint">to</span>
+            <input
+              type="number"
+              className="input--tiny"
+              min={0}
+              max={100}
+              value={project.restMode.d2}
+              onChange={(e) =>
+                update((p) => {
+                  if (p.restMode.kind !== "off") p.restMode.d2 = Number(e.target.value);
+                })
+              }
+            />
+          </div>
+        )}
+
+        {project.restMode.kind !== "off" && (
+          <div className="field__hint" style={{ marginTop: 8 }}>
+            Percentages of the variant duration: each rest's placement is drawn from this window
+            and added onward from the last one. The lengths and order below only take effect once
+            this is switched on.
+          </div>
+        )}
+      </Field>
+    </Section>
+  );
+}
+
 export const REST: ParameterConfig = {
   paramId: "rest",
   title: "Rest",
   intro:
-    "How long an autonomous rest lasts, once one is placed. Rests are never part of the hierarchy - whether they're placed at all, and where, is switched on and configured on the Structure screen.",
+    "Autonomous rests (EMR-3 7.4): silence inserted into the timeline after everything else has been resolved. Rests are never part of the hierarchy - switch them on below, then supply the lengths they may take.",
+  Extra: RestModeSection,
   valueLabel: "rest length",
   listLabel: "Rest lengths",
   listHelpKey: "fields/rest-list",

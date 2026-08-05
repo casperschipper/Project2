@@ -2,7 +2,7 @@
 
 > The supply of possible rest lengths, in seconds — how long a silence lasts once one is placed.
 
-REST (EMR-3 §7.4) is not a resolution step like the other five parameters: it never appears in the [hierarchy](fields/hierarchy), and it does not decide *where* a rest goes on its own. Placement is a search over the timeline everything else has already produced, configured on the [Structure](fields/rest-mode) screen. This list only supplies *how long* each placed rest lasts, once the search has found somewhere to put one — the same LIST role every other parameter's own list plays. See [list, table, ensemble, order](concepts/list-table-ensemble-order).
+REST (EMR-3 §7.4) is not a resolution step like the other five parameters: it never appears in the [hierarchy](fields/hierarchy), and it does not decide *where* a rest goes on its own. Placement is a search over the timeline everything else has already produced, switched on and configured via [rest mode](fields/rest-mode) above. This list only supplies *how long* each placed rest lasts, once the search has found somewhere to put one — the same LIST role every other parameter's own list plays. See [list, table, ensemble, order](concepts/list-table-ensemble-order).
 
 Which of these lengths is available for a given rest is decided by the [table](fields/rest-table) and the [ensemble](fields/rest-ensemble); in what succession they occur (across however many rests end up placed) is decided by the [order](fields/rest-order) principle.
 

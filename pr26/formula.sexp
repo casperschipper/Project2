@@ -40,10 +40,9 @@
     (pitch-range (low (octave 4) (pitch 1)) (high (octave 4) (pitch 12)))
     (pitch-range (low (octave 5) (pitch 1)) (high (octave 5) (pitch 12)))
     (pitch-range (low (octave 6) (pitch 1)) (high (octave 6) (pitch 12)))
-    (pitch-range (low (octave 7) (pitch 1)) (high (octave 7) (pitch 12)))
-    (pitch-range (low (octave 8) (pitch 1)) (high (octave 8) (pitch 12)))))
+    (pitch-range (low (octave 7) (pitch 1)) (high (octave 7) (pitch 12)))))
   (register-table
-    (0 1 2 3 4 5 6 7))
+    (0 1 2 3 4 5 6))
 
   (rest-mode (before-sound-entry 6.0 26.0))
   (rests (2.0 3.0 4.0))
@@ -51,23 +50,20 @@
     (0 1 2))
 
   (harmony
-    (principle chord)
-    (chords (
-      (1 5 8)
-    ))
-    (order series)
-    (transposition none))
+    (principle interval)
+    (matrix (chord (1 2 5 10)))
+    (forbidden-tones ()))
 
   (principles
     (instrument (ensemble (sequence 0)) (order series))
-    (entrydelay (ensemble (sequence 0)) (order (tendency (section 1.0 (start 0.0 0.1) (end 0.0 1.0)) (section 1.0 (start 0.5 1.0) (end 0.0 1.0)) (section 1.0 (start 0.1 0.2) (end 0.8 1.0)))))
+    (entrydelay (ensemble (sequence 0)) (order (tendency (section 2.0 (start 0.0 0.1) (end 0.0 1.0)) (section 1.0 (start 0.5 1.0) (end 0.0 1.0)) (section 1.0 (start 0.1 0.2) (end 0.8 1.0)))))
     (performance (ensemble (sequence 0)) (order (sequence (0 1 2))) (mode per-chord))
     (dynamics (ensemble series) (order (group (element series) (repetition series) (repetitions 1 4))) (mode per-note))
     (duration (ensemble (sequence 0)) (order (tendency (section 1.0 (start 0.0 0.1) (end 0.8 1.0)) (section 1.0 (start 0.45 0.6) (end 0.0 1.0)))) (relation (independent per-chord)))
-    (register (ensemble (sequence 0)) (order (tendency (section 1.0 (start 0.1 0.1) (end 0.0 1.0)) (section 1.0 (start 0.0 1.0) (end 0.0 0.1)) (section 1.0 (start 0.9 1.0) (end 0.1 0.1)) (section 1.0 (start 0.1 0.1) (end 0.1 0.1)))) (mode per-note))
+    (register (ensemble (sequence 0)) (order (tendency (section 1.0 (start 0.1 0.1) (end 0.0 1.0)) (section 1.0 (start 0.0 1.0) (end 0.0 0.1)) (section 1.0 (start 0.9 1.0) (end 0.1 0.1)) (section 1.0 (start 0.0 0.1) (end 0.1 0.1)))) (mode per-note))
     (rest (ensemble alea) (order alea)))
 
-  (hierarchy (Har Ins Reg Per Dyn Ent Dur))
+  (hierarchy (Ent Ins Reg Har Per Dyn Dur))
   (union none)
-  (density chord-density)
+  (density (autonomous (low 1) (high 1) (principle (group (element series) (repetition series) (repetitions 1 4)))))
 )

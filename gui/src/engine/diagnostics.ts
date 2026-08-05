@@ -48,10 +48,6 @@ export function screenOf(d: Diagnostic): ScreenId {
   const head = path.split(/[.[]/)[0];
 
   if (path.startsWith("duration.relation")) return "structure";
-  // REST's own mode + entry-range live on the Structure screen, alongside
-  // union/hierarchy (see StructureScreen.tsx) - only its list/table/
-  // ensemble/order belong to the Rest screen itself.
-  if (path.startsWith("rest.rest-mode")) return "structure";
 
   switch (head) {
     case "global":
