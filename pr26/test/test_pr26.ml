@@ -1077,13 +1077,13 @@ let () =
     insertions |> List.map (fun (i : rest_insertion) -> i.before_index)
   in
   let sound_insertions, _ =
-    compute_rest_insertions ~variant_duration:10.0
+    compute_rest_insertions ~variant:0 ~layer:0 ~variant_duration:10.0
       ~rest_mode:(Pr26.Parameters.RestBeforeSoundEntry { d1 = 10.0; d2 = 10.0 })
       ~targets (fixed_rest_state 0.5)
   in
   assert (before_indices sound_insertions = [ 1; 2; 3 ]);
   let general_insertions, _ =
-    compute_rest_insertions ~variant_duration:10.0
+    compute_rest_insertions ~variant:0 ~layer:0 ~variant_duration:10.0
       ~rest_mode:
         (Pr26.Parameters.RestBeforeGeneralEntry { d1 = 10.0; d2 = 10.0 })
       ~targets (fixed_rest_state 0.5)
@@ -1112,7 +1112,7 @@ let () =
     |]
   in
   let insertions, _ =
-    compute_rest_insertions ~variant_duration:5.0
+    compute_rest_insertions ~variant:0 ~layer:0 ~variant_duration:5.0
       ~rest_mode:(Pr26.Parameters.RestBeforeSoundEntry { d1 = 0.0; d2 = 0.0 })
       ~targets (fixed_rest_state 1.0)
   in

@@ -14,17 +14,28 @@ import { chooseOutputDir } from "../engine/backend";
  * concrete rather than hidden.
  */
 
-type Tab = "score" | "entries" | "formula" | "log";
+type Tab = "score" | "entries" | "formula" | "log" | "debug";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "score", label: "Score" },
   { id: "entries", label: "Entries" },
   { id: "formula", label: "Structure formula" },
   { id: "log", label: "Engine log" },
+  { id: "debug", label: "Debug" },
 ];
 
 export function OutputScreen() {
-  const { project, update, engineResult, sexp, running, blocked, guiDiagnostics } = useStore();
+  const {
+    project,
+    update,
+    engineResult,
+    sexp,
+    running,
+    blocked,
+    guiDiagnostics,
+    debugEnabled,
+    setDebugEnabled,
+  } = useStore();
   const [tab, setTab] = useState<Tab>("score");
   const [variant, setVariant] = useState(0);
 
@@ -60,6 +71,13 @@ export function OutputScreen() {
         return {
           text: engineResult?.log,
           empty: "The engine produced no log output.",
+        };
+      case "debug":
+        return {
+          text: engineResult?.debug && JSON.stringify(engineResult.debug, null, 2),
+          empty: debugEnabled
+            ? "No debug events yet."
+            : "Turn on “Debug output” above to include this on the next run.",
         };
     }
   };
@@ -145,6 +163,17 @@ export function OutputScreen() {
           </button>
         ))}
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+          <label
+            className="faint"
+            style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}
+          >
+            <input
+              type="checkbox"
+              checked={debugEnabled}
+              onChange={(e) => setDebugEnabled(e.target.checked)}
+            />
+            Debug output
+          </label>
           {text && (
             <button
               type="button"

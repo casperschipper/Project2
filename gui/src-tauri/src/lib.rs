@@ -88,7 +88,7 @@ fn midi_files_in(dir: &Path) -> Vec<String> {
 /// produced, but only in the `Some` case (the ephemeral path has nothing
 /// useful to point at once the temp directory is gone).
 #[tauri::command]
-fn run_engine(sexp: String, out_dir: Option<String>) -> Value {
+fn run_engine(sexp: String, out_dir: Option<String>, debug: Option<bool>) -> Value {
     let Some(dir) = engine_dir() else {
         return engine_error(
             "could not find the engine directory (expected a 'pr26' folder \
@@ -132,13 +132,12 @@ fn run_engine(sexp: String, out_dir: Option<String>) -> Value {
         return engine_error(format!("could not write the formula: {e}"));
     }
 
-    let output = Command::new(&exe)
-        .arg(&formula)
-        .arg("--json")
-        .arg("--out-dir")
-        .arg(&run_dir)
-        .current_dir(&dir)
-        .output();
+    let mut command = Command::new(&exe);
+    command.arg(&formula).arg("--json").arg("--out-dir").arg(&run_dir);
+    if debug.unwrap_or(false) {
+        command.arg("--debug");
+    }
+    let output = command.current_dir(&dir).output();
 
     match output {
         Err(e) => engine_error(format!("could not start the engine: {e}")),

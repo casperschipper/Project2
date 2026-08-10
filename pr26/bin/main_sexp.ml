@@ -8,6 +8,12 @@ open Pr26.Score_generation
 let out_dir = ref "."
 let in_out_dir name = Filename.concat !out_dir name
 
+(* Opt-in, JSON-only (see [render_json]): the plain-text [render] path has no
+   format to carry this in and no consumer needing one - "manuals and notes/
+   debug_output.md" frames the debug stream as input to a future
+   visualisation tool, not something read as text. *)
+let debug_mode = ref false
+
 let read_whole_file path =
   let ic = open_in_bin path in
   Fun.protect
@@ -124,6 +130,8 @@ let render_json file =
            ~extra:[ ("log", json_string parse_log) ]);
       false
   | Ok (sf, warnings) -> (
+      Pr26.Debug_log.reset ();
+      Pr26.Debug_log.enabled := !debug_mode;
       let generated, gen_log = capture_stdout (fun () -> generate sf) in
       let log = json_string (parse_log ^ gen_log) in
       match generated with
@@ -172,10 +180,14 @@ let render_json file =
                   };
                 ]
           in
+          let debug_field =
+            if !debug_mode then [ ("debug", Pr26.Debug_log.to_json ()) ]
+            else []
+          in
           emit
             (json_of_diagnostics ~ok:true ~errors:[]
                ~warnings:(warnings @ too_strict_warnings)
-               ~extra:(("log", log) :: result_fields));
+               ~extra:(("log", log) :: result_fields @ debug_field));
           true)
 
 let watch file json =
@@ -207,14 +219,19 @@ let () =
         "Emit diagnostics and score as a single JSON object on stdout" );
       ( "--out-dir",
         Arg.Set_string out_dir,
-        "Directory for generated score/MIDI files (default: current directory)" )
+        "Directory for generated score/MIDI files (default: current directory)" );
+      ( "--debug",
+        Arg.Set debug_mode,
+        "Include a machine-readable \"debug\" event log in the --json output \
+         (no effect without --json)" )
     ]
     (fun arg -> file := Some arg)
-    "main_sexp <file.sexp> [--watch] [--json] [--out-dir DIR]";
+    "main_sexp <file.sexp> [--watch] [--json] [--debug] [--out-dir DIR]";
   match !file with
   | None ->
       prerr_endline
-        "Usage: main_sexp <file.sexp> [--watch] [--json] [--out-dir DIR]";
+        "Usage: main_sexp <file.sexp> [--watch] [--json] [--debug] [--out-dir \
+         DIR]";
       exit 1
   | Some file ->
       if !watch_mode then watch file !json_mode

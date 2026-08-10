@@ -46,8 +46,8 @@ function backendPlugin(): Plugin {
         // --- run the engine on a formula -----------------------------------
         if (url.pathname === "/api/run" && req.method === "POST") {
           try {
-            const { sexp, outDir } = JSON.parse(await readBody(req));
-            json(res, 200, await runEngine(sexp, outDir));
+            const { sexp, outDir, debug } = JSON.parse(await readBody(req));
+            json(res, 200, await runEngine(sexp, outDir, debug));
           } catch (err) {
             json(res, 500, { ok: false, engineError: String(err), errors: [], warnings: [] });
           }
@@ -108,7 +108,7 @@ async function readHelp(key: string): Promise<string | null> {
  * response as `midiFiles`; when omitted (live validate-as-you-type) a
  * scratch temp directory is used and removed once the engine finishes.
  */
-async function runEngine(sexp: string, outDir?: string) {
+async function runEngine(sexp: string, outDir?: string, debug?: boolean) {
   const persistent = Boolean(outDir);
   const dir = persistent
     ? outDir!
@@ -119,9 +119,8 @@ async function runEngine(sexp: string, outDir?: string) {
 
   const useExe = existsSync(ENGINE_EXE);
   const cmd = useExe ? ENGINE_EXE : "dune";
-  const args = useExe
-    ? [formula, "--json", "--out-dir", dir]
-    : ["exec", "bin/main_sexp.exe", "--", formula, "--json", "--out-dir", dir];
+  const baseArgs = [formula, "--json", "--out-dir", dir, ...(debug ? ["--debug"] : [])];
+  const args = useExe ? baseArgs : ["exec", "bin/main_sexp.exe", "--", ...baseArgs];
 
   return new Promise((resolve) => {
     const child = spawn(cmd, args, { cwd: ENGINE_DIR });

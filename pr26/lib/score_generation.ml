@@ -29,6 +29,10 @@ type note = {
      the same autonomous-density chord - i.e. there weren't enough distinct
      instruments to "score" the chord without reusing one (EMR-3 8.16). *)
   instrument_repeated : bool;
+  (* Stable identifier (variant/layer/entry/note-within-chord) - see
+     [Debug_log.note_id]. Assigned once, in [entry_of_group], from the same
+     loop index used to build [notes]; never recomputed afterwards. *)
+  id : Debug_log.note_id;
 }
 
 (* Entry is one timepoint:
@@ -54,6 +58,12 @@ type entry = {
      other field mirrors an empty/silent event: [notes = []],
      [duration = Some (Duration <rest length>)], everything else [None]. *)
   is_rest : bool;
+  (* Stable identifier (variant/layer/entry) - see [Debug_log.entry_id]. A
+     resolved entry's [id] is permanent from the moment [entry_of_group]
+     builds it; a REST's [id] identifies which resolved entry it was placed
+     immediately before (see [Debug_log.entry_seq]) - neither ever gets
+     renumbered by later rest-splicing. *)
+  id : Debug_log.entry_id;
 }
 
 (* Extract all elements from any ensemble as a flat array. Each element
@@ -221,6 +231,73 @@ let sel_sample_pred (p : 'a -> bool) : 'a sel_state -> 'a * 'a sel_state =
 
 let result_ok = function Value _ -> true | Impossible _ -> false
 
+(* Reports whichever debug events [pre]'s shape implies about the draw that
+   just produced [post] - SERIES/RATIO exhausting their pool and reshuffling
+   (visible as [pre]'s [options] being empty), GROUP starting a new
+   repetition (GROUP's own new element/repetition-count only exists in
+   [post] - see [Selection.group_draw]: the "new group" fact is baked into
+   the *returned* state, one call late), and, for TENDENCY, the window this
+   draw sampled from. A no-op unless [Debug_log.enabled] - callers still pay
+   one pattern-match, but never build an event or touch the buffer. *)
+let emit_sel_events ~(ctx : Debug_log.context) ~(to_string : 'a -> string)
+    (pre : 'a sel_state) (post : 'a sel_state) =
+  if !Debug_log.enabled then
+    match pre with
+    | SSeries (SeriesState { options = []; _ }) ->
+        Debug_log.push (Debug_log.SeriesRestart ctx)
+    | SRatio (RatioState { options = []; _ }) ->
+        Debug_log.push (Debug_log.RatioRefresh ctx)
+    | SGroup (GroupState { remaining = 1; _ }) -> (
+        match post with
+        | SGroup (GroupState { current; remaining; _ }) ->
+            Debug_log.push
+              (Debug_log.GroupNewRep
+                 { ctx; element = to_string current; size = remaining })
+        | _ -> ())
+    | SGroup (GroupState { remaining = _; _ }) -> ()
+    | STendency (TendencyState { arr = _; lo; hi; _ }) ->
+        Debug_log.push (Debug_log.TendencyWindow { ctx; lo; hi })
+    | SAlea _ | SSequence _ | SSeries _ | SRatio _ -> ()
+
+(* Opt-in wrappers around [sel_draw]/[sel_sample]/[sel_draw_pred_tagged]/
+   [sel_sample_pred_tagged]: identical draw, plus [emit_sel_events] when
+   [ctx] is supplied. Kept separate from the plain functions (rather than
+   adding [?ctx] to them directly) so every one of their many existing call
+   sites - most of them inside [resolve_layer_autonomous]/
+   [resolve_layer_chord_density]'s own per-chord [fill_group] extraction,
+   not yet wired for debug context - is provably untouched. *)
+let sel_draw_debug ?ctx ?(to_string = fun _ -> "") state =
+  let result, state' = sel_draw state in
+  (match ctx with
+  | Some ctx -> emit_sel_events ~ctx ~to_string state state'
+  | None -> ());
+  (result, state')
+
+let sel_sample_debug ?ctx ?(to_string = fun _ -> "") state =
+  let result, state' = sel_sample state in
+  (match ctx with
+  | Some ctx -> emit_sel_events ~ctx ~to_string state state'
+  | None -> ());
+  (result, state')
+
+let sel_draw_pred_tagged_debug ?ctx ?(to_string = fun _ -> "") p state =
+  let result, state' = sel_draw_pred_tagged p state in
+  (match ctx with
+  | Some ctx -> emit_sel_events ~ctx ~to_string state state'
+  | None -> ());
+  (result, state')
+
+let sel_sample_pred_tagged_debug ?ctx ?(to_string = fun _ -> "") p state =
+  let result, state' = sel_sample_pred_tagged p state in
+  (match ctx with
+  | Some ctx -> emit_sel_events ~ctx ~to_string state state'
+  | None -> ());
+  (result, state')
+
+let sel_sample_pred_debug ?ctx ?to_string p state =
+  let result, state' = sel_sample_pred_tagged_debug ?ctx ?to_string p state in
+  (get_value result, state')
+
 let calculate_number_of_events variant_duration entry_delay_principle
     entry_delay_ensemble =
   let avg_ed = expected_value entry_delay_principle entry_delay_ensemble in
@@ -327,17 +404,22 @@ type har_state_t =
     }
   | HarChord of {
       tr : int;
-      table : chord array; (* the ORIGINAL, untransposed reference table -
+      table : chord array;
+          (* the ORIGINAL, untransposed reference table -
            the manual's "reference tones" - never mutated *)
-      order_state : chord sel_state; (* SEQ-CHORD: the general selection
+      order_state : chord sel_state;
+          (* SEQ-CHORD: the general selection
            principle over table entries *)
-      cumulative : int; (* transposition offset accumulated so far, mod tr -
+      cumulative : int;
+          (* transposition offset accumulated so far, mod tr -
            applied to the ORIGINAL table each draw, exactly like
            [row_stream]'s own [cumulative] *)
-      drawn_since_pass : int; (* draws since [cumulative] last advanced; a
+      drawn_since_pass : int;
+          (* draws since [cumulative] last advanced; a
            "pass" = [Array.length table] draws, regardless of which chords
            they actually were *)
-      trans_intervals : int Seq.t; (* remaining stream of per-pass
+      trans_intervals : int Seq.t;
+          (* remaining stream of per-pass
            transposition intervals *)
     }
 
@@ -407,8 +489,7 @@ let continue_or_restart ~principle ~n ~last_arr ~arr state =
    branch for layer 0, exactly as if there were no prior state at all. *)
 let initial_har_state ~tr (harmony : harmony_principle) : har_state_t =
   match harmony with
-  | HarmRow { row; transposition } ->
-      HarRow (row_stream ~tr ~transposition row)
+  | HarmRow { row; transposition } -> HarRow (row_stream ~tr ~transposition row)
   | HarmInterval { matrix; forbidden_tones } ->
       HarInterval
         {
@@ -460,10 +541,10 @@ let initial_continuing_state ~tr (harmony : harmony_principle) :
    value actually satisfied [pred] (vs. being an [Impossible] fallback) - so
    a caller that cares (duration, re: the entry-delay relation) can flag it,
    while one that doesn't (performance, dynamics) just ignores the flags. *)
-let resolve_note_param_tagged mode n_notes pred state =
+let resolve_note_param_tagged ?ctx ?to_string mode n_notes pred state =
   match mode with
   | PerChord ->
-      let v, state' = sel_sample_pred_tagged pred state in
+      let v, state' = sel_sample_pred_tagged_debug ?ctx ?to_string pred state in
       let ok = result_ok v in
       (Shared (get_value v), Shared ok, state')
   | PerNote ->
@@ -472,16 +553,18 @@ let resolve_note_param_tagged mode n_notes pred state =
         List.init n (fun _ -> ())
         |> List.fold_left
              (fun (acc, oks_acc, st) () ->
-               let v, st' = sel_sample_pred_tagged pred st in
+               let v, st' =
+                 sel_sample_pred_tagged_debug ?ctx ?to_string pred st
+               in
                let ok = result_ok v in
                (get_value v :: acc, ok :: oks_acc, st'))
              ([], [], state)
       in
       (PerNote (List.rev vs), PerNote (List.rev oks), state')
 
-let resolve_note_param mode n_notes pred state =
+let resolve_note_param ?ctx ?to_string mode n_notes pred state =
   let values, _oks, state' =
-    resolve_note_param_tagged mode n_notes pred state
+    resolve_note_param_tagged ?ctx ?to_string mode n_notes pred state
   in
   (values, state')
 
@@ -496,9 +579,7 @@ let duration_range_ok (AllowedDurations { min; max }) (Duration d) =
    7.3: "if the durations in the chord are equal, instruments can only be
    selected which can play the selected duration; if not the same, this
    question is posed for each duration and instrument"). *)
-let row_value_is_percussion = function
-  | RowPercussion -> true
-  | Tone _ -> false
+let row_value_is_percussion = function RowPercussion -> true | Tone _ -> false
 
 (* Under ROW/INTERVAL, [Ins] always precedes [Har], so [proto.harmony] is
    always [None] here and this is a dead branch - it only becomes live for
@@ -506,6 +587,15 @@ let row_value_is_percussion = function
    *before* its own fold (and hence [Ins]) runs (see
    [resolve_layer_chord_density]). Mirrors [reg_pred_from]'s existing
    [harmony_pred] exactly. *)
+(* Every [*_pred_from] below returns [(pred, restricted_by)]: the predicate
+   itself, plus the short list of reasons it's non-trivial - derived from the
+   very same checks the predicate applies, rather than re-inspecting [proto]
+   independently, so the two can't drift apart (see
+   "manuals and notes/debug_output.md"'s "restricted by instrument x" /
+   "restricted by duration"). [restricted_by] is cheap to always compute (a
+   handful of list operations, negligible next to the array/list work these
+   functions already do unconditionally) so callers that don't care (when
+   [Debug_log.enabled] is [false]) can simply ignore it. *)
 let ins_pred_from proto =
   let from_harmony (Instrument { pitchrange; _ }) =
     let is_percussion = pitchrange = PercussionPitchRange in
@@ -541,14 +631,31 @@ let ins_pred_from proto =
     | Some (PerNote rs) ->
         List.for_all (register_compatible_with_pitch_range pitchrange) rs
   in
-  fun i -> from_perf i && from_dyn i && from_dur i && from_reg i && from_harmony i
+  let checks =
+    [
+      ("performance", proto.performance <> None, from_perf);
+      ("dynamic", proto.dynamic <> None, from_dyn);
+      ("duration", proto.duration <> None, from_dur);
+      ("register", proto.register <> None, from_reg);
+      ("harmony", proto.harmony <> None, from_harmony);
+    ]
+  in
+  let pred i = List.for_all (fun (_, _, f) -> f i) checks in
+  let restricted_by =
+    List.filter_map (fun (n, active, _) -> if active then Some n else None) checks
+  in
+  (pred, restricted_by)
 
 (* [Per]/[Dyn]'s predicate: restrict to modes the (already- or not-yet-known)
    instrument can play, exactly mirroring [Ins]'s own conditioning above. *)
 let mode_pred_from_instrument ~instr_arr ~mem proto_instrument instr_modes =
-  match proto_instrument with
-  | Some i -> fun v -> mem v (instr_modes i)
-  | None -> fun v -> Array.exists (fun i -> mem v (instr_modes i)) instr_arr
+  let pred =
+    match proto_instrument with
+    | Some i -> fun v -> mem v (instr_modes i)
+    | None -> fun v -> Array.exists (fun i -> mem v (instr_modes i)) instr_arr
+  in
+  let restricted_by = if proto_instrument = None then [] else [ "instrument" ] in
+  (pred, restricted_by)
 
 (* Duration's own conditioning combines the instrument-range predicate above
    with, when [Ent] has already resolved and DUR-ENTRY requires it, a
@@ -563,10 +670,22 @@ let dur_pred_from ~instr_arr proto dur_relation =
             (fun (Instrument { durations; _ }) -> duration_range_ok durations d)
             instr_arr
   in
-  match (dur_relation, proto.entrydelay) with
-  | DurShorterThanEntry _, Some (Entrydelay ed) ->
-      fun (Duration d as dv) -> range_pred dv && d <= ed
-  | _ -> range_pred
+  let entry_active =
+    match dur_relation with
+    | DurShorterThanEntry _ -> proto.entrydelay <> None
+    | DurIndependent _ | DurEqualsEntry -> false
+  in
+  let pred =
+    match (dur_relation, proto.entrydelay) with
+    | DurShorterThanEntry _, Some (Entrydelay ed) ->
+        fun (Duration d as dv) -> range_pred dv && d <= ed
+    | _ -> range_pred
+  in
+  let restricted_by =
+    (if proto.instrument = None then [] else [ "instrument" ])
+    @ if entry_active then [ "entrydelay" ] else []
+  in
+  (pred, restricted_by)
 
 let duration_note_mode = function
   | DurIndependent m -> m
@@ -576,15 +695,23 @@ let duration_note_mode = function
 (* Entry delay's own conditioning: unconstrained, unless DUR-ENTRY requires
    it to follow duration (which must then already be known). *)
 let ed_pred_from proto dur_relation =
-  match (dur_relation, proto.duration) with
-  | DurShorterThanEntry _, Some (Shared (Duration d)) ->
-      fun (Entrydelay ed) -> ed >= d
-  | DurShorterThanEntry _, Some (PerNote ds) ->
-      let max_d =
-        ds |> List.map (fun (Duration d) -> d) |> List.fold_left Float.max 0.0
-      in
-      fun (Entrydelay ed) -> ed >= max_d
-  | _ -> Fun.const true
+  let pred =
+    match (dur_relation, proto.duration) with
+    | DurShorterThanEntry _, Some (Shared (Duration d)) ->
+        fun (Entrydelay ed) -> ed >= d
+    | DurShorterThanEntry _, Some (PerNote ds) ->
+        let max_d =
+          ds |> List.map (fun (Duration d) -> d) |> List.fold_left Float.max 0.0
+        in
+        fun (Entrydelay ed) -> ed >= max_d
+    | _ -> Fun.const true
+  in
+  let restricted_by =
+    match dur_relation with
+    | DurShorterThanEntry _ when proto.duration <> None -> [ "duration" ]
+    | DurShorterThanEntry _ | DurIndependent _ | DurEqualsEntry -> []
+  in
+  (pred, restricted_by)
 
 let register_is_percussion = function
   | PercussionRegister -> true
@@ -622,7 +749,11 @@ let reg_pred_from ~instr_arr proto =
             (fun h -> register_is_percussion r = row_value_is_percussion h)
             hs
   in
-  fun r -> instr_pred r && harmony_pred r
+  let restricted_by =
+    (if proto.instrument = None then [] else [ "instrument" ])
+    @ if proto.harmony = None then [] else [ "harmony" ]
+  in
+  ((fun r -> instr_pred r && harmony_pred r), restricted_by)
 
 (* [Har]'s predicate: percussion-agreement with the already-resolved
    [Reg] (when [Reg] ran first) - see [reg_pred_from] above for the
@@ -630,15 +761,19 @@ let reg_pred_from ~instr_arr proto =
    direct dependence on [Ins]: relative pitch doesn't depend on which
    instrument plays it, only REGISTER mediates that (EMR-3 §7.1). *)
 let har_pred_from proto =
-  match proto.register with
-  | None -> Fun.const true
-  | Some (Shared r) ->
-      fun h -> row_value_is_percussion h = register_is_percussion r
-  | Some (PerNote rs) ->
-      fun h ->
-        List.for_all
-          (fun r -> row_value_is_percussion h = register_is_percussion r)
-          rs
+  let pred =
+    match proto.register with
+    | None -> Fun.const true
+    | Some (Shared r) ->
+        fun h -> row_value_is_percussion h = register_is_percussion r
+    | Some (PerNote rs) ->
+        fun h ->
+          List.for_all
+            (fun r -> row_value_is_percussion h = register_is_percussion r)
+            rs
+  in
+  let restricted_by = if proto.register = None then [] else [ "register" ] in
+  (pred, restricted_by)
 
 (* One step of the INTERVAL principle. [pred] is the external (register/
    instrument percussion-agreement) predicate - condition (2); condition
@@ -655,8 +790,7 @@ let har_pred_from proto =
    the first, since this is a distinct failure mode from a register/
    instrument mismatch and gets its own comment (see [note_problems]). *)
 let interval_next ~tr ~(matrix : interval_matrix) ~forbidden ~pred ~phase
-    ~seen_since_reset :
-    row_value * bool * bool * interval_phase * Pitch_set.t =
+    ~seen_since_reset : row_value * bool * bool * interval_phase * Pitch_set.t =
   let (IntervalMatrix m) = matrix in
   let is_forbidden t = List.mem t forbidden in
   let producible = tr - List.length (List.sort_uniq compare forbidden) in
@@ -748,16 +882,25 @@ let interval_next ~tr ~(matrix : interval_matrix) ~forbidden ~pred ~phase
    to cover every [har_state_t] constructor, so the other two are dead
    branches here, mirrored by [chord_next]'s own callers never reaching
    them either. *)
-let chord_next : har_state_t -> chord * har_state_t = function
-  | HarChord { tr; table; order_state; cumulative; drawn_since_pass; trans_intervals } ->
-      let picked, order_state' = sel_draw order_state in
+let chord_to_string (Chord tones) =
+  tones |> Array.to_list |> List.map row_value_to_string |> String.concat ","
+
+let chord_next ?ctx (state : har_state_t) : chord * har_state_t =
+  match state with
+  | HarChord
+      { tr; table; order_state; cumulative; drawn_since_pass; trans_intervals }
+    ->
+      let picked, order_state' =
+        sel_draw_debug ?ctx ~to_string:chord_to_string order_state
+      in
       let transposed = transpose_chord ~tr cumulative picked in
       let drawn' = drawn_since_pass + 1 in
       let cumulative', drawn'', trans_intervals' =
         if drawn' >= Array.length table then
           match trans_intervals () with
           | Seq.Cons (k, rest) -> ((cumulative + k) mod tr, 0, rest)
-          | Seq.Nil -> (cumulative, 0, trans_intervals) (* unreachable: infinite *)
+          | Seq.Nil -> (cumulative, 0, trans_intervals)
+          (* unreachable: infinite *)
         else (cumulative, drawn', trans_intervals)
       in
       ( transposed,
@@ -836,14 +979,14 @@ let resolve_harmony (states : continuing_state) (proto : proto) :
         harmony_matrix_ok = Some oks;
       } )
   else
-    let pred = har_pred_from proto in
+    let pred, _restricted_by = har_pred_from proto in
     let n = Option.value proto.nr_of_notes ~default:1 in
     (* EMR-3's ROW (entry 19) and INTERVAL (entries 21-24) have no "per
        chord" call number between them: every note in a chord always
        gets its own successive value, ignoring the entry-point boundary
        entirely. (A genuine shared-per-chord harmony is a distinct,
        not-yet-implemented CHORD principle, not a mode of either.) *)
-    (match states.har_state with
+    match states.har_state with
     | HarRow seq ->
         (* [row_stream] is infinite (it keeps re-transposing once the row
            is used up), but every pass preserves which entries are
@@ -882,8 +1025,7 @@ let resolve_harmony (states : continuing_state) (proto : proto) :
             proto with
             harmony = Some v;
             harmony_ok = Some oks;
-            harmony_matrix_ok =
-              Some (PerNote (List.init n (fun _ -> true)));
+            harmony_matrix_ok = Some (PerNote (List.init n (fun _ -> true)));
           } )
     | HarInterval { tr; matrix; forbidden; phase; seen_since_reset } ->
         let vs, oks, matrix_oks, phase', seen' =
@@ -908,7 +1050,13 @@ let resolve_harmony (states : continuing_state) (proto : proto) :
             states with
             har_state =
               HarInterval
-                { tr; matrix; forbidden; phase = phase'; seen_since_reset = seen' };
+                {
+                  tr;
+                  matrix;
+                  forbidden;
+                  phase = phase';
+                  seen_since_reset = seen';
+                };
           },
           {
             proto with
@@ -921,14 +1069,38 @@ let resolve_harmony (states : continuing_state) (proto : proto) :
            CHORD (see [resolve_layer_chord_density]) - its value is
            always a whole-group fact, seeded into every sub-pick before
            its own fold runs, never drawn inside [resolve_step] itself. *)
-        assert false)
+        assert false
 
-let resolve_step ~perf_mode ~dyn_mode ~dur_relation ~reg_mode ?max_notes
-    (states, proto) elem =
+let instrument_to_string (Instrument { instrument = InstrumentName n; _ }) = n
+let entrydelay_to_string (Entrydelay ed) = Printf.sprintf "%.3f" ed
+let duration_to_string (Duration d) = Printf.sprintf "%.3f" d
+
+(* A short summary, not the full pitch range - good enough to label a GROUP
+   repetition's element in a debug event; the range itself is static formula
+   content the debug stream deliberately avoids repeating (see
+   "manuals and notes/debug_output.md"'s "avoid just repeating the same
+   static information for each parameter"). *)
+let register_to_string = function
+  | PercussionRegister -> "percussion"
+  | PitchRegister _ -> "pitched"
+
+(* Reports [restricted_by] (from one of the [*_pred_from] functions above) as
+   a [Restriction] event when non-empty - i.e. only when this draw is
+   actually conditioned on something, never for an unconstrained one. *)
+let emit_restriction ~(ctx : Debug_log.context) restricted_by =
+  if restricted_by <> [] then
+    Debug_log.emit (fun () -> Debug_log.Restriction { ctx; restricted_by })
+
+let resolve_step ~(ctx : Debug_log.context) ~perf_mode ~dyn_mode ~dur_relation
+    ~reg_mode ?max_notes (states, proto) elem =
   match elem with
   | Ins ->
+      let ctx = { ctx with Debug_log.param = PIns } in
+      let pred, restricted_by = ins_pred_from proto in
+      emit_restriction ~ctx restricted_by;
       let v, instr_state' =
-        sel_sample_pred (ins_pred_from proto) states.instr_state
+        sel_sample_pred_debug ~ctx ~to_string:instrument_to_string pred
+          states.instr_state
       in
       let (Instrument { chordsize = Chordsize { minsize; maxsize }; _ }) = v in
       let n_raw =
@@ -939,6 +1111,7 @@ let resolve_step ~perf_mode ~dyn_mode ~dur_relation ~reg_mode ?max_notes
       ( { states with instr_state = instr_state' },
         { proto with instrument = Some v; nr_of_notes = Some n } )
   | Ent -> (
+      let ctx = { ctx with Debug_log.param = PEnt } in
       match (dur_relation, proto.duration) with
       | DurEqualsEntry, Some (Shared (Duration d)) ->
           (states, { proto with entrydelay = Some (Entrydelay d) })
@@ -948,11 +1121,15 @@ let resolve_step ~perf_mode ~dyn_mode ~dur_relation ~reg_mode ?max_notes
              instrument can sustain as a duration, rather than drawing freely
              and clamping afterwards, which would silently break the
              "duration = entry delay" invariant this mode promises. *)
-          let pred (Entrydelay ed) =
+          let dur_pred, restricted_by =
             dur_pred_from ~instr_arr:states.instr_arr proto dur_relation
-              (Duration ed)
           in
-          let v, ed_state' = sel_sample_pred_tagged pred states.ed_state in
+          emit_restriction ~ctx restricted_by;
+          let pred (Entrydelay ed) = dur_pred (Duration ed) in
+          let v, ed_state' =
+            sel_sample_pred_tagged_debug ~ctx ~to_string:entrydelay_to_string
+              pred states.ed_state
+          in
           let ok = result_ok v in
           ( { states with ed_state = ed_state' },
             {
@@ -961,11 +1138,16 @@ let resolve_step ~perf_mode ~dyn_mode ~dur_relation ~reg_mode ?max_notes
               duration_ok = Some (Shared ok);
             } )
       | _ ->
-          let pred = ed_pred_from proto dur_relation in
-          let v, ed_state' = sel_sample_pred pred states.ed_state in
+          let pred, restricted_by = ed_pred_from proto dur_relation in
+          emit_restriction ~ctx restricted_by;
+          let v, ed_state' =
+            sel_sample_pred_debug ~ctx ~to_string:entrydelay_to_string pred
+              states.ed_state
+          in
           ( { states with ed_state = ed_state' },
             { proto with entrydelay = Some v } ))
   | Dur -> (
+      let ctx = { ctx with Debug_log.param = PDur } in
       match (dur_relation, proto.entrydelay) with
       | DurEqualsEntry, Some (Entrydelay ed) ->
           (* [Ent] already constrained this draw to the instrument's duration
@@ -981,63 +1163,75 @@ let resolve_step ~perf_mode ~dyn_mode ~dur_relation ~reg_mode ?max_notes
             } )
       | _ ->
           let mode = duration_note_mode dur_relation in
-          let pred =
+          let pred, restricted_by =
             dur_pred_from ~instr_arr:states.instr_arr proto dur_relation
           in
+          emit_restriction ~ctx restricted_by;
           let v, oks, dur_state' =
-            resolve_note_param_tagged mode proto.nr_of_notes pred
-              states.dur_state
+            resolve_note_param_tagged ~ctx ~to_string:duration_to_string mode
+              proto.nr_of_notes pred states.dur_state
           in
           ( { states with dur_state = dur_state' },
             { proto with duration = Some v; duration_ok = Some oks } ))
   | Per ->
-      let pred =
+      let ctx = { ctx with Debug_log.param = PPer } in
+      let pred, restricted_by =
         mode_pred_from_instrument ~instr_arr:states.instr_arr
           ~mem:Performance_modes.mem proto.instrument
           (fun (Instrument { performance; _ }) -> performance)
       in
+      emit_restriction ~ctx restricted_by;
       let v, perf_state' =
-        resolve_note_param perf_mode proto.nr_of_notes pred states.perf_state
+        resolve_note_param ~ctx ~to_string:Performance.to_string perf_mode
+          proto.nr_of_notes pred states.perf_state
       in
       ( { states with perf_state = perf_state' },
         { proto with performance = Some v } )
   | Dyn ->
-      let pred =
+      let ctx = { ctx with Debug_log.param = PDyn } in
+      let pred, restricted_by =
         mode_pred_from_instrument ~instr_arr:states.instr_arr
           ~mem:Dynamic_modes.mem proto.instrument
           (fun (Instrument { dynamics; _ }) -> dynamics)
       in
+      emit_restriction ~ctx restricted_by;
       let v, dyn_state' =
-        resolve_note_param dyn_mode proto.nr_of_notes pred states.dyn_state
+        resolve_note_param ~ctx ~to_string:Dynamic.to_string dyn_mode
+          proto.nr_of_notes pred states.dyn_state
       in
       ({ states with dyn_state = dyn_state' }, { proto with dynamic = Some v })
   | Reg ->
-      let pred = reg_pred_from ~instr_arr:states.instr_arr proto in
+      let ctx = { ctx with Debug_log.param = PReg } in
+      let pred, restricted_by = reg_pred_from ~instr_arr:states.instr_arr proto in
+      emit_restriction ~ctx restricted_by;
       let v, oks, reg_state' =
-        resolve_note_param_tagged reg_mode proto.nr_of_notes pred
-          states.reg_state
+        resolve_note_param_tagged ~ctx ~to_string:register_to_string reg_mode
+          proto.nr_of_notes pred states.reg_state
       in
       ( { states with reg_state = reg_state' },
         { proto with register = Some v; register_ok = Some oks } )
   | Har -> resolve_harmony states proto
 
-let resolve_entry ?(start = empty_proto) ~hierarchy ~perf_mode ~dyn_mode
+let resolve_entry ?(start = empty_proto) ~ctx ~hierarchy ~perf_mode ~dyn_mode
     ~dur_relation ~reg_mode ?max_notes states =
   List.fold_left
-    (resolve_step ~perf_mode ~dyn_mode ~dur_relation ~reg_mode ?max_notes)
+    (resolve_step ~ctx ~perf_mode ~dyn_mode ~dur_relation ~reg_mode ?max_notes)
     (states, start) hierarchy
 
 (** With [InstrumentDensity], every entry is its own timepoint - one instrument,
     one already-resolved entry delay. Each is wrapped as a singleton group so
     step 2 can treat both density modes uniformly. *)
-let resolve_layer_instrument_density ~n_events ~hierarchy ~perf_mode ~dyn_mode
-    ~dur_relation ~reg_mode states0 =
+let resolve_layer_instrument_density ~variant ~layer ~n_events ~hierarchy
+    ~perf_mode ~dyn_mode ~dur_relation ~reg_mode states0 =
   let final_states, groups =
-    List.init n_events (fun _ -> ())
+    List.init n_events (fun i -> i)
     |> List.fold_left
-         (fun (states, acc) () ->
+         (fun (states, acc) seq ->
+           let ctx : Debug_log.context =
+             { variant; layer; seq = Resolved seq; param = PIns }
+           in
            let states', proto =
-             resolve_entry ~hierarchy ~perf_mode ~dyn_mode ~dur_relation
+             resolve_entry ~ctx ~hierarchy ~perf_mode ~dyn_mode ~dur_relation
                ~reg_mode states
            in
            let ed =
@@ -1074,7 +1268,13 @@ type chord_seeds = {
 }
 
 let no_chord_seeds =
-  { cs_perf = None; cs_dyn = None; cs_reg = None; cs_dur = None; cs_harmony_seed = None }
+  {
+    cs_perf = None;
+    cs_dyn = None;
+    cs_reg = None;
+    cs_dur = None;
+    cs_harmony_seed = None;
+  }
 
 (** With [Autonomous] density, each timepoint samples a target density and keeps
     resolving sub-picks (each independently picking its own instrument,
@@ -1100,10 +1300,10 @@ let no_chord_seeds =
     conservative "must satisfy every one" choice [resolve_step] already makes
     for a single proto's own per-note values).
 
-    Entry delay's own before/after split is the simplest case, and the
-    template every other extraction below follows: it's governed by wherever
-    the composer put [Ent] relative to [Dur] ([ent_before_dur]), using the
-    exact same predicates [resolve_step] already uses for a single sub-pick
+    Entry delay's own before/after split is the simplest case, and the template
+    every other extraction below follows: it's governed by wherever the composer
+    put [Ent] relative to [Dur] ([ent_before_dur]), using the exact same
+    predicates [resolve_step] already uses for a single sub-pick
     ([dur_pred_from]/[ed_pred_from]) - just fed a value that's fixed for the
     whole group instead of one proto:
     - [Ent] before [Dur]: the group's entry delay is drawn once, up front, and
@@ -1126,23 +1326,22 @@ let no_chord_seeds =
     [Per]/[Dyn] each depend on nothing but the instrument, so their own
     extraction ([fill_group_with_note_modes]) is a direct copy of the same
     before/after-[Ins] idea. [Reg] depends on the instrument *and* on harmony -
-    but harmony is always per-note (never extracted, EMR-3 entry 19 has no
-    "per chord" reading) and [Ins] always precedes [Har] (enforced at
-    formula-load time), so by the time a sub-pick's own fold reaches [Har] (if
-    it's still in [subpick_hierarchy]), [Ins] has necessarily already run for
-    that sub-pick too - meaning "before or after [Ins]" is still the only
-    question that matters for [Reg]'s own extraction: either nothing has run
-    for anyone yet (seed forward, unconstrained by harmony, letting every
-    sub-pick's own harmony draw agree with the now-fixed register instead), or
-    the *entire* group - including every note's harmony - is already known
-    (aggregate over both). [Dur] (when [DurIndependent]/[DurShorterThanEntry]
-    and [PerChord]) has the same [Ins] dependency as [Per]/[Dyn], plus entry
-    delay's own dependency - so its extraction combines both splits, and stays
-    inline in [fill_group] rather than joining [fill_group_with_note_modes],
-    since it needs branch-local knowledge of whether entry delay is already
-    fixed. *)
-let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
-    ~dur_relation ~reg_mode ~low ~high ~selection_principle states0 =
+    but harmony is always per-note (never extracted, EMR-3 entry 19 has no "per
+    chord" reading) and [Ins] always precedes [Har] (enforced at formula-load
+    time), so by the time a sub-pick's own fold reaches [Har] (if it's still in
+    [subpick_hierarchy]), [Ins] has necessarily already run for that sub-pick
+    too - meaning "before or after [Ins]" is still the only question that
+    matters for [Reg]'s own extraction: either nothing has run for anyone yet
+    (seed forward, unconstrained by harmony, letting every sub-pick's own
+    harmony draw agree with the now-fixed register instead), or the *entire*
+    group - including every note's harmony - is already known (aggregate over
+    both). [Dur] (when [DurIndependent]/[DurShorterThanEntry] and [PerChord])
+    has the same [Ins] dependency as [Per]/[Dyn], plus entry delay's own
+    dependency - so its extraction combines both splits, and stays inline in
+    [fill_group] rather than joining [fill_group_with_note_modes], since it
+    needs branch-local knowledge of whether entry delay is already fixed. *)
+let resolve_layer_autonomous ~variant ~layer ~n_events ~hierarchy ~perf_mode
+    ~dyn_mode ~dur_relation ~reg_mode ~low ~high ~selection_principle states0 =
   let dens_arr =
     Array.init (high - low + 1) (fun i -> low + i) |> elements_of_array
   in
@@ -1160,7 +1359,9 @@ let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
   (* [DurEqualsEntry] is always [PerChord] already and already fully handled
      below (the drawn value becomes the group's one entry delay directly) -
      nothing further to extract for it. *)
-  let dur_extracted = dur_relation <> DurEqualsEntry && dur_note_mode = PerChord in
+  let dur_extracted =
+    dur_relation <> DurEqualsEntry && dur_note_mode = PerChord
+  in
   let perf_extracted = perf_mode = PerChord in
   let dyn_extracted = dyn_mode = PerChord in
   let reg_extracted = reg_mode = PerChord in
@@ -1176,7 +1377,7 @@ let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
     |> List.filter (fun e -> not (e = Reg && reg_extracted))
     |> List.filter (fun e -> not (e = Dur && dur_extracted))
   in
-  let resolve_subpick ?seed_entrydelay ?max_notes ~seeds states =
+  let resolve_subpick ~ctx ?seed_entrydelay ?max_notes ~seeds states =
     let start =
       {
         empty_proto with
@@ -1189,7 +1390,7 @@ let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
         duration_ok = Option.map snd seeds.cs_dur;
       }
     in
-    resolve_entry ~start ~hierarchy:subpick_hierarchy ~perf_mode ~dyn_mode
+    resolve_entry ~ctx ~start ~hierarchy:subpick_hierarchy ~perf_mode ~dyn_mode
       ~dur_relation ~reg_mode ?max_notes states
   in
   (* Every sub-pick's own instrument, once the group is fully resolved -
@@ -1225,7 +1426,7 @@ let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
      sub-pick from what's fixed so far and the sub-pick just resolved - used
      only by [DurEqualsEntry]'s "settle from the first sub-pick" case below,
      a no-op everywhere else. *)
-  let fill_subpicks states target ~seed ~next_seed ~seeds =
+  let fill_subpicks ~ctx states target ~seed ~next_seed ~seeds =
     (* [used] carries every instrument already picked earlier in this same
        chord, so a later pick that lands on one of them - the orchestra
        running out of distinct instruments before the target density is
@@ -1234,8 +1435,8 @@ let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
        repeated instrument is provided with a comment"). *)
     let rec loop states total used acc settled =
       let states', proto =
-        resolve_subpick ?seed_entrydelay:settled ~max_notes:(target - total)
-          ~seeds states
+        resolve_subpick ~ctx ?seed_entrydelay:settled
+          ~max_notes:(target - total) ~seeds states
       in
       let picked =
         match proto.instrument with
@@ -1269,7 +1470,7 @@ let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
      [dur_pred_from] exactly as a single sub-pick's own [Dur] step would,
      just fed a placeholder proto with only [entrydelay] (maybe) set. *)
   let draw_duration_before ~ed_opt states =
-    let pred =
+    let pred, _ =
       dur_pred_from ~instr_arr:states.instr_arr
         { empty_proto with entrydelay = ed_opt }
         dur_relation
@@ -1333,14 +1534,15 @@ let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
      Duration's own extraction (when applicable) is handled inline in each
      branch instead, since - unlike the other three - it needs to know
      locally whether entry delay is already fixed. *)
-  let fill_group ~seeds states target =
+  let fill_group ~ctx ~seeds states target =
     match (dur_relation, ent_before_dur) with
     | DurEqualsEntry, true ->
         (* the drawn value becomes every sub-pick's duration verbatim (below),
            so - exactly like the single-sub-pick case this generalizes - it
            must itself be achievable as *some* instrument's duration. *)
         let pred (Entrydelay ed) =
-          dur_pred_from ~instr_arr:states.instr_arr empty_proto dur_relation
+          fst
+            (dur_pred_from ~instr_arr:states.instr_arr empty_proto dur_relation)
             (Duration ed)
         in
         let v, ed_state' = sel_sample_pred_tagged pred states.ed_state in
@@ -1348,7 +1550,7 @@ let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
         let ed = get_value v in
         let states = { states with ed_state = ed_state' } in
         let _, group, states' =
-          fill_subpicks states target ~seed:(Some ed) ~next_seed:keep_seed
+          fill_subpicks ~ctx states target ~seed:(Some ed) ~next_seed:keep_seed
             ~seeds
         in
         (ed, List.map (stamp_ok ok) group, states')
@@ -1362,7 +1564,7 @@ let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
               | _ -> None)
         in
         let settled, group, states' =
-          fill_subpicks states target ~seed:None ~next_seed ~seeds
+          fill_subpicks ~ctx states target ~seed:None ~next_seed ~seeds
         in
         (* [duration_note_mode DurEqualsEntry] is always [PerChord], so the
            first sub-pick always settles [settled] to [Some _] via [next_seed]
@@ -1382,15 +1584,17 @@ let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
         let ed = get_value v in
         let states = { states with ed_state = ed_state' } in
         if dur_extracted && dur_before_ins then
-          let states, dur_seed = draw_duration_before ~ed_opt:(Some ed) states in
+          let states, dur_seed =
+            draw_duration_before ~ed_opt:(Some ed) states
+          in
           let _, group, states' =
-            fill_subpicks states target ~seed:(Some ed) ~next_seed:keep_seed
+            fill_subpicks ~ctx states target ~seed:(Some ed) ~next_seed:keep_seed
               ~seeds:{ seeds with cs_dur = dur_seed }
           in
           (ed, group, states')
         else
           let _, group, states' =
-            fill_subpicks states target ~seed:(Some ed) ~next_seed:keep_seed
+            fill_subpicks ~ctx states target ~seed:(Some ed) ~next_seed:keep_seed
               ~seeds
           in
           if dur_extracted then
@@ -1403,16 +1607,17 @@ let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
         if dur_extracted && dur_before_ins then
           let states, dur_seed = draw_duration_before ~ed_opt:None states in
           let _, group, states' =
-            fill_subpicks states target ~seed:None ~next_seed:keep_seed
+            fill_subpicks ~ctx states target ~seed:None ~next_seed:keep_seed
               ~seeds:{ seeds with cs_dur = dur_seed }
           in
           finish_with_computed_entrydelay group states'
         else
           let _, group, states' =
-            fill_subpicks states target ~seed:None ~next_seed:keep_seed ~seeds
+            fill_subpicks ~ctx states target ~seed:None ~next_seed:keep_seed ~seeds
           in
           let group, states' =
-            if dur_extracted then stamp_duration_after ~ed_opt:None group states'
+            if dur_extracted then
+              stamp_duration_after ~ed_opt:None group states'
             else (group, states')
           in
           finish_with_computed_entrydelay group states'
@@ -1443,10 +1648,10 @@ let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
        all; only afterwards is one value drawn, constrained to agree with
        every picked instrument (and, for [Reg], every already-resolved
        harmony value too), and stamped onto every proto in the group. *)
-  let fill_group_with_note_modes states target =
+  let fill_group_with_note_modes ~ctx states target =
     let states, perf_seed =
       if perf_extracted && perf_before_ins then
-        let pred =
+        let pred, _ =
           mode_pred_from_instrument ~instr_arr:states.instr_arr
             ~mem:Performance_modes.mem None
             (fun (Instrument { performance; _ }) -> performance)
@@ -1457,10 +1662,10 @@ let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
     in
     let states, dyn_seed =
       if dyn_extracted && dyn_before_ins then
-        let pred =
+        let pred, _ =
           mode_pred_from_instrument ~instr_arr:states.instr_arr
-            ~mem:Dynamic_modes.mem None
-            (fun (Instrument { dynamics; _ }) -> dynamics)
+            ~mem:Dynamic_modes.mem None (fun (Instrument { dynamics; _ }) ->
+              dynamics)
         in
         let v, dyn_state' = sel_sample_pred pred states.dyn_state in
         ({ states with dyn_state = dyn_state' }, Some (Shared v))
@@ -1468,18 +1673,22 @@ let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
     in
     let states, reg_seed =
       if reg_extracted && reg_before_ins then
-        let pred = reg_pred_from ~instr_arr:states.instr_arr empty_proto in
+        let pred, _ = reg_pred_from ~instr_arr:states.instr_arr empty_proto in
         let v, reg_state' = sel_sample_pred_tagged pred states.reg_state in
         let ok = result_ok v in
         let r = get_value v in
-        ( { states with reg_state = reg_state' },
-          Some (Shared r, Shared ok) )
+        ({ states with reg_state = reg_state' }, Some (Shared r, Shared ok))
       else (states, None)
     in
     let seeds =
-      { no_chord_seeds with cs_perf = perf_seed; cs_dyn = dyn_seed; cs_reg = reg_seed }
+      {
+        no_chord_seeds with
+        cs_perf = perf_seed;
+        cs_dyn = dyn_seed;
+        cs_reg = reg_seed;
+      }
     in
-    let ed, group, states' = fill_group ~seeds states target in
+    let ed, group, states' = fill_group ~ctx ~seeds states target in
     let group, states' =
       if perf_extracted && not perf_before_ins then
         let pred v =
@@ -1497,7 +1706,8 @@ let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
       if dyn_extracted && not dyn_before_ins then
         let pred v =
           List.for_all
-            (fun (Instrument { dynamics = modes; _ }) -> Dynamic_modes.mem v modes)
+            (fun (Instrument { dynamics = modes; _ }) ->
+              Dynamic_modes.mem v modes)
             (instruments_of group)
         in
         let v, dyn_state' = sel_sample_pred pred states'.dyn_state in
@@ -1517,12 +1727,12 @@ let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
           let harmony_ok =
             group
             |> List.concat_map (fun p ->
-                   match p.harmony with
-                   | Some (PerNote hs) -> hs
-                   | Some (Shared h) -> [ h ]
-                   | None -> [])
+                match p.harmony with
+                | Some (PerNote hs) -> hs
+                | Some (Shared h) -> [ h ]
+                | None -> [])
             |> List.for_all (fun h ->
-                   register_is_percussion v = row_value_is_percussion h)
+                register_is_percussion v = row_value_is_percussion h)
           in
           instr_ok && harmony_ok
         in
@@ -1530,7 +1740,12 @@ let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
         let ok = result_ok v in
         let r = get_value v in
         ( List.map
-            (fun p -> { p with register = Some (Shared r); register_ok = Some (Shared ok) })
+            (fun p ->
+              {
+                p with
+                register = Some (Shared r);
+                register_ok = Some (Shared ok);
+              })
             group,
           { states' with reg_state = reg_state' } )
       else (group, states')
@@ -1538,11 +1753,18 @@ let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
     (ed, group, states')
   in
   let final_states, _, groups =
-    List.init n_events (fun _ -> ())
+    List.init n_events (fun i -> i)
     |> List.fold_left
-         (fun (states, dens_state, acc) () ->
-           let target, dens_state' = sel_sample dens_state in
-           let ed, group, states' = fill_group_with_note_modes states target in
+         (fun (states, dens_state, acc) seq ->
+           let ctx : Debug_log.context =
+             { variant; layer; seq = Resolved seq; param = PDensity }
+           in
+           let target, dens_state' =
+             sel_sample_debug ~ctx ~to_string:string_of_int dens_state
+           in
+           let ed, group, states' =
+             fill_group_with_note_modes ~ctx states target
+           in
            ( advance_all_windows states',
              sel_advance_window dens_state',
              (ed, group) :: acc ))
@@ -1574,8 +1796,8 @@ let resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
    predicates fire correctly) *before* its own fold runs, then overwritten
    with the real, sliced-from-the-drawn-chord per-note values by
    [assign_harmony] once every sub-pick's [nr_of_notes] is final. *)
-let resolve_layer_chord_density ~n_events ~hierarchy ~perf_mode ~dyn_mode
-    ~dur_relation ~reg_mode states0 =
+let resolve_layer_chord_density ~variant ~layer ~n_events ~hierarchy
+    ~perf_mode ~dyn_mode ~dur_relation ~reg_mode states0 =
   let index_of x =
     let rec go i = function
       | [] -> assert false
@@ -1603,7 +1825,7 @@ let resolve_layer_chord_density ~n_events ~hierarchy ~perf_mode ~dyn_mode
     |> List.filter (fun e -> not (e = Reg && reg_extracted))
     |> List.filter (fun e -> not (e = Dur && dur_extracted))
   in
-  let resolve_subpick ?seed_entrydelay ?max_notes ~seeds states =
+  let resolve_subpick ~ctx ?seed_entrydelay ?max_notes ~seeds states =
     let start =
       {
         empty_proto with
@@ -1617,7 +1839,7 @@ let resolve_layer_chord_density ~n_events ~hierarchy ~perf_mode ~dyn_mode
         harmony = seeds.cs_harmony_seed;
       }
     in
-    resolve_entry ~start ~hierarchy:subpick_hierarchy ~perf_mode ~dyn_mode
+    resolve_entry ~ctx ~start ~hierarchy:subpick_hierarchy ~perf_mode ~dyn_mode
       ~dur_relation ~reg_mode ?max_notes states
   in
   let instruments_of group =
@@ -1641,11 +1863,11 @@ let resolve_layer_chord_density ~n_events ~hierarchy ~perf_mode ~dyn_mode
     else { proto with duration_ok = Option.map force_not_ok proto.duration_ok }
   in
   let stamp_ok ok proto = { proto with duration_ok = Some (Shared ok) } in
-  let fill_subpicks states target ~seed ~next_seed ~seeds =
+  let fill_subpicks ~ctx states target ~seed ~next_seed ~seeds =
     let rec loop states total used acc settled =
       let states', proto =
-        resolve_subpick ?seed_entrydelay:settled ~max_notes:(target - total)
-          ~seeds states
+        resolve_subpick ~ctx ?seed_entrydelay:settled
+          ~max_notes:(target - total) ~seeds states
       in
       let picked =
         match proto.instrument with
@@ -1680,23 +1902,24 @@ let resolve_layer_chord_density ~n_events ~hierarchy ~perf_mode ~dyn_mode
      if no instrument of that tone type exists at all - harmless once
      trimmed to zero notes, but wasteful and pollutes [instrument_repeated]
      bookkeeping for no benefit). *)
-  let fill_subpicks_split states (percussion_n, pitched_n) ~seed ~next_seed
-      ~seeds1 ~seeds2 =
+  let fill_subpicks_split ~ctx states (percussion_n, pitched_n) ~seed
+      ~next_seed ~seeds1 ~seeds2 =
     let settled1, perc_group, states1 =
       if percussion_n <= 0 then (seed, [], states)
-      else fill_subpicks states percussion_n ~seed ~next_seed ~seeds:seeds1
+      else
+        fill_subpicks ~ctx states percussion_n ~seed ~next_seed ~seeds:seeds1
     in
     let settled2, pitched_group, states2 =
       if pitched_n <= 0 then (settled1, [], states1)
       else
-        fill_subpicks states1 pitched_n ~seed:settled1 ~next_seed
+        fill_subpicks ~ctx states1 pitched_n ~seed:settled1 ~next_seed
           ~seeds:seeds2
     in
     (settled2, perc_group @ pitched_group, states2)
   in
   let keep_seed settled _ = settled in
   let draw_duration_before ~ed_opt states =
-    let pred =
+    let pred, _ =
       dur_pred_from ~instr_arr:states.instr_arr
         { empty_proto with entrydelay = ed_opt }
         dur_relation
@@ -1744,11 +1967,12 @@ let resolve_layer_chord_density ~n_events ~hierarchy ~perf_mode ~dyn_mode
     let group = List.map (mark_group_ok ok) group in
     (ed, group, { states' with ed_state = ed_state' })
   in
-  let fill_group ~seeds1 ~seeds2 states split =
+  let fill_group ~ctx ~seeds1 ~seeds2 states split =
     match (dur_relation, ent_before_dur) with
     | DurEqualsEntry, true ->
         let pred (Entrydelay ed) =
-          dur_pred_from ~instr_arr:states.instr_arr empty_proto dur_relation
+          fst
+            (dur_pred_from ~instr_arr:states.instr_arr empty_proto dur_relation)
             (Duration ed)
         in
         let v, ed_state' = sel_sample_pred_tagged pred states.ed_state in
@@ -1756,7 +1980,7 @@ let resolve_layer_chord_density ~n_events ~hierarchy ~perf_mode ~dyn_mode
         let ed = get_value v in
         let states = { states with ed_state = ed_state' } in
         let _, group, states' =
-          fill_subpicks_split states split ~seed:(Some ed) ~next_seed:keep_seed
+          fill_subpicks_split ~ctx states split ~seed:(Some ed) ~next_seed:keep_seed
             ~seeds1 ~seeds2
         in
         (ed, List.map (stamp_ok ok) group, states')
@@ -1770,8 +1994,7 @@ let resolve_layer_chord_density ~n_events ~hierarchy ~perf_mode ~dyn_mode
               | _ -> None)
         in
         let settled, group, states' =
-          fill_subpicks_split states split ~seed:None ~next_seed ~seeds1
-            ~seeds2
+          fill_subpicks_split ~ctx states split ~seed:None ~next_seed ~seeds1 ~seeds2
         in
         (* Unlike [resolve_layer_autonomous] (guaranteed at least one
            sub-pick via [low >= 1] on [Autonomous]'s own density range), a
@@ -1795,9 +2018,11 @@ let resolve_layer_chord_density ~n_events ~hierarchy ~perf_mode ~dyn_mode
         let ed = get_value v in
         let states = { states with ed_state = ed_state' } in
         if dur_extracted && dur_before_ins then
-          let states, dur_seed = draw_duration_before ~ed_opt:(Some ed) states in
+          let states, dur_seed =
+            draw_duration_before ~ed_opt:(Some ed) states
+          in
           let _, group, states' =
-            fill_subpicks_split states split ~seed:(Some ed)
+            fill_subpicks_split ~ctx states split ~seed:(Some ed)
               ~next_seed:keep_seed
               ~seeds1:{ seeds1 with cs_dur = dur_seed }
               ~seeds2:{ seeds2 with cs_dur = dur_seed }
@@ -1805,7 +2030,7 @@ let resolve_layer_chord_density ~n_events ~hierarchy ~perf_mode ~dyn_mode
           (ed, group, states')
         else
           let _, group, states' =
-            fill_subpicks_split states split ~seed:(Some ed)
+            fill_subpicks_split ~ctx states split ~seed:(Some ed)
               ~next_seed:keep_seed ~seeds1 ~seeds2
           in
           if dur_extracted then
@@ -1818,26 +2043,27 @@ let resolve_layer_chord_density ~n_events ~hierarchy ~perf_mode ~dyn_mode
         if dur_extracted && dur_before_ins then
           let states, dur_seed = draw_duration_before ~ed_opt:None states in
           let _, group, states' =
-            fill_subpicks_split states split ~seed:None ~next_seed:keep_seed
+            fill_subpicks_split ~ctx states split ~seed:None ~next_seed:keep_seed
               ~seeds1:{ seeds1 with cs_dur = dur_seed }
               ~seeds2:{ seeds2 with cs_dur = dur_seed }
           in
           finish_with_computed_entrydelay group states'
         else
           let _, group, states' =
-            fill_subpicks_split states split ~seed:None ~next_seed:keep_seed
+            fill_subpicks_split ~ctx states split ~seed:None ~next_seed:keep_seed
               ~seeds1 ~seeds2
           in
           let group, states' =
-            if dur_extracted then stamp_duration_after ~ed_opt:None group states'
+            if dur_extracted then
+              stamp_duration_after ~ed_opt:None group states'
             else (group, states')
           in
           finish_with_computed_entrydelay group states'
   in
-  let fill_group_with_note_modes states (percussion_n, pitched_n) =
+  let fill_group_with_note_modes ~ctx states (percussion_n, pitched_n) =
     let states, perf_seed =
       if perf_extracted && perf_before_ins then
-        let pred =
+        let pred, _ =
           mode_pred_from_instrument ~instr_arr:states.instr_arr
             ~mem:Performance_modes.mem None
             (fun (Instrument { performance; _ }) -> performance)
@@ -1848,10 +2074,10 @@ let resolve_layer_chord_density ~n_events ~hierarchy ~perf_mode ~dyn_mode
     in
     let states, dyn_seed =
       if dyn_extracted && dyn_before_ins then
-        let pred =
+        let pred, _ =
           mode_pred_from_instrument ~instr_arr:states.instr_arr
-            ~mem:Dynamic_modes.mem None
-            (fun (Instrument { dynamics; _ }) -> dynamics)
+            ~mem:Dynamic_modes.mem None (fun (Instrument { dynamics; _ }) ->
+              dynamics)
         in
         let v, dyn_state' = sel_sample_pred pred states.dyn_state in
         ({ states with dyn_state = dyn_state' }, Some (Shared v))
@@ -1865,7 +2091,7 @@ let resolve_layer_chord_density ~n_events ~hierarchy ~perf_mode ~dyn_mode
     let states, perc_reg_seed, pitched_reg_seed =
       if reg_extracted && reg_before_ins then
         let draw_for harmony_seed states =
-          let pred =
+          let pred, _ =
             reg_pred_from ~instr_arr:states.instr_arr
               { empty_proto with harmony = Some (Shared harmony_seed) }
           in
@@ -1904,7 +2130,7 @@ let resolve_layer_chord_density ~n_events ~hierarchy ~perf_mode ~dyn_mode
       }
     in
     let ed, group, states' =
-      fill_group ~seeds1 ~seeds2 states (percussion_n, pitched_n)
+      fill_group ~ctx ~seeds1 ~seeds2 states (percussion_n, pitched_n)
     in
     let group, states' =
       if perf_extracted && not perf_before_ins then
@@ -1923,7 +2149,8 @@ let resolve_layer_chord_density ~n_events ~hierarchy ~perf_mode ~dyn_mode
       if dyn_extracted && not dyn_before_ins then
         let pred v =
           List.for_all
-            (fun (Instrument { dynamics = modes; _ }) -> Dynamic_modes.mem v modes)
+            (fun (Instrument { dynamics = modes; _ }) ->
+              Dynamic_modes.mem v modes)
             (instruments_of group)
         in
         let v, dyn_state' = sel_sample_pred pred states'.dyn_state in
@@ -1934,7 +2161,9 @@ let resolve_layer_chord_density ~n_events ~hierarchy ~perf_mode ~dyn_mode
     let group, states' =
       if reg_extracted && not reg_before_ins then
         let is_percussion_proto p =
-          match p.harmony with Some (Shared RowPercussion) -> true | _ -> false
+          match p.harmony with
+          | Some (Shared RowPercussion) -> true
+          | _ -> false
         in
         let perc_group, pitched_group =
           List.partition is_percussion_proto group
@@ -1957,7 +2186,11 @@ let resolve_layer_chord_density ~n_events ~hierarchy ~perf_mode ~dyn_mode
               let r = get_value v in
               ( List.map
                   (fun p ->
-                    { p with register = Some (Shared r); register_ok = Some (Shared ok) })
+                    {
+                      p with
+                      register = Some (Shared r);
+                      register_ok = Some (Shared ok);
+                    })
                   sub_group,
                 { states' with reg_state = reg_state' } )
         in
@@ -1970,7 +2203,9 @@ let resolve_layer_chord_density ~n_events ~hierarchy ~perf_mode ~dyn_mode
   in
   let split_chord (Chord arr) =
     let tones = Array.to_list arr in
-    let percussion_n = List.length (List.filter row_value_is_percussion tones) in
+    let percussion_n =
+      List.length (List.filter row_value_is_percussion tones)
+    in
     let pitched_tones =
       List.filter (fun v -> not (row_value_is_percussion v)) tones
     in
@@ -1997,7 +2232,8 @@ let resolve_layer_chord_density ~n_events ~hierarchy ~perf_mode ~dyn_mode
             | _ -> false
           in
           let vals, remaining' =
-            if is_percussion then (List.init n (fun _ -> RowPercussion), remaining)
+            if is_percussion then
+              (List.init n (fun _ -> RowPercussion), remaining)
             else
               let rec take acc n = function
                 | l when n = 0 -> (List.rev acc, l)
@@ -2017,14 +2253,17 @@ let resolve_layer_chord_density ~n_events ~hierarchy ~perf_mode ~dyn_mode
     go pitched_tones group
   in
   let final_states, groups =
-    List.init n_events (fun _ -> ())
+    List.init n_events (fun i -> i)
     |> List.fold_left
-         (fun (states, acc) () ->
-           let chord, har_state' = chord_next states.har_state in
+         (fun (states, acc) seq ->
+           let ctx : Debug_log.context =
+             { variant; layer; seq = Resolved seq; param = PChordOrder }
+           in
+           let chord, har_state' = chord_next ~ctx states.har_state in
            let states = { states with har_state = har_state' } in
            let percussion_n, pitched_tones = split_chord chord in
            let ed, group, states' =
-             fill_group_with_note_modes states
+             fill_group_with_note_modes ~ctx states
                (percussion_n, List.length pitched_tones)
            in
            let group = assign_harmony pitched_tones group in
@@ -2077,6 +2316,11 @@ let notes_of_proto proto : note list =
         pitch_ok;
         harmony_matrix_ok = value_at har_matrix_ok i;
         instrument_repeated = proto.instrument_repeated;
+        (* Overwritten by [entry_of_group] once every sub-pick's notes are
+           concatenated and this note's real position within the whole
+           chord is known - this placeholder is never observed outside
+           that one function. *)
+        id = Debug_log.placeholder_note_id;
       })
 
 (* [Some v] iff every note in [notes] agrees on [v] - a display convenience
@@ -2097,7 +2341,9 @@ let uniform_value get = function
    unambiguous signal. This is also exactly what a "rest" [common_harmony_group]
    (see [mk_rest_common_harmony_group]) degenerates to once
    [split_by_layer] converts it, so one branch here covers both paths. *)
-let entry_of_group time (Entrydelay ed) (protos : proto list) : entry =
+let entry_of_group ~variant ~layer ~(seq : Debug_log.entry_seq) time
+    (Entrydelay ed) (protos : proto list) : entry =
+  let id = { Debug_log.variant; layer; seq } in
   match protos with
   | [] ->
       {
@@ -2111,12 +2357,14 @@ let entry_of_group time (Entrydelay ed) (protos : proto list) : entry =
         pitch = None;
         instrument_repeated = false;
         is_rest = true;
+        id;
       }
   | _ :: _ ->
       let notes =
         protos
         |> List.concat_map notes_of_proto
-        |> List.map (fun (n : note) -> { n with time })
+        |> List.mapi (fun note_i (n : note) ->
+            { n with time; id = { Debug_log.of_entry = id; note = note_i } })
       in
       {
         time;
@@ -2130,6 +2378,7 @@ let entry_of_group time (Entrydelay ed) (protos : proto list) : entry =
         instrument_repeated =
           List.exists (fun (n : note) -> n.instrument_repeated) notes;
         is_rest = false;
+        id;
       }
 
 (* Pure fold, harmony-independent: sums each group's own (single, shared)
@@ -2150,13 +2399,20 @@ let timed_groups_of (groups : (entrydelay * proto list) list) :
   List.rev timed
 
 (* Harmony-dependent: every proto in [timed] must already be fully resolved
-   (every field [Some]) - see [notes_of_proto]'s asserts. *)
-let entries_of_timed_groups (timed : (float * entrydelay * proto list) list) :
-    entry list =
-  timed |> List.map (fun (t, ed, protos) -> entry_of_group t ed protos)
+   (every field [Some]) - see [notes_of_proto]'s asserts. [seq] (this
+   layer's own position in its pre-rest generation order) is assigned here,
+   once, via the same [List.mapi] index [Debug_log.entry_seq]'s [Resolved]
+   case is built from - it is never recomputed after this, even once REST
+   splices rests in around these entries (see [Debug_log.entry_seq]). *)
+let entries_of_timed_groups ~variant ~layer
+    (timed : (float * entrydelay * proto list) list) : entry list =
+  timed
+  |> List.mapi (fun seq (t, ed, protos) ->
+      entry_of_group ~variant ~layer ~seq:(Debug_log.Resolved seq) t ed protos)
 
-let resolve_times (groups : (entrydelay * proto list) list) : entry list =
-  groups |> timed_groups_of |> entries_of_timed_groups
+let resolve_times ~variant ~layer (groups : (entrydelay * proto list) list) :
+    entry list =
+  groups |> timed_groups_of |> entries_of_timed_groups ~variant ~layer
 
 (* ---- REST (EMR-3 7.4) ----
    A standalone post-processing pass, run once per layer after every other
@@ -2197,9 +2453,9 @@ let rest_offset_draw ~d1 ~d2 ~variant_duration =
    O(n), even in the degenerate case [d1 = d2 = 0] where the ALEA offset is
    exactly 0 and would otherwise let the same entry satisfy the search
    again forever. *)
-let compute_rest_insertions ~variant_duration ~(rest_mode : rest_mode)
-    ~(targets : rest_target array) (dstate : duration sel_state) :
-    rest_insertion list * duration sel_state =
+let compute_rest_insertions ~variant ~layer ~variant_duration
+    ~(rest_mode : rest_mode) ~(targets : rest_target array)
+    (dstate : duration sel_state) : rest_insertion list * duration sel_state =
   match rest_mode with
   | RestOff -> ([], dstate)
   | RestBeforeSoundEntry { d1; d2 } | RestBeforeGeneralEntry { d1; d2 } ->
@@ -2231,7 +2487,17 @@ let compute_rest_insertions ~variant_duration ~(rest_mode : rest_mode)
           match scan idx running_max with
           | None -> (List.rev insertions, dstate)
           | Some (found_idx, running_max_before_found) ->
-              let (Duration rest_dur), dstate' = sel_draw dstate in
+              let ctx : Debug_log.context =
+                {
+                  variant;
+                  layer;
+                  seq = RestBefore found_idx;
+                  param = Debug_log.PRest;
+                }
+              in
+              let Duration rest_dur, dstate' =
+                sel_draw_debug ~ctx ~to_string:duration_to_string dstate
+              in
               let rest_time = targets.(found_idx).time +. shift in
               let shift' = shift +. rest_dur in
               let running_max' =
@@ -2239,7 +2505,11 @@ let compute_rest_insertions ~variant_duration ~(rest_mode : rest_mode)
                   (targets.(found_idx).sustain_until +. shift')
               in
               let insertion =
-                { before_index = found_idx; rest_time; rest_duration = rest_dur }
+                {
+                  before_index = found_idx;
+                  rest_time;
+                  rest_duration = rest_dur;
+                }
               in
               loop (found_idx + 1) shift' (rest_time +. rest_dur) running_max'
                 (insertion :: insertions) dstate'
@@ -2250,9 +2520,13 @@ let compute_rest_insertions ~variant_duration ~(rest_mode : rest_mode)
    producing the real final list: every element from [elems] carries its
    true shifted time, and each rest sits immediately before the element it
    was found in front of. Generic in ['a] so both adapters below (entry /
-   common_harmony_group) can share it. *)
+   common_harmony_group) can share it. [mk_rest] receives [before_index] so
+   the rest it builds can identify itself as [Debug_log.RestBefore
+   before_index] - the resolved entry it precedes never gets renumbered by
+   this splice (see [Debug_log.entry_seq]), so that reference stays valid
+   forever. *)
 let apply_rest_insertions ~(shift_time : float -> 'a -> 'a)
-    ~(mk_rest : time:float -> duration:float -> 'a)
+    ~(mk_rest : before:int -> time:float -> duration:float -> 'a)
     (insertions : rest_insertion list) (elems : 'a array) : 'a list =
   let n = Array.length elems in
   let rec pass_through i limit shift acc =
@@ -2263,7 +2537,11 @@ let apply_rest_insertions ~(shift_time : float -> 'a -> 'a)
     match insertions with
     | { before_index; rest_time; rest_duration } :: rest ->
         let acc = pass_through idx before_index shift acc in
-        let acc = mk_rest ~time:rest_time ~duration:rest_duration :: acc in
+        let acc =
+          mk_rest ~before:before_index ~time:rest_time
+            ~duration:rest_duration
+          :: acc
+        in
         go before_index (shift +. rest_duration) rest acc
     | [] -> List.rev (pass_through idx n shift acc)
   in
@@ -2295,7 +2573,7 @@ let shift_entry_time shift (e : entry) : entry =
       e.notes |> List.map (fun (n : note) -> { n with time = n.time +. shift });
   }
 
-let mk_rest_entry ~time ~duration : entry =
+let mk_rest_entry ~variant ~layer ~before ~time ~duration : entry =
   {
     time;
     entrydelay = duration;
@@ -2307,15 +2585,16 @@ let mk_rest_entry ~time ~duration : entry =
     pitch = None;
     instrument_repeated = false;
     is_rest = true;
+    id = { Debug_log.variant; layer; seq = Debug_log.RestBefore before };
   }
 
 (* [n] (for a possible TENDENCY window) uses this layer's own current entry
    count as a stand-in - the true rest count is only known after running,
    and the manual already treats TENDENCY as not a sensible REST order
    anyway. *)
-let insert_rests_entries ~variant_duration ~rest_mode ~rest_arr
-    ~rest_principle (continuing : continuing_state) (entries : entry list) :
-    entry list * continuing_state =
+let insert_rests_entries ~variant ~layer ~variant_duration ~rest_mode
+    ~rest_arr ~rest_principle (continuing : continuing_state)
+    (entries : entry list) : entry list * continuing_state =
   match rest_mode with
   | RestOff -> (entries, continuing)
   | RestBeforeSoundEntry _ | RestBeforeGeneralEntry _ ->
@@ -2326,13 +2605,17 @@ let insert_rests_entries ~variant_duration ~rest_mode ~rest_arr
       in
       let targets = entries |> List.map rest_target_of_entry |> Array.of_list in
       let insertions, rest_state' =
-        compute_rest_insertions ~variant_duration ~rest_mode ~targets rest_state
+        compute_rest_insertions ~variant ~layer ~variant_duration ~rest_mode
+          ~targets rest_state
       in
       let entries' =
-        apply_rest_insertions ~shift_time:shift_entry_time ~mk_rest:mk_rest_entry
+        apply_rest_insertions ~shift_time:shift_entry_time
+          ~mk_rest:(mk_rest_entry ~variant ~layer)
           insertions (Array.of_list entries)
       in
-      (entries', { continuing with rest_state = rest_state'; rest_last_arr = rest_arr })
+      ( entries',
+        { continuing with rest_state = rest_state'; rest_last_arr = rest_arr }
+      )
 
 (* Builds [states0] (continuing every parameter's own selection cycle across
    layers exactly as before) and dispatches to the right density's resolver,
@@ -2341,33 +2624,50 @@ let insert_rests_entries ~variant_duration ~rest_mode ~rest_arr
    immediately) and [calculate_layer_common_harmony_phase1] (union =
    common-harmony/s=1, timed but harmony deliberately left unresolved - see
    there). *)
-let resolve_layer_groups ~n_events ~variant_n_events ~hierarchy ~instr_arr
-    ~instr_principle ~ed_arr ~ed_principle ~perf_arr ~perf_principle
-    ~perf_mode ~dyn_arr ~dyn_principle ~dyn_mode ~dur_arr ~dur_principle
-    ~dur_relation ~reg_arr ~reg_principle ~reg_mode ~density
+(* Reports, once per layer per generic parameter, whether [continue_or_restart]
+   is about to continue that parameter's existing draw cycle or start a fresh
+   one - a fact about *this layer's own resolution*, not any one entry within
+   it (see [Debug_log.event]'s [Continuation]). *)
+let continue_or_restart_debug ~variant ~layer ~param ~principle ~n ~last_arr
+    ~arr state =
+  if !Debug_log.enabled then
+    Debug_log.push
+      (Debug_log.Continuation
+         { variant; layer; param; continued = last_arr = arr });
+  continue_or_restart ~principle ~n ~last_arr ~arr state
+
+let resolve_layer_groups ~variant ~layer ~n_events ~variant_n_events
+    ~hierarchy ~instr_arr ~instr_principle ~ed_arr ~ed_principle ~perf_arr
+    ~perf_principle ~perf_mode ~dyn_arr ~dyn_principle ~dyn_mode ~dur_arr
+    ~dur_principle ~dur_relation ~reg_arr ~reg_principle ~reg_mode ~density
     (continuing : continuing_state) :
     (entrydelay * proto list) list * continuing_state =
   let states0 =
     {
       instr_state =
-        continue_or_restart ~principle:instr_principle ~n:variant_n_events
+        continue_or_restart_debug ~variant ~layer ~param:Debug_log.PIns
+          ~principle:instr_principle ~n:variant_n_events
           ~last_arr:continuing.instr_last_arr ~arr:instr_arr
           continuing.instr_state;
       ed_state =
-        continue_or_restart ~principle:ed_principle ~n:variant_n_events
+        continue_or_restart_debug ~variant ~layer ~param:Debug_log.PEnt
+          ~principle:ed_principle ~n:variant_n_events
           ~last_arr:continuing.ed_last_arr ~arr:ed_arr continuing.ed_state;
       perf_state =
-        continue_or_restart ~principle:perf_principle ~n:variant_n_events
-          ~last_arr:continuing.perf_last_arr ~arr:perf_arr
-          continuing.perf_state;
+        continue_or_restart_debug ~variant ~layer ~param:Debug_log.PPer
+          ~principle:perf_principle ~n:variant_n_events
+          ~last_arr:continuing.perf_last_arr ~arr:perf_arr continuing.perf_state;
       dyn_state =
-        continue_or_restart ~principle:dyn_principle ~n:variant_n_events
+        continue_or_restart_debug ~variant ~layer ~param:Debug_log.PDyn
+          ~principle:dyn_principle ~n:variant_n_events
           ~last_arr:continuing.dyn_last_arr ~arr:dyn_arr continuing.dyn_state;
       dur_state =
-        continue_or_restart ~principle:dur_principle ~n:variant_n_events
+        continue_or_restart_debug ~variant ~layer ~param:Debug_log.PDur
+          ~principle:dur_principle ~n:variant_n_events
           ~last_arr:continuing.dur_last_arr ~arr:dur_arr continuing.dur_state;
       reg_state =
-        continue_or_restart ~principle:reg_principle ~n:variant_n_events
+        continue_or_restart_debug ~variant ~layer ~param:Debug_log.PReg
+          ~principle:reg_principle ~n:variant_n_events
           ~last_arr:continuing.reg_last_arr ~arr:reg_arr continuing.reg_state;
       har_state = continuing.har_state;
       (* REST never enters this fold (see [continuing_state.rest_state]) -
@@ -2385,27 +2685,29 @@ let resolve_layer_groups ~n_events ~variant_n_events ~hierarchy ~instr_arr
   in
   match density with
   | InstrumentDensity ->
-      resolve_layer_instrument_density ~n_events ~hierarchy ~perf_mode
-        ~dyn_mode ~dur_relation ~reg_mode states0
+      resolve_layer_instrument_density ~variant ~layer ~n_events ~hierarchy
+        ~perf_mode ~dyn_mode ~dur_relation ~reg_mode states0
   | Autonomous { low; high; selection_principle } ->
-      resolve_layer_autonomous ~n_events ~hierarchy ~perf_mode ~dyn_mode
-        ~dur_relation ~reg_mode ~low ~high ~selection_principle states0
+      resolve_layer_autonomous ~variant ~layer ~n_events ~hierarchy ~perf_mode
+        ~dyn_mode ~dur_relation ~reg_mode ~low ~high ~selection_principle
+        states0
   | ChordDensity ->
-      resolve_layer_chord_density ~n_events ~hierarchy ~perf_mode ~dyn_mode
-        ~dur_relation ~reg_mode states0
+      resolve_layer_chord_density ~variant ~layer ~n_events ~hierarchy
+        ~perf_mode ~dyn_mode ~dur_relation ~reg_mode states0
 
-let calculate_layer_hierarchical ~n_events ~variant_n_events ~hierarchy
-    ~instr_arr ~instr_principle ~ed_arr ~ed_principle ~perf_arr ~perf_principle
-    ~perf_mode ~dyn_arr ~dyn_principle ~dyn_mode ~dur_arr ~dur_principle
-    ~dur_relation ~reg_arr ~reg_principle ~reg_mode ~density
+let calculate_layer_hierarchical ~variant ~layer ~n_events ~variant_n_events
+    ~hierarchy ~instr_arr ~instr_principle ~ed_arr ~ed_principle ~perf_arr
+    ~perf_principle ~perf_mode ~dyn_arr ~dyn_principle ~dyn_mode ~dur_arr
+    ~dur_principle ~dur_relation ~reg_arr ~reg_principle ~reg_mode ~density
     (continuing : continuing_state) =
   let groups, states' =
-    resolve_layer_groups ~n_events ~variant_n_events ~hierarchy ~instr_arr
-      ~instr_principle ~ed_arr ~ed_principle ~perf_arr ~perf_principle
-      ~perf_mode ~dyn_arr ~dyn_principle ~dyn_mode ~dur_arr ~dur_principle
-      ~dur_relation ~reg_arr ~reg_principle ~reg_mode ~density continuing
+    resolve_layer_groups ~variant ~layer ~n_events ~variant_n_events
+      ~hierarchy ~instr_arr ~instr_principle ~ed_arr ~ed_principle ~perf_arr
+      ~perf_principle ~perf_mode ~dyn_arr ~dyn_principle ~dyn_mode ~dur_arr
+      ~dur_principle ~dur_relation ~reg_arr ~reg_principle ~reg_mode ~density
+      continuing
   in
-  (resolve_times groups, states')
+  (resolve_times ~variant ~layer groups, states')
 
 (* ---- union = common-harmony (EMR-3 6.2's "s=1"): merge every layer's
    entries into one true-chronological timeline and run HARMONY exactly
@@ -2418,8 +2720,17 @@ let calculate_layer_hierarchical ~n_events ~variant_n_events ~hierarchy
    correct. *)
 type common_harmony_group = {
   ch_layer : int;
-  ch_seq : int; (* this group's position within its own layer's own
+  ch_seq : int;
+      (* this group's position within its own layer's own
                    chronological sequence, before merging *)
+  (* [Debug_log.entry_id]'s [seq] this group will carry once
+     [split_by_layer] converts it to an [entry] - unlike [ch_seq] (a pure
+     sort key, renumbered whenever REST splices a rest into this sequence,
+     see [insert_rests_common_harmony_layer]), this is assigned exactly
+     once and never touched again: [Resolved n] for a genuinely resolved
+     group, [RestBefore n] for a spliced-in rest (see
+     [mk_rest_common_harmony_group]). *)
+  ch_debug_seq : Debug_log.entry_seq;
   ch_time : float;
   ch_entrydelay : entrydelay;
   ch_protos : proto list; (* harmony NOT yet resolved on any of these *)
@@ -2437,11 +2748,11 @@ type common_harmony_group = {
    *presence* in [hierarchy] beyond folding over whatever elements are
    actually there, so passing a [Har]-filtered hierarchy in naturally and
    correctly excludes [Har]'s fold step from every sub-pick. *)
-let calculate_layer_common_harmony_phase1 ~layer_idx ~n_events
+let calculate_layer_common_harmony_phase1 ~variant ~layer_idx ~n_events
     ~variant_n_events ~hierarchy ~instr_arr ~instr_principle ~ed_arr
-    ~ed_principle ~perf_arr ~perf_principle ~perf_mode ~dyn_arr
-    ~dyn_principle ~dyn_mode ~dur_arr ~dur_principle ~dur_relation ~reg_arr
-    ~reg_principle ~reg_mode ~density (continuing : continuing_state) :
+    ~ed_principle ~perf_arr ~perf_principle ~perf_mode ~dyn_arr ~dyn_principle
+    ~dyn_mode ~dur_arr ~dur_principle ~dur_relation ~reg_arr ~reg_principle
+    ~reg_mode ~density (continuing : continuing_state) :
     common_harmony_group list * continuing_state =
   (match density with
   | ChordDensity ->
@@ -2455,7 +2766,7 @@ let calculate_layer_common_harmony_phase1 ~layer_idx ~n_events
   | InstrumentDensity | Autonomous _ -> ());
   let hierarchy_no_har = List.filter (fun e -> e <> Har) hierarchy in
   let groups, states' =
-    resolve_layer_groups ~n_events ~variant_n_events
+    resolve_layer_groups ~variant ~layer:layer_idx ~n_events ~variant_n_events
       ~hierarchy:hierarchy_no_har ~instr_arr ~instr_principle ~ed_arr
       ~ed_principle ~perf_arr ~perf_principle ~perf_mode ~dyn_arr
       ~dyn_principle ~dyn_mode ~dur_arr ~dur_principle ~dur_relation ~reg_arr
@@ -2464,13 +2775,14 @@ let calculate_layer_common_harmony_phase1 ~layer_idx ~n_events
   let tagged =
     timed_groups_of groups
     |> List.mapi (fun seq (t, ed, protos) ->
-           {
-             ch_layer = layer_idx;
-             ch_seq = seq;
-             ch_time = t;
-             ch_entrydelay = ed;
-             ch_protos = protos;
-           })
+        {
+          ch_layer = layer_idx;
+          ch_seq = seq;
+          ch_debug_seq = Debug_log.Resolved seq;
+          ch_time = t;
+          ch_entrydelay = ed;
+          ch_protos = protos;
+        })
   in
   (tagged, states')
 
@@ -2522,27 +2834,31 @@ let resolve_common_harmony_merged
 (* Restores each layer's own original declaration order (not the merged/
    sorted order) by re-grouping on [ch_layer] and sorting each bucket by
    [ch_seq], then converts each (now fully harmony-resolved) group to its
-   final [entry]. *)
-let split_by_layer ~n_layers (merged : common_harmony_group list) :
+   final [entry] - carrying over the [ch_debug_seq] assigned back in phase 1
+   (or at rest-splice time) as that entry's permanent id, untouched by
+   [ch_seq]'s own renumbering. *)
+let split_by_layer ~n_layers ~variant (merged : common_harmony_group list) :
     entry list list =
   let arr = Array.make n_layers [] in
   List.iter (fun g -> arr.(g.ch_layer) <- g :: arr.(g.ch_layer)) merged;
   arr
   |> Array.map (fun groups_rev ->
-         groups_rev
-         |> List.sort (fun a b -> compare a.ch_seq b.ch_seq)
-         |> List.map (fun g ->
-                entry_of_group g.ch_time g.ch_entrydelay g.ch_protos))
+      groups_rev
+      |> List.sort (fun a b -> compare a.ch_seq b.ch_seq)
+      |> List.map (fun g ->
+          entry_of_group ~variant ~layer:g.ch_layer ~seq:g.ch_debug_seq
+            g.ch_time g.ch_entrydelay g.ch_protos))
   |> Array.to_list
 
 (* ---- Adapter B: [common_harmony_group list] (for [NoUnionCommonHarmony],
    run between phase 1 and phase 2 - see [generate_score_hierarchical]). ---- *)
 
-let rest_target_of_common_harmony_group (g : common_harmony_group) :
-    rest_target =
+let rest_target_of_common_harmony_group (g : common_harmony_group) : rest_target
+    =
   let dur_of_note_value = function
     | Shared (Duration d) -> d
-    | PerNote ds -> ds |> List.fold_left (fun acc (Duration d) -> Float.max acc d) 0.0
+    | PerNote ds ->
+        ds |> List.fold_left (fun acc (Duration d) -> Float.max acc d) 0.0
   in
   let max_dur =
     g.ch_protos
@@ -2558,11 +2874,12 @@ let rest_target_of_common_harmony_group (g : common_harmony_group) :
 let shift_ch_group_time shift (g : common_harmony_group) =
   { g with ch_time = g.ch_time +. shift }
 
-let mk_rest_common_harmony_group ~layer_idx ~time ~duration :
+let mk_rest_common_harmony_group ~layer_idx ~before ~time ~duration :
     common_harmony_group =
   {
     ch_layer = layer_idx;
     ch_seq = 0 (* renumbered below, see [insert_rests_common_harmony_layer] *);
+    ch_debug_seq = Debug_log.RestBefore before;
     ch_time = time;
     ch_entrydelay = Entrydelay duration;
     ch_protos = [];
@@ -2573,8 +2890,8 @@ let mk_rest_common_harmony_group ~layer_idx ~time ~duration :
    [compare_common_harmony_groups]'s cross-layer tie-break and
    [split_by_layer]'s restore-order sort; a spliced-in rest has no
    "original" position, and every later group's own has shifted. *)
-let insert_rests_common_harmony_layer ~variant_duration ~rest_mode ~rest_arr
-    ~rest_principle ~layer_idx (continuing : continuing_state)
+let insert_rests_common_harmony_layer ~variant ~variant_duration ~rest_mode
+    ~rest_arr ~rest_principle ~layer_idx (continuing : continuing_state)
     (groups : common_harmony_group list) :
     common_harmony_group list * continuing_state =
   match rest_mode with
@@ -2589,15 +2906,20 @@ let insert_rests_common_harmony_layer ~variant_duration ~rest_mode ~rest_arr
         groups |> List.map rest_target_of_common_harmony_group |> Array.of_list
       in
       let insertions, rest_state' =
-        compute_rest_insertions ~variant_duration ~rest_mode ~targets rest_state
+        compute_rest_insertions ~variant ~layer:layer_idx ~variant_duration
+          ~rest_mode ~targets rest_state
       in
       let spliced =
         apply_rest_insertions ~shift_time:shift_ch_group_time
           ~mk_rest:(mk_rest_common_harmony_group ~layer_idx)
           insertions (Array.of_list groups)
       in
-      let renumbered = spliced |> List.mapi (fun seq g -> { g with ch_seq = seq }) in
-      (renumbered, { continuing with rest_state = rest_state'; rest_last_arr = rest_arr })
+      let renumbered =
+        spliced |> List.mapi (fun seq g -> { g with ch_seq = seq })
+      in
+      ( renumbered,
+        { continuing with rest_state = rest_state'; rest_last_arr = rest_arr }
+      )
 
 let zip6 a b c d e f =
   List.map2
@@ -2616,27 +2938,41 @@ let zip7 a b c d e f g =
    unlike every other principle, which only resets at a new variant group,
    it resets at the start of every variant. Every other field passes
    through untouched, continuing exactly as it already does across layers. *)
-let start_new_variant ~variant_n_events (continuing : continuing_state) =
-  let reset_if_tendency state arr =
+let start_new_variant ~variant ~variant_n_events
+    (continuing : continuing_state) =
+  let reset_if_tendency ~param state arr =
     match state with
     | STendency (TendencyState { spec; _ }) ->
+        Debug_log.emit (fun () -> Debug_log.VariantTendencyReset { variant; param });
         STendency
           (tendency_init ~count:variant_n_events
-             (Array.map value_from_element arr) spec)
+             (Array.map value_from_element arr)
+             spec)
     | _ -> state
   in
   {
     continuing with
     instr_state =
-      reset_if_tendency continuing.instr_state continuing.instr_last_arr;
-    ed_state = reset_if_tendency continuing.ed_state continuing.ed_last_arr;
+      reset_if_tendency ~param:Debug_log.PIns continuing.instr_state
+        continuing.instr_last_arr;
+    ed_state =
+      reset_if_tendency ~param:Debug_log.PEnt continuing.ed_state
+        continuing.ed_last_arr;
     perf_state =
-      reset_if_tendency continuing.perf_state continuing.perf_last_arr;
-    dyn_state = reset_if_tendency continuing.dyn_state continuing.dyn_last_arr;
-    dur_state = reset_if_tendency continuing.dur_state continuing.dur_last_arr;
-    reg_state = reset_if_tendency continuing.reg_state continuing.reg_last_arr;
+      reset_if_tendency ~param:Debug_log.PPer continuing.perf_state
+        continuing.perf_last_arr;
+    dyn_state =
+      reset_if_tendency ~param:Debug_log.PDyn continuing.dyn_state
+        continuing.dyn_last_arr;
+    dur_state =
+      reset_if_tendency ~param:Debug_log.PDur continuing.dur_state
+        continuing.dur_last_arr;
+    reg_state =
+      reset_if_tendency ~param:Debug_log.PReg continuing.reg_state
+        continuing.reg_last_arr;
     rest_state =
-      reset_if_tendency continuing.rest_state continuing.rest_last_arr;
+      reset_if_tendency ~param:Debug_log.PRest continuing.rest_state
+        continuing.rest_last_arr;
     (* CHORD's order-of-chords is the one [har_state_t] case with a real
        [sel_state] of its own (ROW/INTERVAL are each their own bespoke
        stream, untouched by any of this) - the table itself never changes
@@ -2649,12 +2985,14 @@ let start_new_variant ~variant_n_events (continuing : continuing_state) =
           HarChord
             {
               hc with
-              order_state = reset_if_tendency hc.order_state (elements_of_array hc.table);
+              order_state =
+                reset_if_tendency ~param:Debug_log.PChordOrder hc.order_state
+                  (elements_of_array hc.table);
             }
       | (HarRow _ | HarInterval _) as other -> other);
   }
 
-let generate_score_hierarchical ~variant_duration ~instrument_ensemble
+let generate_score_hierarchical ~variant ~variant_duration ~instrument_ensemble
     ~instrument_principle ~entry_delay_ensemble ~entry_delay_principle
     ~perf_ensemble ~perf_principle ~perf_mode ~dyn_ensemble ~dyn_principle
     ~dyn_mode ~dur_ensemble ~dur_principle ~dur_relation ~reg_ensemble
@@ -2674,18 +3012,20 @@ let generate_score_hierarchical ~variant_duration ~instrument_ensemble
           entr_arr
       in
       let _ = Printf.printf "estimated events: %d\n" n_events in
-      let continuing = start_new_variant ~variant_n_events:n_events continuing in
+      let continuing =
+        start_new_variant ~variant ~variant_n_events:n_events continuing
+      in
       let entries, continuing' =
-        calculate_layer_hierarchical ~n_events ~variant_n_events:n_events
-          ~hierarchy ~instr_arr ~instr_principle:instrument_principle
-          ~ed_arr:entr_arr ~ed_principle:entry_delay_principle ~perf_arr
-          ~perf_principle ~perf_mode ~dyn_arr ~dyn_principle ~dyn_mode ~dur_arr
-          ~dur_principle ~dur_relation ~reg_arr ~reg_principle ~reg_mode
- ~density continuing
+        calculate_layer_hierarchical ~variant ~layer:0 ~n_events
+          ~variant_n_events:n_events ~hierarchy ~instr_arr
+          ~instr_principle:instrument_principle ~ed_arr:entr_arr
+          ~ed_principle:entry_delay_principle ~perf_arr ~perf_principle
+          ~perf_mode ~dyn_arr ~dyn_principle ~dyn_mode ~dur_arr ~dur_principle
+          ~dur_relation ~reg_arr ~reg_principle ~reg_mode ~density continuing
       in
       let entries', continuing'' =
-        insert_rests_entries ~variant_duration ~rest_mode ~rest_arr
-          ~rest_principle continuing' entries
+        insert_rests_entries ~variant ~layer:0 ~variant_duration ~rest_mode
+          ~rest_arr ~rest_principle continuing' entries
       in
       ([ entries' ], continuing'')
   | NoUnionPerLayer ->
@@ -2713,36 +3053,40 @@ let generate_score_hierarchical ~variant_duration ~instrument_ensemble
                    entry_delay_principle entr_arr)
              0
       in
-      let continuing = start_new_variant ~variant_n_events continuing in
+      let continuing = start_new_variant ~variant ~variant_n_events continuing in
       let continuing', layers =
-        List.fold_left_map
-          (fun continuing
-               ( instr_arr,
-                 entr_arr,
-                 perf_arr,
-                 dyn_arr,
-                 dur_arr,
-                 reg_arr,
-                 rest_arr ) ->
-            let n_events =
-              calculate_number_of_events variant_duration
-                entry_delay_principle entr_arr
-            in
-            let _ = Printf.printf "\nestimated events: %d " n_events in
-            let entries, continuing' =
-              calculate_layer_hierarchical ~n_events ~variant_n_events
-                ~hierarchy ~instr_arr ~instr_principle:instrument_principle
-                ~ed_arr:entr_arr ~ed_principle:entry_delay_principle ~perf_arr
-                ~perf_principle ~perf_mode ~dyn_arr ~dyn_principle ~dyn_mode
-                ~dur_arr ~dur_principle ~dur_relation ~reg_arr ~reg_principle
-                ~reg_mode ~density continuing
-            in
-            let entries', continuing'' =
-              insert_rests_entries ~variant_duration ~rest_mode ~rest_arr
-                ~rest_principle continuing' entries
-            in
-            (continuing'', entries'))
-          continuing layer_inputs
+        layer_inputs
+        |> List.mapi (fun i x -> (i, x))
+        |> List.fold_left_map
+             (fun continuing
+                  ( layer,
+                    ( instr_arr,
+                      entr_arr,
+                      perf_arr,
+                      dyn_arr,
+                      dur_arr,
+                      reg_arr,
+                      rest_arr ) ) ->
+               let n_events =
+                 calculate_number_of_events variant_duration
+                   entry_delay_principle entr_arr
+               in
+               let _ = Printf.printf "\nestimated events: %d " n_events in
+               let entries, continuing' =
+                 calculate_layer_hierarchical ~variant ~layer ~n_events
+                   ~variant_n_events ~hierarchy ~instr_arr
+                   ~instr_principle:instrument_principle ~ed_arr:entr_arr
+                   ~ed_principle:entry_delay_principle ~perf_arr ~perf_principle
+                   ~perf_mode ~dyn_arr ~dyn_principle ~dyn_mode ~dur_arr
+                   ~dur_principle ~dur_relation ~reg_arr ~reg_principle
+                   ~reg_mode ~density continuing
+               in
+               let entries', continuing'' =
+                 insert_rests_entries ~variant ~layer ~variant_duration
+                   ~rest_mode ~rest_arr ~rest_principle continuing' entries
+               in
+               (continuing'', entries'))
+             continuing
       in
       (layers, continuing')
   | NoUnionCommonHarmony ->
@@ -2766,13 +3110,14 @@ let generate_score_hierarchical ~variant_duration ~instrument_ensemble
                    entry_delay_principle entr_arr)
              0
       in
-      let continuing = start_new_variant ~variant_n_events continuing in
+      let continuing = start_new_variant ~variant ~variant_n_events continuing in
       (* Phase 1: every layer resolves everything EXCEPT harmony,
          independently - [har_state] passes through this whole fold
          untouched (only instr/ed/perf/dyn/dur/reg state actually advance
          per layer). *)
       let continuing_after_phase1, per_layer_groups =
-        layer_inputs |> List.mapi (fun i x -> (i, x))
+        layer_inputs
+        |> List.mapi (fun i x -> (i, x))
         |> List.fold_left_map
              (fun continuing
                   ( layer_idx,
@@ -2783,13 +3128,13 @@ let generate_score_hierarchical ~variant_duration ~instrument_ensemble
                    entry_delay_principle entr_arr
                in
                let groups, continuing' =
-                 calculate_layer_common_harmony_phase1 ~layer_idx ~n_events
-                   ~variant_n_events ~hierarchy ~instr_arr
+                 calculate_layer_common_harmony_phase1 ~variant ~layer_idx
+                   ~n_events ~variant_n_events ~hierarchy ~instr_arr
                    ~instr_principle:instrument_principle ~ed_arr:entr_arr
-                   ~ed_principle:entry_delay_principle ~perf_arr
-                   ~perf_principle ~perf_mode ~dyn_arr ~dyn_principle
-                   ~dyn_mode ~dur_arr ~dur_principle ~dur_relation ~reg_arr
-                   ~reg_principle ~reg_mode ~density continuing
+                   ~ed_principle:entry_delay_principle ~perf_arr ~perf_principle
+                   ~perf_mode ~dyn_arr ~dyn_principle ~dyn_mode ~dur_arr
+                   ~dur_principle ~dur_relation ~reg_arr ~reg_principle
+                   ~reg_mode ~density continuing
                in
                (continuing', groups))
              continuing
@@ -2804,8 +3149,9 @@ let generate_score_hierarchical ~variant_duration ~instrument_ensemble
         |> List.fold_left_map
              (fun continuing (layer_idx, (groups, rest_arr)) ->
                let groups', continuing' =
-                 insert_rests_common_harmony_layer ~variant_duration ~rest_mode
-                   ~rest_arr ~rest_principle ~layer_idx continuing groups
+                 insert_rests_common_harmony_layer ~variant ~variant_duration
+                   ~rest_mode ~rest_arr ~rest_principle ~layer_idx continuing
+                   groups
                in
                (continuing', groups'))
              continuing_after_phase1
@@ -2818,7 +3164,7 @@ let generate_score_hierarchical ~variant_duration ~instrument_ensemble
       in
       (* Phase 3: split back apart into each layer's own original order. *)
       let layers =
-        split_by_layer ~n_layers:(List.length layer_inputs)
+        split_by_layer ~n_layers:(List.length layer_inputs) ~variant
           merged_with_harmony
       in
       (layers, continuing_final)
@@ -2937,15 +3283,15 @@ let build_score cfg =
     List.fold_left_map
       (fun continuing v ->
         let layers, continuing' =
-          generate_score_hierarchical ~variant_duration:cfg.variant_duration
+          generate_score_hierarchical ~variant:v
+            ~variant_duration:cfg.variant_duration
             ~instrument_ensemble:instr_ensembles.(v)
             ~instrument_principle:cfg.instrument_principle
             ~entry_delay_ensemble:(ed_ensemble_for v)
             ~entry_delay_principle:cfg.entrydelay_principle
             ~perf_ensemble:(perf_ensemble_for v)
             ~perf_principle:cfg.performance_principle
-            ~perf_mode:cfg.performance_mode
-            ~dyn_ensemble:(dyn_ensemble_for v)
+            ~perf_mode:cfg.performance_mode ~dyn_ensemble:(dyn_ensemble_for v)
             ~dyn_principle:cfg.dynamics_principle ~dyn_mode:cfg.dynamics_mode
             ~dur_ensemble:(dur_ensemble_for v)
             ~dur_principle:cfg.duration_principle
@@ -2954,8 +3300,8 @@ let build_score cfg =
             ~reg_principle:cfg.register_principle ~reg_mode:cfg.register_mode
             ~rest_ensemble:(rest_ensemble_for v)
             ~rest_principle:cfg.rest_principle ~rest_mode:cfg.rest_mode
- ~union:cfg.union
-            ~hierarchy:cfg.hierarchy ~density:cfg.density continuing
+            ~union:cfg.union ~hierarchy:cfg.hierarchy ~density:cfg.density
+            continuing
         in
         (continuing', layers))
       continuing0
@@ -3050,8 +3396,7 @@ let note_problems constraint_map (note : note) =
         if note.pitch_ok then []
         else
           [
-            Printf.sprintf
-              "pitch %s did not agree between register and harmony"
+            Printf.sprintf "pitch %s did not agree between register and harmony"
               (pitch_to_string note.pitch);
           ]
       in
@@ -3087,6 +3432,7 @@ let note_cells ~entrydelay (note : note) =
   let (InstrumentName name) = note.instrument in
   let (Duration d) = note.duration in
   [
+    Debug_log.note_id_to_string note.id;
     Printf.sprintf "%.3f" note.time;
     Printf.sprintf "%.3f" entrydelay;
     Printf.sprintf "%.3f" d;
@@ -3098,6 +3444,7 @@ let note_cells ~entrydelay (note : note) =
 
 let note_header =
   [
+    "id";
     "time";
     "entrydelay";
     "duration";
@@ -3122,6 +3469,7 @@ let rest_cells ~entrydelay (e : entry) =
     | None -> "-"
   in
   [
+    Debug_log.entry_id_to_string e.id;
     Printf.sprintf "%.3f" e.time;
     Printf.sprintf "%.3f" entrydelay;
     dur_str;
@@ -3133,7 +3481,8 @@ let rest_cells ~entrydelay (e : entry) =
 
 let cells_for_entry_notes (e : entry) =
   if e.is_rest then [ rest_cells ~entrydelay:e.entrydelay e ]
-  else List.map (fun (n : note) -> note_cells ~entrydelay:e.entrydelay n) e.notes
+  else
+    List.map (fun (n : note) -> note_cells ~entrydelay:e.entrydelay n) e.notes
 
 let write_notes_score filename instrs (layers : entry list list) =
   let constraint_map = build_constraint_map instrs in
@@ -3191,6 +3540,7 @@ let write_entries_score filename instrs ~density (layers : entry list list) =
   let constraint_map = build_constraint_map instrs in
   let entry_cells (e : entry) =
     [
+      Debug_log.entry_id_to_string e.id;
       Printf.sprintf "%.3f" e.time;
       Printf.sprintf "%.3f" e.entrydelay;
       opt_to_string (fun (Duration d) -> Printf.sprintf "%.3f" d) e.duration;
@@ -3204,6 +3554,7 @@ let write_entries_score filename instrs ~density (layers : entry list list) =
   in
   let entry_header =
     [
+      "id";
       "time";
       "entrydelay";
       "duration";
@@ -3259,9 +3610,9 @@ let print_layers instrs (layers : entry list list) =
   List.iteri
     (fun i (entries : entry list) ->
       Printf.printf "\n--- layer %d ---\n" i;
-      Printf.printf "%-8s %-10s %-8s %-14s %-5s %-12s %-8s %s\n" "time"
-        "entrydelay" "duration" "instrument" "notes" "performance" "dynamic"
-        "status";
+      Printf.printf "%-14s %-8s %-10s %-8s %-14s %-5s %-12s %-8s %s\n" "id"
+        "time" "entrydelay" "duration" "instrument" "notes" "performance"
+        "dynamic" "status";
       entries
       |> List.iter (fun (e : entry) ->
           e.notes
@@ -3276,7 +3627,9 @@ let print_layers instrs (layers : entry list list) =
               in
               let (Duration d) = note.duration in
               let (InstrumentName name) = note.instrument in
-              Printf.printf "%-8.3f %-10.3f %-8.3f %-14s %-5d %-12s %-8s %s\n"
+              Printf.printf
+                "%-14s %-8.3f %-10.3f %-8.3f %-14s %-5d %-12s %-8s %s\n"
+                (Debug_log.note_id_to_string note.id)
                 note.time e.entrydelay d name (List.length e.notes)
                 (Performance.to_string note.performance)
                 (Dynamic.to_string note.dynamic)

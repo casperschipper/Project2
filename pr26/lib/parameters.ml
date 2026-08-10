@@ -151,30 +151,32 @@ let display_problem p =
       Printf.sprintf "number of variants must be at least 1, got %d" n
   | InvalidIntervalMatrixSize { rows; cols; expected } ->
       Printf.sprintf
-        "the interval matrix must be %d x %d (tones-per-octave minus one), \
-         got %d row(s) of %d"
+        "the interval matrix must be %d x %d (tones-per-octave minus one), got \
+         %d row(s) of %d"
         expected expected rows cols
   | IntervalChordHasRepeatedAdjacentTone n ->
       Printf.sprintf
         "this chord repeats tone %d between two tones that are next to each \
-         other (including wrapping from the last tone back to the first), \
-         so no interval can be computed between them"
+         other (including wrapping from the last tone back to the first), so \
+         no interval can be computed between them"
         n
   | InvalidIntervalNumber { n; tr } ->
       Printf.sprintf "interval %d is out of range 1..%d" n (tr - 1)
   | DuplicateIntervalMatrixEntry n ->
-      Printf.sprintf "interval %d is given more than once in the adjacency list" n
+      Printf.sprintf "interval %d is given more than once in the adjacency list"
+        n
   | AllTonesForbidden tr ->
       Printf.sprintf
         "every tone from 1 to %d is forbidden, leaving nothing the interval \
          principle could ever produce"
         tr
   | IntervalPrincipleName s ->
-      Printf.sprintf "%S is not a valid harmony principle (expected row or interval)" s
+      Printf.sprintf
+        "%S is not a valid harmony principle (expected row or interval)" s
   | IntervalMatrixRowHasNoSuccessor i ->
       Printf.sprintf
-        "interval %d has no allowed successor - reaching it will always \
-         fall back to \"INTERVAL RESTRICTIONS TOO STRICT\""
+        "interval %d has no allowed successor - reaching it will always fall \
+         back to \"INTERVAL RESTRICTIONS TOO STRICT\""
         i
   | EmptyChordTable -> "the CHORD table must contain at least one chord"
   | ChordTooLong { len; tr } ->
@@ -199,18 +201,16 @@ let display_problem p =
          list."
         count
   | HarmonyRequiresHarLast ->
-      "union = common-harmony (EMR-3 6.2's \"s=1\") forces HARMONY to \
-       resolve once, after every other parameter and across all layers \
-       merged in true chronological order - Har must be last in the \
-       hierarchy"
+      "union = common-harmony (EMR-3 6.2's \"s=1\") forces HARMONY to resolve \
+       once, after every other parameter and across all layers merged in true \
+       chronological order - Har must be last in the hierarchy"
   | ChordPrincipleCommonHarmonyMismatch ->
-      "the CHORD principle makes HARMONY decide vertical density itself \
-       and resolve first (EMR-3 9.2); union = common-harmony requires \
-       HARMONY to resolve last, across a merged cross-layer timeline \
-       (EMR-3 6.2's \"s=1\") - the two are mutually exclusive"
+      "the CHORD principle makes HARMONY decide vertical density itself and \
+       resolve first (EMR-3 9.2); union = common-harmony requires HARMONY to \
+       resolve last, across a merged cross-layer timeline (EMR-3 6.2's \
+       \"s=1\") - the two are mutually exclusive"
   | InvalidRestRange RestRangeOutOfBounds ->
-      "rest entry-range must be given as percentages of variant duration, \
-       0-100"
+      "rest entry-range must be given as percentages of variant duration, 0-100"
   | InvalidRestRange RestRangeMaxBelowMin ->
       "rest entry-range's second percentage must not be below the first"
 
@@ -408,7 +408,8 @@ let problem_id = function
   | ChordPrincipleDensityMismatch -> "chord-principle-density-mismatch"
   | IntervalRestrictionsTooStrict _ -> "interval-restrictions-too-strict"
   | HarmonyRequiresHarLast -> "harmony-requires-har-last"
-  | ChordPrincipleCommonHarmonyMismatch -> "chord-principle-common-harmony-mismatch"
+  | ChordPrincipleCommonHarmonyMismatch ->
+      "chord-principle-common-harmony-mismatch"
   | InvalidRestRange RestRangeOutOfBounds -> "rest-range-out-of-bounds"
   | InvalidRestRange RestRangeMaxBelowMin -> "rest-range-max-below-min"
 
@@ -486,10 +487,12 @@ let json_of_problem_data p =
   | DuplicateIntervalMatrixEntry n -> json_obj [ ("n", string_of_int n) ]
   | AllTonesForbidden tr -> json_obj [ ("tr", string_of_int tr) ]
   | IntervalPrincipleName s -> json_obj [ ("name", json_string s) ]
-  | IntervalMatrixRowHasNoSuccessor i -> json_obj [ ("interval", string_of_int i) ]
+  | IntervalMatrixRowHasNoSuccessor i ->
+      json_obj [ ("interval", string_of_int i) ]
   | ChordTooLong { len; tr } ->
       json_obj [ ("len", string_of_int len); ("tr", string_of_int tr) ]
-  | IntervalRestrictionsTooStrict count -> json_obj [ ("count", string_of_int count) ]
+  | IntervalRestrictionsTooStrict count ->
+      json_obj [ ("count", string_of_int count) ]
   | InvalidInstrumentName | InvalidChordSize | InvalidDensity _
   | InvalidPitchRange | InvalidRegister | DuplicateHierarchy
   | InstrumentDensityRequiresInsFirst | InvalidDurationRange _
@@ -1066,7 +1069,7 @@ let ensemble_to_array_union ensemble =
           ignore index;
           value)
 
-(* RATIO weights are declared per LIST index (EMR-3 4.3): [weighted] is the
+(* RATIO weights are declared per LIST index (so before table!) (EMR-3 4.3): [weighted] is the
    composer's (index, weight) list from the sexp. This turns it into a
    lookup, defaulting to weight 0 (blocked) for any list index the composer
    didn't mention. *)
@@ -1156,12 +1159,7 @@ let print_errors label errors =
 (* HARMONY *)
 
 (* HARMONY has three principles in PR-2: CHORD, ROW and INTERVAL
-   (EMR-3 §8.2). This module implements only ROW, the simplest of the
-   three: unlike CHORD it never becomes "main parameter" and never
-   determines vertical density (that stays independent, see EMR-3 p.115
-   / fig 9-5), and unlike INTERVAL it has no constraint matrix to solve -
-   it is just a given sequence of steps that gets transposed as a whole
-   each time it has been used up. *)
+   (EMR-3 §8.2). *)
 
 (* Original PR-2 marks a percussion event by "abusing" a pitch value: relative
    pitch 0, and register (0,0). We replace that with a real sum
@@ -1214,7 +1212,9 @@ let mk_chord_table ~tr (chords : int option list list) =
   match chords with
   | [] -> Error EmptyChordTable
   | _ ->
-      chords |> List.map (mk_chord ~tr) |> sequence_result
+      chords
+      |> List.map (mk_chord ~tr)
+      |> sequence_result
       |> Result.map (fun lst -> ChordTable (Array.of_list lst))
 
 let count_chord_tones (Chord arr) = Array.length arr
@@ -1335,7 +1335,9 @@ type chord_transposition =
   | ChordTransposeGiven of step list
 
 let mk_chord_transposition_given ~tr ints =
-  ints |> List.map (mk_step ~tr) |> sequence_result
+  ints
+  |> List.map (mk_step ~tr)
+  |> sequence_result
   |> Result.map (fun steps -> ChordTransposeGiven steps)
 
 (* one transposition interval per completed pass through the whole table
@@ -1386,9 +1388,9 @@ let mk_interval_matrix ~tr (rows : bool array array) =
   else Ok (IntervalMatrix rows)
 
 (* EMR-3 8.2 CHORD-INT / example 8-6: derive a matrix from a chord's own
-   interval content instead of hand-authoring it. The chord is a cyclic
+   interval content. The chord is seen as a cyclic
    sequence of tones, walked in both directions; within each direction,
-   every *consecutive pair of intervals* (cyclically) becomes an allowed
+   every *consecutive pair of intervals* becomes an allowed
    transition. Verified against both the manual's own worked example (chord
    5 6 10, tr=12) and an independently supplied one (chord 1 3 7, tr=12) -
    see test/test_pr26.ml. *)
@@ -1398,7 +1400,7 @@ let matrix_of_chord ~tr (steps : step array) =
     let (Step v) = steps.(((k mod n) + n) mod n) in
     v
   in
-  let interval a b = ((b - a) mod tr + tr) mod tr in
+  let interval a b = (((b - a) mod tr) + tr) mod tr in
   let traversal dir =
     Array.init n (fun k ->
         interval (step_at (k * dir)) (step_at ((k + 1) * dir)))
@@ -1422,10 +1424,14 @@ let matrix_of_chord ~tr (steps : step array) =
 
 (* A sparse alternative to writing out the full dense matrix by hand: only
    list, for each [given] interval that has any allowed successor at all,
-   the [succ] intervals allowed to follow it. Any interval never mentioned
-   as a [given] simply stays a fully-forbidden row (matching the shape of
-   Fig. 8-5's own example - mostly forbidden, a few allowed successors per
-   row - much more practical to write this way than as a dense grid). *)
+   the [succ] intervals allowed to follow it, so
+   [
+    [1;[1;2]]; // 1 can go to itself or 2
+    [2;[3]]; // only to 3
+    [3;[4]]; // only to 4
+    [4;[1;2]] // only 1 or 2
+  ]   
+  )) *)
 let mk_interval_matrix_from_adjacency ~tr (entries : (int * int list) list) =
   let max_i = tr - 1 in
   let in_range n = n >= 1 && n <= max_i in
@@ -1476,7 +1482,7 @@ let interval_matrix_dead_end_rows (IntervalMatrix m) =
   m |> Array.to_list
   |> List.mapi (fun i row -> (i + 1, row))
   |> List.filter (fun (i, row) ->
-         (not (Array.exists (fun x -> x) row)) && column_has_incoming (i - 1))
+      (not (Array.exists (fun x -> x) row)) && column_has_incoming (i - 1))
   |> List.map fst
 
 (* XCL-FRQ, entry 23: tones the interval principle may never produce, at
@@ -1493,7 +1499,8 @@ type harmony_principle =
   | HarmInterval of { matrix : interval_matrix; forbidden_tones : step list }
   | HarmChord of {
       table : chord_table;
-      order : selection_principle; (* SEQ-CHORD, entry 17 - the full 6-way
+      order : selection_principle;
+          (* SEQ-CHORD, entry 17 - the full 6-way
            principle, per the composer's own explicit instruction, not a
            restricted 3-way one. *)
       transposition : chord_transposition;

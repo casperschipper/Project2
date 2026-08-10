@@ -24,15 +24,20 @@ async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T
  * written there and kept (the result's `midiFiles` lists what was produced);
  * when omitted, output goes to a scratch directory that's discarded the
  * instant the engine finishes - used for live validate-as-you-type, so
- * typing never churns real files.
+ * typing never churns real files. `debug` mirrors the engine's own `--debug`
+ * flag (see the Output screen's toggle) - omitted/false costs nothing extra.
  */
-export async function runEngine(sexp: string, outDir?: string): Promise<EngineResult> {
-  if (isTauri()) return invoke<EngineResult>("run_engine", { sexp, outDir });
+export async function runEngine(
+  sexp: string,
+  outDir?: string,
+  debug?: boolean,
+): Promise<EngineResult> {
+  if (isTauri()) return invoke<EngineResult>("run_engine", { sexp, outDir, debug });
 
   const res = await fetch("/api/run", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sexp, outDir }),
+    body: JSON.stringify({ sexp, outDir, debug }),
   });
   return res.json();
 }

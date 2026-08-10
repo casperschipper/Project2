@@ -49,6 +49,13 @@ type Store = {
 
   dirty: boolean;
   markSaved: () => void;
+
+  /** Whether the engine's `--debug` event log is requested on each run - see
+   * the Output screen's toggle. Off by default: it's meant for a future
+   * visualisation tool, not day-to-day composing, and skipping it keeps
+   * every live-as-you-type run cheaper. */
+  debugEnabled: boolean;
+  setDebugEnabled: (v: boolean) => void;
 };
 
 const StoreContext = createContext<Store | null>(null);
@@ -83,6 +90,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [running, setRunning] = useState(false);
   const [screen, setScreen] = useState<ScreenId>("structure");
   const [help, setHelp] = useState<HelpTarget>(null);
+  const [debugEnabled, setDebugEnabled] = useState(false);
   const [dirty, setDirty] = useState(false);
 
   const update = useCallback((mutate: (draft: Project) => void) => {
@@ -122,7 +130,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     (outDir: string | undefined) => {
       const token = ++runToken.current;
       setRunning(true);
-      runEngine(sexp, outDir)
+      runEngine(sexp, outDir, debugEnabled)
         .then((result) => {
           if (token === runToken.current) setEngineResult(result);
         })
@@ -140,7 +148,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           if (token === runToken.current) setRunning(false);
         });
     },
-    [sexp],
+    [sexp, debugEnabled],
   );
 
   // Live background validation: writes to the project's own output
@@ -228,6 +236,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       closeHelp,
       dirty,
       markSaved,
+      debugEnabled,
+      setDebugEnabled,
     }),
     [
       project,
@@ -247,6 +257,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       closeHelp,
       dirty,
       markSaved,
+      debugEnabled,
     ],
   );
 

@@ -51,19 +51,31 @@
 
   (harmony
     (principle interval)
-    (matrix (chord (1 2 5 10)))
+    (matrix (rows (
+        (1 0 0 1 0 0 0 0 0 0 0)
+        (0 0 0 0 0 0 0 0 0 0 0)
+        (0 0 0 0 0 0 0 0 0 0 0)
+        (0 0 0 0 0 0 1 0 0 0 0)
+        (0 0 0 1 1 0 1 0 0 0 0)
+        (0 0 0 0 0 0 0 0 0 0 0)
+        (1 0 0 0 1 0 1 0 0 0 0)
+        (0 0 0 0 0 0 0 0 0 0 0)
+        (0 0 0 0 0 0 0 0 0 0 0)
+        (0 0 0 0 0 0 0 0 0 0 0)
+        (0 0 0 0 0 0 0 0 0 0 0)
+      )))
     (forbidden-tones ()))
 
   (principles
     (instrument (ensemble (sequence 0)) (order series))
-    (entrydelay (ensemble (sequence 0)) (order (tendency (section 2.0 (start 0.0 0.1) (end 0.0 1.0)) (section 1.0 (start 0.5 1.0) (end 0.0 1.0)) (section 1.0 (start 0.1 0.2) (end 0.8 1.0)))))
+    (entrydelay (ensemble (sequence 0)) (order (tendency (section 1.0 (start 0.0 0.1) (end 0.0 1.0)) (section 1.0 (start 0.5 1.0) (end 0.0 1.0)) (section 1.0 (start 0.1 0.2) (end 0.8 1.0)))))
     (performance (ensemble (sequence 0)) (order (sequence (0 1 2))) (mode per-chord))
     (dynamics (ensemble series) (order (group (element series) (repetition series) (repetitions 1 4))) (mode per-note))
     (duration (ensemble (sequence 0)) (order (tendency (section 1.0 (start 0.0 0.1) (end 0.8 1.0)) (section 1.0 (start 0.45 0.6) (end 0.0 1.0)))) (relation (independent per-chord)))
-    (register (ensemble (sequence 0)) (order (tendency (section 1.0 (start 0.1 0.1) (end 0.0 1.0)) (section 1.0 (start 0.0 1.0) (end 0.0 0.1)) (section 1.0 (start 0.9 1.0) (end 0.1 0.1)) (section 1.0 (start 0.0 0.1) (end 0.1 0.1)))) (mode per-note))
+    (register (ensemble (sequence 0)) (order (tendency (section 1.0 (start 0.1 0.1) (end 0.0 1.0)) (section 1.0 (start 0.0 1.0) (end 0.0 0.1)) (section 1.0 (start 0.9 1.0) (end 0.1 0.1)) (section 1.0 (start 1.0 0.1) (end 0.1 0.1)))) (mode per-note))
     (rest (ensemble alea) (order alea)))
 
-  (hierarchy (Ent Ins Reg Har Per Dyn Dur))
+  (hierarchy (Ins Reg Har Per Dyn Ent Dur))
   (union none)
   (density (autonomous (low 1) (high 1) (principle (group (element series) (repetition series) (repetitions 1 4)))))
 )

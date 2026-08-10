@@ -5,3 +5,7 @@
 (test
  (name tendency_test)
  (libraries pr26))
+
+(test
+ (name debug_log_test)
+ (libraries pr26))

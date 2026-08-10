@@ -344,6 +344,12 @@ export type EngineResult = {
   variants?: { score: string; entries: string }[];
   /** Set only for an explicit (persisted) Run - the `.mid` files produced. */
   midiFiles?: string[];
+  /** Set only when the debug toggle was on for this run (see the Output
+   * screen) - the opt-in, machine-readable selection-decision log ([Series]/
+   * [Ratio] restarts, [Group] repetitions, [Tendency] windows, restrictions,
+   * continuation - see `pr26/lib/debug_log.ml`). Left untyped here: it's
+   * displayed as raw JSON for now, not interpreted by this GUI. */
+  debug?: unknown[];
   /** Set when the engine could not be started or produced unparseable output. */
   engineError?: string;
 };
