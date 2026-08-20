@@ -3,7 +3,8 @@ open Structure_formula
 open Selection
 open Tools
 
-(* A resolved note-within-a-chord: fully-specified, no options. Entry delay
+(* A fully specified note. 
+   Entry delay
    is deliberately absent - it is a property of the [entry] (the shared
    timepoint/chord a note belongs to), never of an individual note. *)
 type note = {
@@ -37,9 +38,9 @@ type note = {
 
 (* Entry is one timepoint:
   In Pr2, you can have multiple notes starting at one entry point / time slot in the score.
-  A bit analogous to a "chord", although for each parameter, you can control if it should also use the same value for all
-  "voices" within the chord ot not.
-  This is why some parameters are optional in entry, if they are to be decided on a note level, they don't have a value at the entry level.
+  A bit analogous to a "chord". 
+  For many parameters you can state if it should be selected on the chord level (all notes the same value), or for each note within the chord.
+  This is why some parameters are optional here.
 *)
 type entry = {
   time : float;
@@ -82,9 +83,7 @@ let ensemble_values_no_union ensemble =
   | SingleGroup g -> [ g |> elements_from_indexed_ensemble ]
 
 (* ---- Pure stateful selection principles state  ---- *)
-(* [sel_state] wraps the per-principle state. All draws are pure:
-   [sel_draw st] returns [(value, next_st)] without any mutation.
-   The caller threads [next_st] forward explicitly. *)
+(* [sel_state] wraps the per-principle state, explicit to avoid mutation *)
 type 'a sel_state =
   | SAlea of 'a alea_state
   | SSeries of 'a series_state
@@ -95,9 +94,8 @@ type 'a sel_state =
 
 (* [arr] carries each element's original LIST index alongside its value, so
    that [Ratio]'s weights (declared per LIST index, see [ratio_weight_of])
-   can be applied to whatever actually made it into this ensemble - callers
-   with no LIST/ENSEMBLE stage of their own (e.g. the synthetic density
-   range) just wrap their plain array with [elements_of_array] first. *)
+   can be applied to whatever actually made it into this ensemble.
+*)
 let sel_init (principle : selection_principle) (n : int)
     (arr : 'a element array) : 'a sel_state =
   let values = Array.map value_from_element arr in
@@ -231,14 +229,14 @@ let sel_sample_pred (p : 'a -> bool) : 'a sel_state -> 'a * 'a sel_state =
 
 let result_ok = function Value _ -> true | Impossible _ -> false
 
-(* Reports whichever debug events [pre]'s shape implies about the draw that
-   just produced [post] - SERIES/RATIO exhausting their pool and reshuffling
+(* Debug log context 
+  - SERIES/RATIO exhausting their pool and reshuffling
    (visible as [pre]'s [options] being empty), GROUP starting a new
    repetition (GROUP's own new element/repetition-count only exists in
-   [post] - see [Selection.group_draw]: the "new group" fact is baked into
+   [post] 
+   - see [Selection.group_draw]: the "new group" fact is baked into
    the *returned* state, one call late), and, for TENDENCY, the window this
-   draw sampled from. A no-op unless [Debug_log.enabled] - callers still pay
-   one pattern-match, but never build an event or touch the buffer. *)
+   draw sampled from. *)
 let emit_sel_events ~(ctx : Debug_log.context) ~(to_string : 'a -> string)
     (pre : 'a sel_state) (post : 'a sel_state) =
   if !Debug_log.enabled then
@@ -313,10 +311,12 @@ type 'a note_value = Shared of 'a | PerNote of 'a list
 let value_at note_values i =
   match note_values with Shared v -> v | PerNote vs -> List.nth vs i
 
-(* In-progress entry while the hierarchy fold (iteration/loop) runs: everything starts [None]
-   and gets filled in hierarchy order. Values of "lower" parameters may be limited by already provided ones.
-   [nr_of_notes] is filled as soon as
-   [Ins] runs (chordsize is a property of the picked instrument). *)
+  (* 
+  A prototype is a note being build up parameter by parameter.
+  The hierarchy order defines which parameter is computed first.
+  Subsequent parameters may be limited in what they can pick by the others already filled in.
+  If instrument density is used, the density is only known when the instrument has been picked @luc?
+  *)
 type proto = {
   entrydelay : entrydelay option;
   instrument : instrument option;
