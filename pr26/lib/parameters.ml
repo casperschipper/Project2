@@ -560,7 +560,7 @@ let mk_rest_before_general_entry ~d1 ~d2 =
   mk_rest_range ~d1 ~d2
   |> Result.map (fun (d1, d2) -> RestBeforeGeneralEntry { d1; d2 })
 
-(* This is the full list of parameters, currently a should only be instr or entrydelay *)
+(* This is the full list of parameters *)
 type 'a parameter_list = ParameterList of 'a Array.t
 
 (* we keep indexes that produced a value from the list, they may be useful *)
@@ -591,12 +591,13 @@ type 'a indexed_ensemble_group =
 let elements_from_indexed_ensemble (IndexedEnsembleGroup { group; _ }) =
   match group with EnsembleGroup gr -> gr
 
-(* an ensemble is a list of groups, we keep the group structure, as they may still be used as separate layers 
-  if an ensemble is formed with no_union in another parameter, we only select a single group
+(* an ensemble is a list of groups, we keep track of the group's indexes as they might be useful for combination or debugging
 *)
 type 'a ensemble =
   | Ensemble of 'a indexed_ensemble_group list
   | SingleGroup of 'a indexed_ensemble_group
+
+(* some classes for representing special parameter *)
 
 module Performance = struct
   type t = Performance of string
@@ -723,10 +724,8 @@ let mk_pitch_range min max forbidden =
   else Ok (PitchRange { min; max; forbidden })
 
 (* EMR-3 REGISTER (§7.1, fig 7-3): a range between two absolute pitches,
-   which may span octaves - e.g. (401,512) spans octave 4 and octave 5, per
-   the manual's own example. Percussion's "0,0" sentinel becomes a real
-   variant, mirroring how [pitch] below already replaces Koenig's pitch-0
-   hack for HARMONY. *)
+   which may span octaves - e.g. (octave 4, step 1 till octave 5 step 12)
+   We do not use the 0,0 as described in the manual, but an explicit percussion register *)
 type register =
   | PitchRegister of { low : absolute_pitch; high : absolute_pitch }
   | PercussionRegister
@@ -773,8 +772,7 @@ type instrument =
       pitchrange : pitch_range;
     }
 
-(* both performance and dynamics have an explicit master list (parsed from
-   the structure formula's top-level "performance" / "dynamics" fields);
+(* to prevent "impossible" performance modes or dynamics, we always check that at least one instruments can play them.
    every instrument's own (performance (...)) / (dynamics (...)) must be a
    subset of the corresponding master list *)
 let check_instrument_performances_known known_performances instrs :
@@ -850,6 +848,7 @@ let inst instrument cs performance dynamics pitchrange durations =
     { instrument; chordsize = cs; performance; dynamics; pitchrange; durations }
 
 (* for formation of the ensemble Alea, Series or Sequence will pick the groups from the table *)
+(* note that for anything but the exception of instrument, only one group is used per layer or variant *)
 type ensemble_group_selection =
   | EnsembleGroupAlea
   | EnsembleGroupSeries
@@ -861,12 +860,14 @@ type autonomous_density = {
   selection_principle : selection_principle;
 }
 
-(* [ChordDensity]: when HARMONY's CHORD principle is selected, vertical
-   density is simply whatever size the drawn chord turns out to be (EMR-3
-   §9.2) - it can be neither autonomous nor instrument-driven. See
-   [harmony_principle]'s [HarmChord] below and
-   [mk_structure_formula]'s bidirectional consistency check tying the two
-   together. *)
+(* Density is either:
+1. Autonomous: an autonamous parameter controlled by its selection principle (instruments are picked until a desired denisity is reached
+if the density gets to high last instrument is clipped)
+2. Instrument: based on the picked instrument, a random value is picked between boundaries
+3. Chord: harmony becomes primary parameter, and the density is just that of the picked chord. 
+Instruments are picked in a similar way to autonomous after the chord has been picked.
+
+*)
 type vertical_density =
   | Autonomous of autonomous_density
   | InstrumentDensity
@@ -1069,7 +1070,7 @@ let ensemble_to_array_union ensemble =
           ignore index;
           value)
 
-(* RATIO weights are declared per LIST index (so before table!) (EMR-3 4.3): [weighted] is the
+(* RATIO weights are declared per LIST index (so before table groups are formed !) (EMR-3 4.3): [weighted] is the
    composer's (index, weight) list from the sexp. This turns it into a
    lookup, defaulting to weight 0 (blocked) for any list index the composer
    didn't mention. *)
@@ -1101,6 +1102,9 @@ let check_ratio_coverage (table_loc : location) (Table rows) principle :
           else None)
   | _ -> []
 
+(* to calculate the number of events we have to make an estimation, 
+as entry delay may not be the primary parameter, and tendency mask requires the number of
+events to be fully known before rendering a score. *)
 let expected_value selection_principle (array : entrydelay element array) =
   let ensemble =
     array |> Array.map (fun e -> entry_to_float (value_from_element e))

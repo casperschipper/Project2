@@ -25,9 +25,9 @@
   (instrument-table
     (0))
 
-  (entrydelays (0.004 0.001 0.003 0.03 0.01 0.6 0.7 0.8))
+  (entrydelays (0.004 0.02 0.03 0.1 0.5 0.6 0.7 0.8))
   (entrydelay-table
-    (0 1 2 3 4))
+    (3 0 1 2 4))
 
   (durations (0.01 0.02 0.1 0.2 0.3 0.5 2.0))
   (duration-table
@@ -72,7 +72,7 @@
     (performance (ensemble (sequence 0)) (order (sequence (0 1 2))) (mode per-chord))
     (dynamics (ensemble series) (order (group (element series) (repetition series) (repetitions 1 4))) (mode per-note))
     (duration (ensemble (sequence 0)) (order (tendency (section 1.0 (start 0.0 0.1) (end 0.8 1.0)) (section 1.0 (start 0.45 0.6) (end 0.0 1.0)))) (relation (independent per-chord)))
-    (register (ensemble (sequence 0)) (order (tendency (section 1.0 (start 0.1 0.1) (end 0.0 1.0)) (section 1.0 (start 0.0 1.0) (end 0.0 0.1)) (section 1.0 (start 0.9 1.0) (end 0.1 0.1)) (section 1.0 (start 1.0 0.1) (end 0.1 0.1)))) (mode per-note))
+    (register (ensemble (sequence 0)) (order alea) (mode per-note))
     (rest (ensemble alea) (order alea)))
 
   (hierarchy (Ins Reg Har Per Dyn Ent Dur))
