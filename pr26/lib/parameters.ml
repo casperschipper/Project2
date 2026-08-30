@@ -1166,26 +1166,16 @@ let print_errors label errors =
    (EMR-3 §8.2). *)
 
 (* Original PR-2 marks a percussion event by "abusing" a pitch value: relative
-   pitch 0, and register (0,0). We replace that with a real sum
-   type: a tone is either a pitch (an absolute pitch, i.e. octave + step) or
-   a percussion event, which carries no pitch information at all. [step] and
-   [absolute_pitch] live earlier in this file now. *)
+   pitch 0, and register (0,0). We use an explicit Percussion value instead *)
 
 type pitch = Pitched of absolute_pitch | Percussion
 
-(* HARMONY (and so ROW) only ever decides the step. The octave placement is a
-   separate hierarchy parameter (REGISTER) whose order relative to HARMONY
-   the composer chooses freely (EMR-3 p.74-77, fig 7-6), so no register is
-   known yet at this stage. ROW therefore produces this lighter value;
-   combine it with a register, once one is chosen elsewhere, via
+(* HARMONY (and so ROW) only ever decides the relative step. The "octave" placement is controlled by register) 
+   The final (absolute) pitch is resolved by
    [resolve_pitch]. *)
 
 type row_value = Tone of step | RowPercussion
 
-(* The composer writes relative pitches 1..tr into the row, or an explicit
-   percussion marker (sexp atom "p") - [None] here, never PR-2's 0 sentinel,
-   which is now just an ordinary out-of-range relative pitch like any other
-   invalid step. *)
 let mk_row_value ~tr = function
   | None -> Ok RowPercussion
   | Some n -> mk_step ~tr n |> Result.map (fun s -> Tone s)

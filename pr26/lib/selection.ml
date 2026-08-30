@@ -24,7 +24,8 @@ type tendency_section =
 type tendency_mask_spec = TendencyMask of tendency_section list
 
 (* 
-  The main sum type representing which method (and what parameters) we are using for selection from the ensemble
+  The main sum type representing which method (and what parameters) we are using for selection from the ensemble.
+  This is just the initiation information. 
 *)
 type selection_principle =
   | Alea (* random choice with possible repetition *)
@@ -72,6 +73,7 @@ let series_init (arr : 'a array) : 'a series_state =
   let options = shuffle arr |> Array.to_list in
   SeriesState { initial; options }
 
+(* drawing a value does not *)
 let series_draw : 'a series_state -> 'a selection_result * 'a series_state =
  fun (SeriesState { initial; options }) ->
   let pick x xs = (Value x, SeriesState { initial; options = xs }) in
@@ -321,7 +323,9 @@ type 'a tendency_state =
 let tendency_sample arr lo hi =
   let l = Array.length arr in
   let i =
-    lo +. Random.float (hi -. lo) |> ( *. ) (float_of_int l) |> floor |> int_of_float
+    lo +. Random.float (hi -. lo)
+    |> ( *. ) (float_of_int l)
+    |> floor |> int_of_float
   in
   (* [lo]/[hi] are inclusive of 1.0 (see [UnitFloat]), so a window pinned at
      the top (e.g. lo = hi = 1.0) maps to index [l], one past the end. *)

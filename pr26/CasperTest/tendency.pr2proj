@@ -390,7 +390,7 @@
   "restPrinciple": {
     "kind": "alea"
   },
-  "harmonyPrinciple": "interval",
+  "harmonyPrinciple": "row",
   "row": [
     "1",
     "8",
