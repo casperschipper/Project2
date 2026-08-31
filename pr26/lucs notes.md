@@ -1,17 +1,19 @@
 august 31 2026
 
-documentation should not be editable in the 
-visualize tendency mask? can we see what the percentages mean interms of the
-values?
+documentation should not be editable in the gui 
+visualize tendency mask? can we see what the percentages mean in terms of the
+values? (e.g. in vertical density)
 if duration = entry delay that should be mentioendi n the hierarchy
-in instrument realtive pitch can exceed octave division. is that correct?
+in instrument relative pitch can exceed octave division. is that correct?
 warning mouseover can be hidden by/below something above it if it is topmost row
 of its block
 why do we need to define number of instrument groups? isnt that just the number
 of rows in the table?
+depending on number of instrument groups and combination/union setting gui
+should diplay some information on what is going to happen
 is it true that autonomous density of 4 means we need 4 instruments? i get that
 warning
-the "dummy values" should probably be italicized, it is visiuall difficult to
+the "placeholder values" should probably be italicized, it is visually difficult to
 differentiate
 output width can be wider, i get unconformtable line breaks
 i want font size adjustable
