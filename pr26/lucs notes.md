@@ -1,3 +1,28 @@
+august 31 2026
+
+documentation should not be editable in the 
+visualize tendency mask? can we see what the percentages mean interms of the
+values?
+if duration = entry delay that should be mentioendi n the hierarchy
+in instrument realtive pitch can exceed octave division. is that correct?
+warning mouseover can be hidden by/below something above it if it is topmost row
+of its block
+why do we need to define number of instrument groups? isnt that just the number
+of rows in the table?
+is it true that autonomous density of 4 means we need 4 instruments? i get that
+warning
+the "dummy values" should probably be italicized, it is visiuall difficult to
+differentiate
+output width can be wider, i get unconformtable line breaks
+i want font size adjustable
+i want smart fomus-like tuplet quantization. we could generate lilypond, we
+might need clef transposition, number of systems etc as optional in instrument
+definition, possibly even package lilypond as a lib if not installed
+osc output is promptable, maybe as supercollider osc score
+
+
+
+
 [x] Dynamic list
 [x] Sample is not a good name (changed to order)
 [x] RATIO;
