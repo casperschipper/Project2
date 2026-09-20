@@ -267,6 +267,23 @@ export function StructureScreen() {
 
       <Section title="Layers">
         <Field
+          label="Instrument groups in the ensemble"
+          helpKey="fields/number-of-instrument-groups"
+          path="instrument.number-of-instrument-groups"
+          hint="How many groups from the instrument table are selected to form the ensemble for each variant. Without union this is the number of layers; other parameters use one group per layer unless they are set to combination."
+        >
+          <input
+            type="number"
+            className="input--narrow"
+            min={1}
+            value={project.numberOfInstrumentGroups}
+            onChange={(e) =>
+              update((p) => (p.numberOfInstrumentGroups = Number(e.target.value)))
+            }
+          />
+        </Field>
+
+        <Field
           label="Union"
           helpKey="fields/union"
           path="union"

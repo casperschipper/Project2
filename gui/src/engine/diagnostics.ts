@@ -48,6 +48,8 @@ export function screenOf(d: Diagnostic): ScreenId {
   const head = path.split(/[.[]/)[0];
 
   if (path.startsWith("duration.relation")) return "structure";
+  // The group count is edited under Layers on the structure screen.
+  if (path.startsWith("instrument.number-of-instrument-groups")) return "structure";
 
   switch (head) {
     case "global":

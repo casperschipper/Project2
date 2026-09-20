@@ -1,4 +1,4 @@
-# Number of instrument groups
+# Instrument groups in the ensemble
 
 > How many groups from the instrument table are selected into the ensemble for each variant. Without union, this is the number of layers.
 
@@ -21,7 +21,7 @@ row 1:  guitar1
 row 2:  piano basedrum
 ```
 
-Number of instrument groups = 2, ensemble principle `series`.
+Instrument groups in the ensemble = 2, ensemble principle `series`.
 
 `Series` exhausts the three rows before repeating, so successive variants of the same formula work through the pairings systematically: rows 0+1, then 2+0, then 1+2, and so on. Each variant has two layers with a different pairing of instrumental characters.
 

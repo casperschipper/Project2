@@ -23,7 +23,7 @@ row 1:  guitar1
 row 2:  piano basedrum
 ```
 
-[Number of instrument groups](fields/number-of-instrument-groups) = 2, ensemble principle `series`, selecting rows 1 and 2.
+[Instrument groups in the ensemble](fields/number-of-instrument-groups) = 2, ensemble principle `series`, selecting rows 1 and 2.
 
 **Union = none.** Two layers. Layer A is guitar1 alone; layer B is piano and bass drum. Each has its own rhythm and its own reading of its dynamics *and* its own independent pass through the row - two distinct musics with no relationship between which pitches happen to land at the same moment.
 

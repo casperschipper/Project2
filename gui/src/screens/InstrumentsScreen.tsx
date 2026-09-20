@@ -73,23 +73,6 @@ export function InstrumentsScreen() {
 
       <Section title="Groups">
         <Field
-          label="Number of instrument groups"
-          helpKey="fields/number-of-instrument-groups"
-          path="instrument.number-of-instrument-groups"
-          hint="How many groups are drawn per layer. Other parameters use one group per layer unless they are set to combination."
-        >
-          <input
-            type="number"
-            className="input--narrow"
-            min={1}
-            value={project.numberOfInstrumentGroups}
-            onChange={(e) =>
-              update((p) => (p.numberOfInstrumentGroups = Number(e.target.value)))
-            }
-          />
-        </Field>
-
-        <Field
           label="Instrument table"
           helpKey="fields/instrument-table"
           path="instrument.table"
