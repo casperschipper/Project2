@@ -1,11 +1,8 @@
 august 31 2026
 
 
-[ ] visualize tendency mask? can we see what the percentages mean in terms of the
-values? (e.g. in vertical density)
+
 [ ] if duration = entry delay that should be mentioendi n the hierarchy
-
-
 of its block
 [ ] why do we need to define number of instrument groups? isnt that just the number
 of rows in the table?
@@ -22,7 +19,8 @@ might need clef transposition, number of systems etc as optional in instrument
 definition, possibly even package lilypond as a lib if not installed
 osc output is promptable, maybe as supercollider osc score
 
-
+[x] visualize tendency mask? can we see what the percentages mean in terms of the
+values? (e.g. in vertical density)
 [x] warning mouseover can be hidden by/below something above it if it is topmost row
 [x] in instrument relative pitch can exceed octave division. is that correct?
 [x] Dynamic list

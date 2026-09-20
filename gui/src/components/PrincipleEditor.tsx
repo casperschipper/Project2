@@ -1,4 +1,5 @@
 import { useStore } from "../state/store";
+import { TendencyPlot } from "./TendencyPlot";
 import type { Ensemble, Principle, PrincipleKind, EnsembleKind } from "../schema/types";
 
 /**
@@ -455,6 +456,9 @@ function TendencyEditor({
       </div>
       <div className="faint" style={{ fontSize: 11.5 }}>
         Bounds are proportions of the list: 0 is its first element, 1 its last.
+      </div>
+      <div style={{ maxWidth: 520 }}>
+        <TendencyPlot sections={principle.sections} />
       </div>
     </div>
   );

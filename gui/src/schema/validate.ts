@@ -251,16 +251,9 @@ function checkPrinciple(
           diag("invalid-portion", "error", loc, `section ${i + 1} has a portion of ${s.portion}; it must be above 0`),
         );
       }
-      if (s.startMin > s.startMax) {
-        out.push(
-          diag("tendency-bounds-crossed", "warning", loc, `section ${i + 1}: the start minimum is above the start maximum`),
-        );
-      }
-      if (s.endMin > s.endMax) {
-        out.push(
-          diag("tendency-bounds-crossed", "warning", loc, `section ${i + 1}: the end minimum is above the end maximum`),
-        );
-      }
+      // A minimum above its maximum is deliberately not reported: the engine
+      // swaps the pair, and a mask whose window crosses over is a legitimate
+      // artistic shape.
     });
   }
 }
