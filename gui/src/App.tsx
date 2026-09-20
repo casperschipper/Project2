@@ -24,6 +24,7 @@ import {
 } from "./engine/backend";
 import { defaultProject } from "./schema/defaults";
 import type { Project } from "./schema/types";
+import { shadowedByEquality } from "./schema/shadowed";
 
 export function App() {
   const {
@@ -51,6 +52,7 @@ export function App() {
   const [filePath, setFilePath] = useState<string | null>(null);
   const fileName = filePath?.split("/").pop() ?? null;
   const counts = countsByScreen(diagnostics);
+  const shadow = shadowedByEquality(project);
 
   const totalErrors = diagnostics.filter((d) => d.severity === "error").length;
   const totalWarnings = diagnostics.filter((d) => d.severity === "warning").length;
@@ -248,6 +250,10 @@ export function App() {
               active={screen === s.id}
               errors={counts[s.id].errors}
               warnings={counts[s.id].warnings}
+              unused={
+                (s.id === "entrydelay" && shadow?.ignored === "Ent") ||
+                (s.id === "duration" && shadow?.ignored === "Dur")
+              }
               onSelect={setScreen}
             />
           ))}
@@ -294,6 +300,7 @@ function NavItem({
   active,
   errors,
   warnings,
+  unused = false,
   onSelect,
 }: {
   id: ScreenId;
@@ -301,6 +308,8 @@ function NavItem({
   active: boolean;
   errors: number;
   warnings: number;
+  /** Not an error: the screen's values currently take no part (kept, not lost). */
+  unused?: boolean;
   onSelect: (id: ScreenId) => void;
 }) {
   return (
@@ -310,6 +319,14 @@ function NavItem({
       onClick={() => onSelect(id)}
     >
       <span className="nav__label">{label}</span>
+      {unused && (
+        <span
+          className="nav__tag"
+          title="Not used at the moment - it copies the other one (duration = entry delay). Your values are kept."
+        >
+          unused
+        </span>
+      )}
       {errors > 0 && (
         <span className="badge badge--error" title={`${errors} error${errors === 1 ? "" : "s"}`}>
           {errors}

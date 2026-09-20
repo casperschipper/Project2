@@ -3,6 +3,7 @@ import type React from "react";
 import { useStore } from "../state/store";
 import { HIERARCHY_LABELS } from "../schema/types";
 import type { HierarchyElem } from "../schema/types";
+import { shadowHierarchyNote, shadowedByEquality } from "../schema/shadowed";
 
 /**
  * Reusable pointer-driven drag reordering, shared by every list in the GUI
@@ -318,6 +319,8 @@ export function HierarchyEditor({
     hierarchy,
     onChange,
   );
+  const { project } = useStore();
+  const shadow = shadowedByEquality(project);
 
   return (
     <div className="hierarchy">
@@ -338,7 +341,14 @@ export function HierarchyEditor({
             ⣿
           </span>
           <span className="hierarchy__name">{HIERARCHY_LABELS[elem]}</span>
-          <span className="hierarchy__note">{noteFor(elem, i, hierarchy)}</span>
+          <span
+            className={
+              "hierarchy__note" +
+              (shadow?.ignored === elem ? " hierarchy__note--ignored" : "")
+            }
+          >
+            {(shadow && shadowHierarchyNote(elem, shadow)) || noteFor(elem, i, hierarchy)}
+          </span>
 
           {/* Keyboard equivalent: dragging alone would make the ordering
               unreachable without a mouse. The pointer-down guard keeps a

@@ -1503,3 +1503,27 @@ input.token__input:focus {
   border: 2px dashed var(--border-strong);
   padding: 10px 12px;
 }
+
+/* Communication only: a screen whose values currently take no part. */
+.notice {
+  border: 2px solid var(--border-strong);
+  border-left-width: 6px;
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+  padding: 10px 14px;
+  margin: 0 0 24px;
+  max-width: 62ch;
+  font-size: 12.5px;
+}
+
+.nav__tag {
+  font-size: 10.5px;
+  font-style: italic;
+  color: var(--text-faint);
+  flex-shrink: 0;
+}
+
+.hierarchy__note--ignored {
+  font-style: italic;
+  color: var(--text-muted);
+}

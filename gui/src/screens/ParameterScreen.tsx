@@ -5,6 +5,7 @@ import { TableEditor } from "../components/TableEditor";
 import { TokenListEditor } from "../components/ListEditors";
 import { EnsembleEditor, PrincipleEditor } from "../components/PrincipleEditor";
 import { parseTimeValue } from "../schema/validate";
+import { shadowNotice, shadowedByEquality } from "../schema/shadowed";
 import type { Ensemble, NoteMode, Principle, Project, RestMode, Table } from "../schema/types";
 
 /**
@@ -62,10 +63,22 @@ export function ParameterScreen({ config }: { config: ParameterConfig }) {
   const list = config.get.list(project);
   const table = config.get.table(project);
 
+  const shadow = shadowedByEquality(project);
+  const ignoredHere =
+    shadow &&
+    ((paramId === "entrydelay" && shadow.ignored === "Ent") ||
+      (paramId === "duration" && shadow.ignored === "Dur"));
+
   return (
     <div className="screen">
       <h1 className="screen__title">{config.title}</h1>
       <p className="screen__intro">{config.intro}</p>
+
+      {ignoredHere && (
+        <div className="notice" role="note">
+          {shadowNotice(shadow.ignored, shadow.leading)}
+        </div>
+      )}
 
       {config.Extra && <config.Extra />}
 
