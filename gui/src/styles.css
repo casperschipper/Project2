@@ -1541,3 +1541,14 @@ input.token__input:focus {
   font-style: italic;
   color: var(--text-muted);
 }
+
+/* Whole-window zoom control in the header. */
+.zoom {
+  display: inline-flex;
+  align-items: center;
+}
+
+.zoom__value {
+  min-width: 48px;
+  font-variant-numeric: tabular-nums;
+}

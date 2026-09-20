@@ -25,6 +25,7 @@ import {
 import { defaultProject } from "./schema/defaults";
 import type { Project } from "./schema/types";
 import { shadowedByEquality } from "./schema/shadowed";
+import { applyZoom, loadZoom, stepZoom } from "./engine/zoom";
 
 export function App() {
   const {
@@ -97,6 +98,30 @@ export function App() {
     const dir = await chooseOutputDir();
     if (dir) update((p) => (p.outputDir = dir));
   };
+
+  // Whole-window zoom: Cmd/Ctrl + and - step, Cmd/Ctrl 0 resets. Restored from
+  // the last session on startup.
+  const [zoom, setZoom] = useState(loadZoom);
+  useEffect(() => {
+    applyZoom(zoom).catch(() => {});
+  }, [zoom]);
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
+      if (e.key === "+" || e.key === "=") {
+        e.preventDefault();
+        setZoom((z) => stepZoom(z, 1));
+      } else if (e.key === "-") {
+        e.preventDefault();
+        setZoom((z) => stepZoom(z, -1));
+      } else if (e.key === "0") {
+        e.preventDefault();
+        setZoom(1);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   // Cmd+S (or Ctrl+S) saves without reaching for the mouse, exactly like
   // `save` above: silent once a path is known, a dialog only the first time.
@@ -225,6 +250,32 @@ export function App() {
         >
           {project.outputDir ? "Change output directory…" : "Set output directory…"}
         </button>
+        <span className="zoom" title="Zoom the whole window (Cmd/Ctrl + and −, 0 to reset)">
+          <button
+            type="button"
+            className="btn btn--ghost btn--small"
+            onClick={() => setZoom((z) => stepZoom(z, -1))}
+            aria-label="Zoom out"
+          >
+            −
+          </button>
+          <button
+            type="button"
+            className="btn btn--ghost btn--small zoom__value"
+            onClick={() => setZoom(1)}
+            aria-label="Reset zoom"
+          >
+            {Math.round(zoom * 100)}%
+          </button>
+          <button
+            type="button"
+            className="btn btn--ghost btn--small"
+            onClick={() => setZoom((z) => stepZoom(z, 1))}
+            aria-label="Zoom in"
+          >
+            +
+          </button>
+        </span>
         <button
           type="button"
           className="btn btn--ghost btn--small"
