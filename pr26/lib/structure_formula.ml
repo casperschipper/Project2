@@ -811,7 +811,7 @@ module Parse = struct
      keyword has already been stripped by the caller. Returns [None] for
      percussion so each call site maps onto its own percussion variant
      ([PercussionPitchRange] / [PercussionRegister]). *)
-  let parse_pitch_range_body items =
+  let parse_pitch_range_body ~tr items =
     match items with
     | [ Sexp.Atom "percussion" ] -> Ok None
     | _ ->
@@ -825,15 +825,16 @@ module Parse = struct
               let* o = require_int oct in
               let* p = require_int p in
               let* o = lift (mk_octave o) in
-              Ok (absolute o (Step p))
+              let* p = lift (mk_step ~tr p) in
+              Ok (absolute o p)
           | _ -> fail (Printf.sprintf "%s expects (octave N) (pitch N)" name)
         in
         let* low = parse_bound "low" in
         let* high = parse_bound "high" in
         Ok (Some (low, high))
 
-  let parse_instrument_pitch_range items =
-    let* range = parse_pitch_range_body items in
+  let parse_instrument_pitch_range ~tr items =
+    let* range = parse_pitch_range_body ~tr items in
     match range with
     | None -> Ok PercussionPitchRange
     | Some (min, max) -> lift (mk_pitch_range min max Pitch_set.empty)
@@ -842,9 +843,9 @@ module Parse = struct
      the instrument field, which lives inside a fields list), so this strips
      the leading keyword itself before delegating to the shared body
      parser above. *)
-  let parse_register_entry = function
+  let parse_register_entry ~tr = function
     | Sexp.List (Sexp.Atom "pitch-range" :: rest) ->
-        let* range = parse_pitch_range_body rest in
+        let* range = parse_pitch_range_body ~tr rest in
         (match range with
         | None -> Ok PercussionRegister
         | Some (low, high) -> lift (mk_register low high))
@@ -916,7 +917,7 @@ module Parse = struct
           "matrix expects one of: (rows (...)), (chord (...)), (adjacency \
            (given (succ ...)) ...)"
 
-  let parse_instrument i sexp =
+  let parse_instrument ~tr i sexp =
     match sexp with
     | Sexp.List (Sexp.Atom "instrument" :: Sexp.Atom name :: fields) ->
         let* instr =
@@ -961,7 +962,7 @@ module Parse = struct
           in_loc
             [ Key KInstrument; Index i; Key KPitchRange ]
             (let* args = require_field "pitch-range" fields in
-             parse_instrument_pitch_range args)
+             parse_instrument_pitch_range ~tr args)
         in
         let* durations =
           in_loc
@@ -1079,7 +1080,7 @@ module Parse = struct
           [ Key KInstrument; Key KList ]
           (require_field "instruments" items)
       in
-      let* instrs = args |> List.mapi parse_instrument |> sequence in
+      let* instrs = args |> List.mapi (parse_instrument ~tr) |> sequence in
       Ok (ParameterList (Array.of_list instrs))
     in
     let* instr_table =
@@ -1209,7 +1210,7 @@ module Parse = struct
         (let* args = require_field "registers" items in
          match args with
          | [ Sexp.List inner ] ->
-             let* regs = inner |> List.map parse_register_entry |> sequence in
+             let* regs = inner |> List.map (parse_register_entry ~tr) |> sequence in
              Ok (ParameterList (Array.of_list regs))
          | _ -> fail "registers expects (registers (...))")
     in

@@ -385,6 +385,178 @@ let () =
   assert (List.sort_uniq compare first_chord <> [ steps.(0) ]);
   print_endline "interval principle: per-chord-tone distribution test passed"
 
+(* [instrument_repeated] regression (EMR-3 8.16): two equally-eligible
+   single-note instruments and a chord density of 2 - the ensemble must
+   always be able to find the *other* instrument for the chord's second
+   note, so [instrument_repeated] must never fire just because chance alone
+   might otherwise land twice on the same one while an alternative sat
+   unused ([instrument] ensemble is [alea], which samples independently each
+   time and so could repeat by pure chance without the fix). *)
+let () =
+  let src =
+    {|(structure-formula
+  (seed 3)
+  (variant-duration 5.0)
+  (octave-division 12)
+
+  (dynamics (mf))
+  (dynamics-table (0))
+
+  (performance (normal))
+  (performance-table (0))
+
+  (number-of-instrument-groups 1)
+  (instruments
+    (instrument a
+      (chordsize 1 1)
+      (performance (normal))
+      (dynamics (mf))
+      (pitch-range (low (octave 1) (pitch 1)) (high (octave 8) (pitch 12)))
+      (durations 0.1 1.0))
+    (instrument b
+      (chordsize 1 1)
+      (performance (normal))
+      (dynamics (mf))
+      (pitch-range (low (octave 1) (pitch 1)) (high (octave 8) (pitch 12)))
+      (durations 0.1 1.0)))
+  (instrument-table (0 1))
+
+  (entrydelays (0.5))
+  (entrydelay-table (0))
+
+  (durations (0.2))
+  (duration-table (0))
+
+  (registers ((pitch-range (low (octave 1) (pitch 1)) (high (octave 8) (pitch 12)))))
+  (register-table (0))
+
+  (harmony
+    (principle interval)
+    (matrix (adjacency (1 (1 2 3 4 5 6 7 8 9 10 11 12)) (2 (1 2 3 4 5 6 7 8 9 10 11 12)) (3 (1 2 3 4 5 6 7 8 9 10 11 12)) (4 (1 2 3 4 5 6 7 8 9 10 11 12)) (5 (1 2 3 4 5 6 7 8 9 10 11 12)) (6 (1 2 3 4 5 6 7 8 9 10 11 12)) (7 (1 2 3 4 5 6 7 8 9 10 11 12)) (8 (1 2 3 4 5 6 7 8 9 10 11 12)) (9 (1 2 3 4 5 6 7 8 9 10 11 12)) (10 (1 2 3 4 5 6 7 8 9 10 11 12)) (11 (1 2 3 4 5 6 7 8 9 10 11 12)) (12 (1 2 3 4 5 6 7 8 9 10 11 12)))))
+
+  (principles
+    (instrument (ensemble alea) (order series))
+    (entrydelay (ensemble series) (order series))
+    (performance (ensemble series) (order series) (mode per-chord))
+    (dynamics (ensemble series) (order series) (mode per-chord))
+    (duration (ensemble series) (order series) (relation (independent per-chord)))
+    (register (ensemble series) (order series) (mode per-chord)))
+
+  (hierarchy (Ins Reg Har Per Dyn Ent Dur))
+  (union none)
+  (density (autonomous (low 2) (high 2) (principle (group (element series) (repetition series) (repetitions 1 4)))))
+)|}
+  in
+  match Pr26.Sexp.of_string src with
+  | Error e ->
+      failwith ("instrument_repeated test formula failed to parse: " ^ e)
+  | Ok sexps -> (
+      match Pr26.Structure_formula.Parse.of_sexp sexps with
+      | Error (errors, _) ->
+          failwith
+            (Printf.sprintf
+               "instrument_repeated test formula failed to build: %d error(s)"
+               (List.length errors))
+      | Ok (sf, _warnings) ->
+          let variants = Pr26.Score_generation.build_score sf in
+          let entries =
+            variants
+            |> List.concat_map (fun layers ->
+                   layers
+                   |> List.concat_map
+                        (fun (es : Pr26.Score_generation.entry list) -> es))
+          in
+          assert (entries <> []);
+          List.iter
+            (fun (e : Pr26.Score_generation.entry) ->
+              assert (not e.instrument_repeated))
+            entries;
+          print_endline
+            "autonomous density: an unused compatible instrument is always \
+             preferred, instrument_repeated test passed")
+
+(* Genuine shortage (EMR-3 8.16): the same setup but with only *one*
+   available instrument - the second note of every chord has no choice but
+   to reuse it, and [instrument_repeated] must still fire, since this time
+   the orchestra really has run out of distinct instruments. *)
+let () =
+  let src =
+    {|(structure-formula
+  (seed 3)
+  (variant-duration 5.0)
+  (octave-division 12)
+
+  (dynamics (mf))
+  (dynamics-table (0))
+
+  (performance (normal))
+  (performance-table (0))
+
+  (number-of-instrument-groups 1)
+  (instruments
+    (instrument a
+      (chordsize 1 1)
+      (performance (normal))
+      (dynamics (mf))
+      (pitch-range (low (octave 1) (pitch 1)) (high (octave 8) (pitch 12)))
+      (durations 0.1 1.0)))
+  (instrument-table (0))
+
+  (entrydelays (0.5))
+  (entrydelay-table (0))
+
+  (durations (0.2))
+  (duration-table (0))
+
+  (registers ((pitch-range (low (octave 1) (pitch 1)) (high (octave 8) (pitch 12)))))
+  (register-table (0))
+
+  (harmony
+    (principle interval)
+    (matrix (adjacency (1 (1 2 3 4 5 6 7 8 9 10 11 12)) (2 (1 2 3 4 5 6 7 8 9 10 11 12)) (3 (1 2 3 4 5 6 7 8 9 10 11 12)) (4 (1 2 3 4 5 6 7 8 9 10 11 12)) (5 (1 2 3 4 5 6 7 8 9 10 11 12)) (6 (1 2 3 4 5 6 7 8 9 10 11 12)) (7 (1 2 3 4 5 6 7 8 9 10 11 12)) (8 (1 2 3 4 5 6 7 8 9 10 11 12)) (9 (1 2 3 4 5 6 7 8 9 10 11 12)) (10 (1 2 3 4 5 6 7 8 9 10 11 12)) (11 (1 2 3 4 5 6 7 8 9 10 11 12)) (12 (1 2 3 4 5 6 7 8 9 10 11 12)))))
+
+  (principles
+    (instrument (ensemble alea) (order series))
+    (entrydelay (ensemble series) (order series))
+    (performance (ensemble series) (order series) (mode per-chord))
+    (dynamics (ensemble series) (order series) (mode per-chord))
+    (duration (ensemble series) (order series) (relation (independent per-chord)))
+    (register (ensemble series) (order series) (mode per-chord)))
+
+  (hierarchy (Ins Reg Har Per Dyn Ent Dur))
+  (union none)
+  (density (autonomous (low 2) (high 2) (principle (group (element series) (repetition series) (repetitions 1 4)))))
+)|}
+  in
+  match Pr26.Sexp.of_string src with
+  | Error e ->
+      failwith ("instrument_repeated shortage test formula failed to parse: " ^ e)
+  | Ok sexps -> (
+      match Pr26.Structure_formula.Parse.of_sexp sexps with
+      | Error (errors, _) ->
+          failwith
+            (Printf.sprintf
+               "instrument_repeated shortage test formula failed to build: %d \
+                error(s)"
+               (List.length errors))
+      | Ok (sf, _warnings) ->
+          let variants = Pr26.Score_generation.build_score sf in
+          let entries =
+            variants
+            |> List.concat_map (fun layers ->
+                   layers
+                   |> List.concat_map
+                        (fun (es : Pr26.Score_generation.entry list) -> es))
+          in
+          assert (entries <> []);
+          assert (
+            List.for_all
+              (fun (e : Pr26.Score_generation.entry) -> e.instrument_repeated)
+              entries);
+          print_endline
+            "autonomous density: a genuine instrument shortage still flags \
+             instrument_repeated test passed")
+
 (* XCL-FRQ (entry 23): a forbidden tone must never appear, however long the
    run - checked against a fully-connected matrix so nothing else would ever
    exclude it. *)
@@ -444,7 +616,10 @@ let () =
                   |> List.concat_map (fun (e : Pr26.Score_generation.entry) ->
                          e.notes)))
   in
-  assert (List.exists (fun (n : Pr26.Score_generation.note) -> not n.harmony_matrix_ok) notes);
+  assert (
+    List.exists
+      (fun (n : Pr26.Score_generation.note) -> not n.diagnostics.harmony_matrix_ok)
+      notes);
   print_endline "interval principle: too-strict fallback test passed"
 
 (* ---- HARMONY's CHORD principle (EMR-3 8.2, entries 15-18) ---- *)
@@ -1372,3 +1547,49 @@ let () =
   print_endline
     "REST: union common-harmony per-layer insertion (phase 1 -> phase 2 \
      seam) test passed"
+
+(* Pitch-range bounds (instrument and register) must stay within 1..tr. *)
+let () =
+  let src pitch =
+    Printf.sprintf
+      {|(structure-formula
+  (seed 3) (variant-duration 5.0) (octave-division 12)
+  (dynamics (mf)) (dynamics-table (0))
+  (performance (normal)) (performance-table (0))
+  (number-of-instrument-groups 1)
+  (instruments
+    (instrument a (chordsize 1 1) (performance (normal)) (dynamics (mf))
+      (pitch-range (low (octave 1) (pitch 1)) (high (octave 8) (pitch %d)))
+      (durations 0.1 1.0)))
+  (instrument-table (0))
+  (entrydelays (0.5)) (entrydelay-table (0))
+  (durations (0.2)) (duration-table (0))
+  (registers ((pitch-range (low (octave 1) (pitch 1)) (high (octave 8) (pitch 12)))))
+  (register-table (0))
+  (harmony (principle row) (row (1 2 3)) (transposition none))
+  (principles
+    (instrument (ensemble alea) (order series))
+    (entrydelay (ensemble series) (order series))
+    (performance (ensemble series) (order series) (mode per-chord))
+    (dynamics (ensemble series) (order series) (mode per-chord))
+    (duration (ensemble series) (order series) (relation (independent per-chord)))
+    (register (ensemble series) (order series) (mode per-chord)))
+  (hierarchy (Ins Reg Har Per Dyn Ent Dur))
+  (union none)
+  (density (autonomous (low 2) (high 2) (principle (group (element series) (repetition series) (repetitions 1 4))))))|}
+      pitch
+  in
+  let has_relative_pitch_error pitch =
+    match Pr26.Sexp.of_string (src pitch) with
+    | Error _ -> false
+    | Ok sexps -> (
+        match Pr26.Structure_formula.Parse.of_sexp sexps with
+        | Error (errors, _) ->
+            List.exists
+              (fun (e : Pr26.Parameters.diagnostic) ->
+                (match e.problem with Pr26.Parameters.InvalidRelativePitch _ -> true | _ -> false))
+              errors
+        | Ok _ -> false)
+  in
+  assert (has_relative_pitch_error 13);
+  print_endline "instrument pitch-range bound > tr rejected test passed"

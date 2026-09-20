@@ -177,8 +177,14 @@ fn read_help(key: String) -> Option<String> {
     std::fs::read_to_string(help_path(&key)?).ok()
 }
 
+/// Only available in debug builds (`tauri dev`) - the UI hides the edit
+/// control in a built app, but this is the actual guarantee: composers
+/// running the shipped app can't have their help docs edited from under them.
 #[tauri::command]
 fn write_help(key: String, markdown: String) -> Result<(), String> {
+    if !cfg!(debug_assertions) {
+        return Err("editing help is only available in development builds".to_string());
+    }
     let path = help_path(&key).ok_or_else(|| format!("invalid help key: {key}"))?;
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;

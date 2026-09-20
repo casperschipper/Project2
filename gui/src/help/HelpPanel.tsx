@@ -16,7 +16,11 @@ import { readHelp, writeHelp } from "../engine/backend";
  * The edit button writes back to the same file. It exists because the help
  * text is the teaching material here and is expected to be revised while
  * using the program - noticing a confusing explanation and fixing it should
- * not mean switching windows.
+ * not mean switching windows. It only appears in dev (`import.meta.env.DEV`,
+ * true under `npm run dev` / `tauri dev`, false in a built app) - composers
+ * running the shipped app shouldn't be able to edit the docs, only the people
+ * writing them. The Tauri `write_help` command enforces this too, so it's
+ * not just a hidden button.
  */
 /**
  * Resolve a markdown link target to a help key.
@@ -111,32 +115,33 @@ export function HelpPanel() {
           </button>
         )}
         <span className="help__title">{help.title}</span>
-        {editing ? (
-          <>
-            <button type="button" className="btn btn--small btn--primary" onClick={save}>
-              Save
-            </button>
+        {import.meta.env.DEV &&
+          (editing ? (
+            <>
+              <button type="button" className="btn btn--small btn--primary" onClick={save}>
+                Save
+              </button>
+              <button
+                type="button"
+                className="btn btn--small"
+                onClick={() => {
+                  setDraft(markdown ?? "");
+                  setEditing(false);
+                }}
+              >
+                Cancel
+              </button>
+            </>
+          ) : (
             <button
               type="button"
-              className="btn btn--small"
-              onClick={() => {
-                setDraft(markdown ?? "");
-                setEditing(false);
-              }}
+              className="btn btn--ghost btn--small"
+              onClick={() => setEditing(true)}
+              title="Edit this help text"
             >
-              Cancel
+              Edit
             </button>
-          </>
-        ) : (
-          <button
-            type="button"
-            className="btn btn--ghost btn--small"
-            onClick={() => setEditing(true)}
-            title="Edit this help text"
-          >
-            Edit
-          </button>
-        )}
+          ))}
         <button type="button" className="btn btn--ghost btn--icon" onClick={closeHelp} title="Close">
           ×
         </button>
@@ -164,9 +169,15 @@ export function HelpPanel() {
               No help has been written for <code>{key}</code> yet.
             </p>
             <p>
-              It lives at <code>help/{key}.md</code>. Press <strong>Edit</strong> to write it
-              now, or create the file in your editor — it will be picked up the next time you
-              open this panel.
+              It lives at <code>help/{key}.md</code>.{" "}
+              {import.meta.env.DEV
+                ? (
+                  <>
+                    Press <strong>Edit</strong> to write it now, or create the file in your
+                    editor — it will be picked up the next time you open this panel.
+                  </>
+                )
+                : "Create the file to add it."}
             </p>
           </div>
         )}

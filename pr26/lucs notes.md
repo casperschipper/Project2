@@ -1,13 +1,13 @@
 august 31 2026
 
-documentation should not be editable in the gui 
-visualize tendency mask? can we see what the percentages mean in terms of the
+
+[ ] visualize tendency mask? can we see what the percentages mean in terms of the
 values? (e.g. in vertical density)
-if duration = entry delay that should be mentioendi n the hierarchy
-in instrument relative pitch can exceed octave division. is that correct?
-warning mouseover can be hidden by/below something above it if it is topmost row
+[ ] if duration = entry delay that should be mentioendi n the hierarchy
+
+
 of its block
-why do we need to define number of instrument groups? isnt that just the number
+[ ] why do we need to define number of instrument groups? isnt that just the number
 of rows in the table?
 depending on number of instrument groups and combination/union setting gui
 should diplay some information on what is going to happen
@@ -23,8 +23,8 @@ definition, possibly even package lilypond as a lib if not installed
 osc output is promptable, maybe as supercollider osc score
 
 
-
-
+[x] warning mouseover can be hidden by/below something above it if it is topmost row
+[x] in instrument relative pitch can exceed octave division. is that correct?
 [x] Dynamic list
 [x] Sample is not a good name (changed to order)
 [x] RATIO;

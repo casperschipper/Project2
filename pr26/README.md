@@ -72,15 +72,16 @@ Should the composer be helped in some way to construct useful tables? If a param
 # TODOS
 
 
-[ ] rest parameter
+
 [ ] state saving of selection principles for visualization of how structure
 formula unfolds
 [ ] version management of structure formula?
 
 # DONE
 
+[x] documentation should not be editable in the gui NOTE: I have kept it editable in development, I think this is very useful, otherwise you have to keep looking which file belongs to what help string.
+[x] rest parameter
 [x] remove "run" and "export formula"
-
 [x] warnings/errors on interval matrix should be displayed in harmony panel
 [x] Shared harmony across layers
 [x] invert matrix button move to matrix and update text when clicked

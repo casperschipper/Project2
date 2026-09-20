@@ -1222,13 +1222,7 @@ let chord_table_too_long_indices ~tr (ChordTable chords) =
   |> List.mapi (fun i c -> (i, count_chord_tones c))
   |> List.filter (fun (_, len) -> len > tr)
 
-(* EMR-3 §7.1: given a fixed register and a relative pitch already chosen by
-   HARMONY, find which octave(s) within the register's span share that
-   relative pitch, and take the lowest - e.g. register (401,512), relative
-   pitch 5, can occupy 405 or 505; this picks 405. Returns [(pitch, false)]
-   when nothing fits (the manual's "wrong pitch... provided with a
-   comment"), mirroring [duration_ok]'s Impossible-fallback idiom elsewhere
-   in this codebase - the caller decides what to do with a [false] flag. *)
+(* EMR-3 §7.1:C *)
 let find_octave_for_step ~low ~high step =
   let lo = octave_to_int low.octave and hi = octave_to_int high.octave in
   List.init (hi - lo + 1) (fun i -> Octave (lo + i))

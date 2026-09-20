@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useStore } from "../state/store";
 import { diagnosticsFor } from "../engine/diagnostics";
 import type { Table } from "../schema/types";
@@ -211,12 +212,14 @@ function Cell({
   onRemove: () => void;
 }) {
   const [hover, setHover] = useState(false);
+  const cellRef = useRef<HTMLSpanElement>(null);
   const defined = Number.isInteger(index) && index >= 0 && index < values.length;
   const value = defined ? values[index] : null;
 
   return (
     <span
-      className={`cell ${defined ? "cell--defined" : "cell--undefined"} tooltip`}
+      ref={cellRef}
+      className={`cell ${defined ? "cell--defined" : "cell--undefined"}`}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
     >
@@ -241,7 +244,7 @@ function Cell({
         ×
       </button>
       {hover && (
-        <span className="tooltip__content">
+        <Tooltip anchor={cellRef}>
           {defined
             ? `Index ${index + offset} → ${valueLabel} “${value}”`
             : values.length === 0
@@ -249,8 +252,53 @@ function Cell({
               : `Index ${index + offset} does not exist — valid indices are ${offset} to ${
                   values.length - 1 + offset
                 }`}
-        </span>
+        </Tooltip>
       )}
     </span>
+  );
+}
+
+/**
+ * A hover label rendered in a portal on document.body, positioned with
+ * `position: fixed` from the anchor's bounding rect. Rendered inline it would
+ * be clipped by any `overflow: hidden|auto` ancestor (the table block, the
+ * scrolling main pane) - z-index cannot override clipping. Sits above the
+ * anchor, flips below when there is no room, and is kept inside the viewport
+ * horizontally.
+ */
+function Tooltip({
+  anchor,
+  children,
+}: {
+  anchor: React.RefObject<HTMLElement>;
+  children: React.ReactNode;
+}) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const a = anchor.current?.getBoundingClientRect();
+    const t = ref.current?.getBoundingClientRect();
+    if (!a || !t) return;
+    const gap = 6;
+    const margin = 4;
+    const top =
+      a.top - t.height - gap >= margin ? a.top - t.height - gap : a.bottom + gap;
+    const left = Math.min(
+      Math.max(a.left + a.width / 2 - t.width / 2, margin),
+      window.innerWidth - t.width - margin,
+    );
+    setPos({ top, left });
+  }, [anchor, children]);
+
+  return createPortal(
+    <span
+      ref={ref}
+      className="tooltip__content"
+      style={{ top: pos?.top ?? 0, left: pos?.left ?? 0, visibility: pos ? "visible" : "hidden" }}
+    >
+      {children}
+    </span>,
+    document.body,
   );
 }

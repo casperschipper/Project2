@@ -3,23 +3,11 @@ open Structure_formula
 open Selection
 open Tools
 
-(* A fully specified note. 
-   Entry delay
-   is deliberately absent - it is a property of the [entry] (the shared
-   timepoint/chord a note belongs to), never of an individual note. *)
-type note = {
-  time : float;
-  instrument : instr;
-  performance : Performance.t;
-  dynamic : Dynamic.t;
-  duration : duration;
-  (* [false] iff this duration was an [Impossible] fallback: no candidate
-     actually satisfied the duration/entry-delay relation. *)
+(* Sometimes, PR2  *)
+type note_diagnostics = {
+  (* [false] if could not keep duration requirement *)
   duration_ok : bool;
-  pitch : pitch;
-  (* [false] iff [Reg]/[Har]'s resolved values didn't actually agree (a
-     percussion register paired with a real step, or a register the step
-     didn't fit in) - see [resolve_pitch]. *)
+  (* [false] if percussion / pitched between register and harmony principles could not be fulfilled *)
   pitch_ok : bool;
   (* [false] iff HARMONY's INTERVAL principle hit its "restrictions too
      strict" fallback for this note (see [proto.harmony_matrix_ok]) - always
@@ -27,9 +15,25 @@ type note = {
      failure mode with its own comment. *)
   harmony_matrix_ok : bool;
   (* [true] iff this note's instrument had already been picked earlier within
-     the same autonomous-density chord - i.e. there weren't enough distinct
-     instruments to "score" the chord without reusing one (EMR-3 8.16). *)
+     the same autonomous-density chord *and* no other otherwise-compatible
+     instrument was still unused - i.e. there genuinely weren't enough
+     distinct instruments to "score" the chord without reusing one (EMR-3
+     8.16). Picking an unused instrument is always preferred first (see
+     [resolve_step]'s [Ins] case), so this never fires just because the
+     ensemble happened to land on the same instrument again while others
+     were still free. *)
   instrument_repeated : bool;
+}
+
+(* Notes are the fundamental lowest level type of events in PR2 *)
+type note = {
+  time : float;
+  instrument : instr;
+  performance : Performance.t;
+  dynamic : Dynamic.t;
+  duration : duration;
+  pitch : pitch;
+  diagnostics : note_diagnostics;
   (* Stable identifier (variant/layer/entry/note-within-chord) - see
      [Debug_log.note_id]. Assigned once, in [entry_of_group], from the same
      loop index used to build [notes]; never recomputed afterwards. *)
@@ -38,9 +42,8 @@ type note = {
 
 (* Entry is one timepoint:
   In Pr2, you can have multiple notes starting at one entry point / time slot in the score.
-  A bit analogous to a "chord". 
-  For many parameters you can state if it should be selected on the chord level (all notes the same value), or for each note within the chord.
-  This is why some parameters are optional here.
+  Analogous to a "chord". For many parameters you can state if it should be selected on the chord level (all notes at the timepoint have the same value), or are selected for each note within the chord.
+  These parameters are therefor optional, if not specified on entry they are dealt with on a note level.
 *)
 type entry = {
   time : float;
@@ -51,7 +54,8 @@ type entry = {
   dynamic : Dynamic.t option;
   duration : duration option;
   pitch : pitch option;
-  (* see [note.instrument_repeated] - true if any note in this entry is. *)
+  (* see [note_diagnostics.instrument_repeated] - true if any note in this
+     entry is. *)
   instrument_repeated : bool;
   (* [true] iff this is a REST (EMR-3 7.4), spliced in by
      [insert_rests_entries]/[insert_rests_common_harmony_layer] - never a
@@ -311,7 +315,7 @@ type 'a note_value = Shared of 'a | PerNote of 'a list
 let value_at note_values i =
   match note_values with Shared v -> v | PerNote vs -> List.nth vs i
 
-  (* 
+(* 
   A prototype is a note being build up parameter by parameter.
   The hierarchy order defines which parameter is computed first.
   Subsequent parameters may be limited in what they can pick by the others already filled in.
@@ -642,7 +646,9 @@ let ins_pred_from proto =
   in
   let pred i = List.for_all (fun (_, _, f) -> f i) checks in
   let restricted_by =
-    List.filter_map (fun (n, active, _) -> if active then Some n else None) checks
+    List.filter_map
+      (fun (n, active, _) -> if active then Some n else None)
+      checks
   in
   (pred, restricted_by)
 
@@ -654,7 +660,9 @@ let mode_pred_from_instrument ~instr_arr ~mem proto_instrument instr_modes =
     | Some i -> fun v -> mem v (instr_modes i)
     | None -> fun v -> Array.exists (fun i -> mem v (instr_modes i)) instr_arr
   in
-  let restricted_by = if proto_instrument = None then [] else [ "instrument" ] in
+  let restricted_by =
+    if proto_instrument = None then [] else [ "instrument" ]
+  in
   (pred, restricted_by)
 
 (* Duration's own conditioning combines the instrument-range predicate above
@@ -1092,14 +1100,26 @@ let emit_restriction ~(ctx : Debug_log.context) restricted_by =
     Debug_log.emit (fun () -> Debug_log.Restriction { ctx; restricted_by })
 
 let resolve_step ~(ctx : Debug_log.context) ~perf_mode ~dyn_mode ~dur_relation
-    ~reg_mode ?max_notes (states, proto) elem =
+    ~reg_mode ?max_notes ?(used = []) (states, proto) elem =
   match elem with
   | Ins ->
       let ctx = { ctx with Debug_log.param = PIns } in
       let pred, restricted_by = ins_pred_from proto in
       emit_restriction ~ctx restricted_by;
+      (* [used] is every instrument already picked earlier in the same chord
+         (empty outside a multi-sub-pick group). Prefer one not in [used] -
+         if at least one otherwise-compatible instrument is still unused,
+         draw only from those, so a repeat never happens just because the
+         ensemble happened to land on it again by chance. Only when every
+         compatible instrument is already used do we fall back to drawing
+         from all of them and flag the pick as [instrument_repeated] - EMR-3
+         8.16's actual "not enough instruments" case. *)
+      let has_unused =
+        Array.exists (fun i -> pred i && not (List.mem i used)) states.instr_arr
+      in
+      let pred' i = pred i && ((not has_unused) || not (List.mem i used)) in
       let v, instr_state' =
-        sel_sample_pred_debug ~ctx ~to_string:instrument_to_string pred
+        sel_sample_pred_debug ~ctx ~to_string:instrument_to_string pred'
           states.instr_state
       in
       let (Instrument { chordsize = Chordsize { minsize; maxsize }; _ }) = v in
@@ -1109,7 +1129,12 @@ let resolve_step ~(ctx : Debug_log.context) ~perf_mode ~dyn_mode ~dur_relation
       in
       let n = match max_notes with Some m -> min n_raw m | None -> n_raw in
       ( { states with instr_state = instr_state' },
-        { proto with instrument = Some v; nr_of_notes = Some n } )
+        {
+          proto with
+          instrument = Some v;
+          nr_of_notes = Some n;
+          instrument_repeated = not has_unused;
+        } )
   | Ent -> (
       let ctx = { ctx with Debug_log.param = PEnt } in
       match (dur_relation, proto.duration) with
@@ -1202,7 +1227,9 @@ let resolve_step ~(ctx : Debug_log.context) ~perf_mode ~dyn_mode ~dur_relation
       ({ states with dyn_state = dyn_state' }, { proto with dynamic = Some v })
   | Reg ->
       let ctx = { ctx with Debug_log.param = PReg } in
-      let pred, restricted_by = reg_pred_from ~instr_arr:states.instr_arr proto in
+      let pred, restricted_by =
+        reg_pred_from ~instr_arr:states.instr_arr proto
+      in
       emit_restriction ~ctx restricted_by;
       let v, oks, reg_state' =
         resolve_note_param_tagged ~ctx ~to_string:register_to_string reg_mode
@@ -1213,9 +1240,10 @@ let resolve_step ~(ctx : Debug_log.context) ~perf_mode ~dyn_mode ~dur_relation
   | Har -> resolve_harmony states proto
 
 let resolve_entry ?(start = empty_proto) ~ctx ~hierarchy ~perf_mode ~dyn_mode
-    ~dur_relation ~reg_mode ?max_notes states =
+    ~dur_relation ~reg_mode ?max_notes ?used states =
   List.fold_left
-    (resolve_step ~ctx ~perf_mode ~dyn_mode ~dur_relation ~reg_mode ?max_notes)
+    (resolve_step ~ctx ~perf_mode ~dyn_mode ~dur_relation ~reg_mode ?max_notes
+       ?used)
     (states, start) hierarchy
 
 (** With [InstrumentDensity], every entry is its own timepoint - one instrument,
@@ -1276,29 +1304,23 @@ let no_chord_seeds =
     cs_harmony_seed = None;
   }
 
-(** With [Autonomous] density, each timepoint samples a target density and keeps
-    resolving sub-picks (each independently picking its own instrument,
-    conditioned the same way as any other) until the target is reached. If the
-    last pick's chordsize would overshoot the target, its extra voices are cut -
-    [nr_of_notes] is capped down to however many are still needed, so the
-    group's total lands exactly on the target.
+(** NEEDS CLARIFICATION With [Autonomous] density, each timepoint picks a target
+    density using the users selection principle. For each instrument, the number
+    of notes available is computed based on that instruments capacity limits.
+    (If this process results in too many notes, the density of the last
+    instrument is clipped)
 
-    Unlike [InstrumentDensity], a timepoint here may need several sub-picks to
-    "score" the chord (EMR-3 8.16), and several of the chord-wide parameters -
-    entry delay always, and performance/dynamics/duration/register whenever
-    their own mode is [PerChord] - must each end up as exactly *one* shared
-    value for the whole chord, not one independent draw per sub-pick. Each is
-    therefore excluded from every sub-pick's own hierarchy fold
-    ([subpick_hierarchy]) and resolved once per group instead - via
-    [fill_subpicks]'s [~seed]/[~seeds] (values already fixed before the loop,
-    seeded into every sub-pick's [start] proto so its own still-in-the-fold
-    steps condition on them exactly as they would for a single sub-pick - e.g.
-    [Ins]'s [ins_pred_from] already reads every one of these fields) or by
-    aggregating over the finished group afterward (values that depend on
-    something only known *after* the loop, such as which instruments actually
-    got picked - constrained to agree with all of them, mirroring the
-    conservative "must satisfy every one" choice [resolve_step] already makes
-    for a single proto's own per-note values).
+    In other words:
+
+    1. Select an autonomous density 2. Select instruments, compute a density,
+    repeat until reached. 3. For each note in each instrument, compute the
+    parameters.
+
+    Some parameters may be the same for all the notes in the entry, so in that
+    case, they are calculated only for the entry and copied over for each note
+    within the chord.
+
+    Now there can be some complicated cases around entry delay:
 
     Entry delay's own before/after split is the simplest case, and the template
     every other extraction below follows: it's governed by wherever the composer
@@ -1377,7 +1399,7 @@ let resolve_layer_autonomous ~variant ~layer ~n_events ~hierarchy ~perf_mode
     |> List.filter (fun e -> not (e = Reg && reg_extracted))
     |> List.filter (fun e -> not (e = Dur && dur_extracted))
   in
-  let resolve_subpick ~ctx ?seed_entrydelay ?max_notes ~seeds states =
+  let resolve_subpick ~ctx ?seed_entrydelay ?max_notes ?used ~seeds states =
     let start =
       {
         empty_proto with
@@ -1391,7 +1413,7 @@ let resolve_layer_autonomous ~variant ~layer ~n_events ~hierarchy ~perf_mode
       }
     in
     resolve_entry ~ctx ~start ~hierarchy:subpick_hierarchy ~perf_mode ~dyn_mode
-      ~dur_relation ~reg_mode ?max_notes states
+      ~dur_relation ~reg_mode ?max_notes ?used states
   in
   (* Every sub-pick's own instrument, once the group is fully resolved -
      needed by whichever of performance/dynamics/register/duration must
@@ -1428,22 +1450,21 @@ let resolve_layer_autonomous ~variant ~layer ~n_events ~hierarchy ~perf_mode
      a no-op everywhere else. *)
   let fill_subpicks ~ctx states target ~seed ~next_seed ~seeds =
     (* [used] carries every instrument already picked earlier in this same
-       chord, so a later pick that lands on one of them - the orchestra
-       running out of distinct instruments before the target density is
-       reached - can be flagged (EMR-3 8.16: "the programme expects there to
+       chord, threaded into [resolve_subpick]'s own [Ins] step so it draws
+       from the unused ones whenever any remain - a later pick only lands on
+       one of them, and gets flagged [instrument_repeated], when the
+       orchestra has genuinely run out of distinct instruments before the
+       target density is reached (EMR-3 8.16: "the programme expects there to
        be enough instruments ... If there are not enough instruments, each
        repeated instrument is provided with a comment"). *)
     let rec loop states total used acc settled =
       let states', proto =
         resolve_subpick ~ctx ?seed_entrydelay:settled
-          ~max_notes:(target - total) ~seeds states
+          ~max_notes:(target - total) ~used ~seeds states
       in
       let picked =
-        match proto.instrument with
-        | Some (Instrument { instrument; _ }) -> instrument
-        | None -> assert false
+        match proto.instrument with Some i -> i | None -> assert false
       in
-      let proto = { proto with instrument_repeated = List.mem picked used } in
       let settled' = next_seed settled proto in
       let n = Option.value proto.nr_of_notes ~default:1 in
       let total' = total + n in
@@ -1588,14 +1609,15 @@ let resolve_layer_autonomous ~variant ~layer ~n_events ~hierarchy ~perf_mode
             draw_duration_before ~ed_opt:(Some ed) states
           in
           let _, group, states' =
-            fill_subpicks ~ctx states target ~seed:(Some ed) ~next_seed:keep_seed
+            fill_subpicks ~ctx states target ~seed:(Some ed)
+              ~next_seed:keep_seed
               ~seeds:{ seeds with cs_dur = dur_seed }
           in
           (ed, group, states')
         else
           let _, group, states' =
-            fill_subpicks ~ctx states target ~seed:(Some ed) ~next_seed:keep_seed
-              ~seeds
+            fill_subpicks ~ctx states target ~seed:(Some ed)
+              ~next_seed:keep_seed ~seeds
           in
           if dur_extracted then
             let group, states' =
@@ -1613,7 +1635,8 @@ let resolve_layer_autonomous ~variant ~layer ~n_events ~hierarchy ~perf_mode
           finish_with_computed_entrydelay group states'
         else
           let _, group, states' =
-            fill_subpicks ~ctx states target ~seed:None ~next_seed:keep_seed ~seeds
+            fill_subpicks ~ctx states target ~seed:None ~next_seed:keep_seed
+              ~seeds
           in
           let group, states' =
             if dur_extracted then
@@ -1796,8 +1819,8 @@ let resolve_layer_autonomous ~variant ~layer ~n_events ~hierarchy ~perf_mode
    predicates fire correctly) *before* its own fold runs, then overwritten
    with the real, sliced-from-the-drawn-chord per-note values by
    [assign_harmony] once every sub-pick's [nr_of_notes] is final. *)
-let resolve_layer_chord_density ~variant ~layer ~n_events ~hierarchy
-    ~perf_mode ~dyn_mode ~dur_relation ~reg_mode states0 =
+let resolve_layer_chord_density ~variant ~layer ~n_events ~hierarchy ~perf_mode
+    ~dyn_mode ~dur_relation ~reg_mode states0 =
   let index_of x =
     let rec go i = function
       | [] -> assert false
@@ -1825,7 +1848,7 @@ let resolve_layer_chord_density ~variant ~layer ~n_events ~hierarchy
     |> List.filter (fun e -> not (e = Reg && reg_extracted))
     |> List.filter (fun e -> not (e = Dur && dur_extracted))
   in
-  let resolve_subpick ~ctx ?seed_entrydelay ?max_notes ~seeds states =
+  let resolve_subpick ~ctx ?seed_entrydelay ?max_notes ?used ~seeds states =
     let start =
       {
         empty_proto with
@@ -1840,7 +1863,7 @@ let resolve_layer_chord_density ~variant ~layer ~n_events ~hierarchy
       }
     in
     resolve_entry ~ctx ~start ~hierarchy:subpick_hierarchy ~perf_mode ~dyn_mode
-      ~dur_relation ~reg_mode ?max_notes states
+      ~dur_relation ~reg_mode ?max_notes ?used states
   in
   let instruments_of group =
     List.map
@@ -1864,17 +1887,17 @@ let resolve_layer_chord_density ~variant ~layer ~n_events ~hierarchy
   in
   let stamp_ok ok proto = { proto with duration_ok = Some (Shared ok) } in
   let fill_subpicks ~ctx states target ~seed ~next_seed ~seeds =
+    (* [used] threads every instrument already picked earlier in this same
+       chord into [resolve_subpick]'s own [Ins] step, mirroring
+       [resolve_layer_autonomous]'s [fill_subpicks] - see its comment. *)
     let rec loop states total used acc settled =
       let states', proto =
         resolve_subpick ~ctx ?seed_entrydelay:settled
-          ~max_notes:(target - total) ~seeds states
+          ~max_notes:(target - total) ~used ~seeds states
       in
       let picked =
-        match proto.instrument with
-        | Some (Instrument { instrument; _ }) -> instrument
-        | None -> assert false
+        match proto.instrument with Some i -> i | None -> assert false
       in
-      let proto = { proto with instrument_repeated = List.mem picked used } in
       let settled' = next_seed settled proto in
       let n = Option.value proto.nr_of_notes ~default:1 in
       let total' = total + n in
@@ -1902,12 +1925,11 @@ let resolve_layer_chord_density ~variant ~layer ~n_events ~hierarchy
      if no instrument of that tone type exists at all - harmless once
      trimmed to zero notes, but wasteful and pollutes [instrument_repeated]
      bookkeeping for no benefit). *)
-  let fill_subpicks_split ~ctx states (percussion_n, pitched_n) ~seed
-      ~next_seed ~seeds1 ~seeds2 =
+  let fill_subpicks_split ~ctx states (percussion_n, pitched_n) ~seed ~next_seed
+      ~seeds1 ~seeds2 =
     let settled1, perc_group, states1 =
       if percussion_n <= 0 then (seed, [], states)
-      else
-        fill_subpicks ~ctx states percussion_n ~seed ~next_seed ~seeds:seeds1
+      else fill_subpicks ~ctx states percussion_n ~seed ~next_seed ~seeds:seeds1
     in
     let settled2, pitched_group, states2 =
       if pitched_n <= 0 then (settled1, [], states1)
@@ -1980,8 +2002,8 @@ let resolve_layer_chord_density ~variant ~layer ~n_events ~hierarchy
         let ed = get_value v in
         let states = { states with ed_state = ed_state' } in
         let _, group, states' =
-          fill_subpicks_split ~ctx states split ~seed:(Some ed) ~next_seed:keep_seed
-            ~seeds1 ~seeds2
+          fill_subpicks_split ~ctx states split ~seed:(Some ed)
+            ~next_seed:keep_seed ~seeds1 ~seeds2
         in
         (ed, List.map (stamp_ok ok) group, states')
     | DurEqualsEntry, false ->
@@ -1994,7 +2016,8 @@ let resolve_layer_chord_density ~variant ~layer ~n_events ~hierarchy
               | _ -> None)
         in
         let settled, group, states' =
-          fill_subpicks_split ~ctx states split ~seed:None ~next_seed ~seeds1 ~seeds2
+          fill_subpicks_split ~ctx states split ~seed:None ~next_seed ~seeds1
+            ~seeds2
         in
         (* Unlike [resolve_layer_autonomous] (guaranteed at least one
            sub-pick via [low >= 1] on [Autonomous]'s own density range), a
@@ -2043,15 +2066,16 @@ let resolve_layer_chord_density ~variant ~layer ~n_events ~hierarchy
         if dur_extracted && dur_before_ins then
           let states, dur_seed = draw_duration_before ~ed_opt:None states in
           let _, group, states' =
-            fill_subpicks_split ~ctx states split ~seed:None ~next_seed:keep_seed
+            fill_subpicks_split ~ctx states split ~seed:None
+              ~next_seed:keep_seed
               ~seeds1:{ seeds1 with cs_dur = dur_seed }
               ~seeds2:{ seeds2 with cs_dur = dur_seed }
           in
           finish_with_computed_entrydelay group states'
         else
           let _, group, states' =
-            fill_subpicks_split ~ctx states split ~seed:None ~next_seed:keep_seed
-              ~seeds1 ~seeds2
+            fill_subpicks_split ~ctx states split ~seed:None
+              ~next_seed:keep_seed ~seeds1 ~seeds2
           in
           let group, states' =
             if dur_extracted then
@@ -2311,11 +2335,14 @@ let notes_of_proto proto : note list =
         performance = value_at perf i;
         dynamic = value_at dyn i;
         duration = value_at dur i;
-        duration_ok = value_at dur_ok i;
         pitch;
-        pitch_ok;
-        harmony_matrix_ok = value_at har_matrix_ok i;
-        instrument_repeated = proto.instrument_repeated;
+        diagnostics =
+          {
+            duration_ok = value_at dur_ok i;
+            pitch_ok;
+            harmony_matrix_ok = value_at har_matrix_ok i;
+            instrument_repeated = proto.instrument_repeated;
+          };
         (* Overwritten by [entry_of_group] once every sub-pick's notes are
            concatenated and this note's real position within the whole
            chord is known - this placeholder is never observed outside
@@ -2376,7 +2403,9 @@ let entry_of_group ~variant ~layer ~(seq : Debug_log.entry_seq) time
         duration = uniform_value (fun (n : note) -> n.duration) notes;
         pitch = uniform_value (fun (n : note) -> n.pitch) notes;
         instrument_repeated =
-          List.exists (fun (n : note) -> n.instrument_repeated) notes;
+          List.exists
+            (fun (n : note) -> n.diagnostics.instrument_repeated)
+            notes;
         is_rest = false;
         id;
       }
@@ -2538,8 +2567,7 @@ let apply_rest_insertions ~(shift_time : float -> 'a -> 'a)
     | { before_index; rest_time; rest_duration } :: rest ->
         let acc = pass_through idx before_index shift acc in
         let acc =
-          mk_rest ~before:before_index ~time:rest_time
-            ~duration:rest_duration
+          mk_rest ~before:before_index ~time:rest_time ~duration:rest_duration
           :: acc
         in
         go before_index (shift +. rest_duration) rest acc
@@ -2592,9 +2620,9 @@ let mk_rest_entry ~variant ~layer ~before ~time ~duration : entry =
    count as a stand-in - the true rest count is only known after running,
    and the manual already treats TENDENCY as not a sensible REST order
    anyway. *)
-let insert_rests_entries ~variant ~layer ~variant_duration ~rest_mode
-    ~rest_arr ~rest_principle (continuing : continuing_state)
-    (entries : entry list) : entry list * continuing_state =
+let insert_rests_entries ~variant ~layer ~variant_duration ~rest_mode ~rest_arr
+    ~rest_principle (continuing : continuing_state) (entries : entry list) :
+    entry list * continuing_state =
   match rest_mode with
   | RestOff -> (entries, continuing)
   | RestBeforeSoundEntry _ | RestBeforeGeneralEntry _ ->
@@ -2636,10 +2664,10 @@ let continue_or_restart_debug ~variant ~layer ~param ~principle ~n ~last_arr
          { variant; layer; param; continued = last_arr = arr });
   continue_or_restart ~principle ~n ~last_arr ~arr state
 
-let resolve_layer_groups ~variant ~layer ~n_events ~variant_n_events
-    ~hierarchy ~instr_arr ~instr_principle ~ed_arr ~ed_principle ~perf_arr
-    ~perf_principle ~perf_mode ~dyn_arr ~dyn_principle ~dyn_mode ~dur_arr
-    ~dur_principle ~dur_relation ~reg_arr ~reg_principle ~reg_mode ~density
+let resolve_layer_groups ~variant ~layer ~n_events ~variant_n_events ~hierarchy
+    ~instr_arr ~instr_principle ~ed_arr ~ed_principle ~perf_arr ~perf_principle
+    ~perf_mode ~dyn_arr ~dyn_principle ~dyn_mode ~dur_arr ~dur_principle
+    ~dur_relation ~reg_arr ~reg_principle ~reg_mode ~density
     (continuing : continuing_state) :
     (entrydelay * proto list) list * continuing_state =
   let states0 =
@@ -2701,8 +2729,8 @@ let calculate_layer_hierarchical ~variant ~layer ~n_events ~variant_n_events
     ~dur_principle ~dur_relation ~reg_arr ~reg_principle ~reg_mode ~density
     (continuing : continuing_state) =
   let groups, states' =
-    resolve_layer_groups ~variant ~layer ~n_events ~variant_n_events
-      ~hierarchy ~instr_arr ~instr_principle ~ed_arr ~ed_principle ~perf_arr
+    resolve_layer_groups ~variant ~layer ~n_events ~variant_n_events ~hierarchy
+      ~instr_arr ~instr_principle ~ed_arr ~ed_principle ~perf_arr
       ~perf_principle ~perf_mode ~dyn_arr ~dyn_principle ~dyn_mode ~dur_arr
       ~dur_principle ~dur_relation ~reg_arr ~reg_principle ~reg_mode ~density
       continuing
@@ -2721,7 +2749,7 @@ let calculate_layer_hierarchical ~variant ~layer ~n_events ~variant_n_events
 type common_harmony_group = {
   ch_layer : int;
   ch_seq : int;
-      (* this group's position within its own layer's own
+  (* this group's position within its own layer's own
                    chronological sequence, before merging *)
   (* [Debug_log.entry_id]'s [seq] this group will carry once
      [split_by_layer] converts it to an [entry] - unlike [ch_seq] (a pure
@@ -2768,9 +2796,9 @@ let calculate_layer_common_harmony_phase1 ~variant ~layer_idx ~n_events
   let groups, states' =
     resolve_layer_groups ~variant ~layer:layer_idx ~n_events ~variant_n_events
       ~hierarchy:hierarchy_no_har ~instr_arr ~instr_principle ~ed_arr
-      ~ed_principle ~perf_arr ~perf_principle ~perf_mode ~dyn_arr
-      ~dyn_principle ~dyn_mode ~dur_arr ~dur_principle ~dur_relation ~reg_arr
-      ~reg_principle ~reg_mode ~density continuing
+      ~ed_principle ~perf_arr ~perf_principle ~perf_mode ~dyn_arr ~dyn_principle
+      ~dyn_mode ~dur_arr ~dur_principle ~dur_relation ~reg_arr ~reg_principle
+      ~reg_mode ~density continuing
   in
   let tagged =
     timed_groups_of groups
@@ -2938,12 +2966,13 @@ let zip7 a b c d e f g =
    unlike every other principle, which only resets at a new variant group,
    it resets at the start of every variant. Every other field passes
    through untouched, continuing exactly as it already does across layers. *)
-let start_new_variant ~variant ~variant_n_events
-    (continuing : continuing_state) =
+let start_new_variant ~variant ~variant_n_events (continuing : continuing_state)
+    =
   let reset_if_tendency ~param state arr =
     match state with
     | STendency (TendencyState { spec; _ }) ->
-        Debug_log.emit (fun () -> Debug_log.VariantTendencyReset { variant; param });
+        Debug_log.emit (fun () ->
+            Debug_log.VariantTendencyReset { variant; param });
         STendency
           (tendency_init ~count:variant_n_events
              (Array.map value_from_element arr)
@@ -3053,7 +3082,9 @@ let generate_score_hierarchical ~variant ~variant_duration ~instrument_ensemble
                    entry_delay_principle entr_arr)
              0
       in
-      let continuing = start_new_variant ~variant ~variant_n_events continuing in
+      let continuing =
+        start_new_variant ~variant ~variant_n_events continuing
+      in
       let continuing', layers =
         layer_inputs
         |> List.mapi (fun i x -> (i, x))
@@ -3110,7 +3141,9 @@ let generate_score_hierarchical ~variant ~variant_duration ~instrument_ensemble
                    entry_delay_principle entr_arr)
              0
       in
-      let continuing = start_new_variant ~variant ~variant_n_events continuing in
+      let continuing =
+        start_new_variant ~variant ~variant_n_events continuing
+      in
       (* Phase 1: every layer resolves everything EXCEPT harmony,
          independently - [har_state] passes through this whole fold
          untouched (only instr/ed/perf/dyn/dur/reg state actually advance
@@ -3321,7 +3354,7 @@ let build_score cfg =
 let count_interval_restrictions_too_strict (variants : entry list list list) =
   variants |> List.concat |> List.concat
   |> List.concat_map (fun (e : entry) -> e.notes)
-  |> List.filter (fun (n : note) -> not n.harmony_matrix_ok)
+  |> List.filter (fun (n : note) -> not n.diagnostics.harmony_matrix_ok)
   |> List.length
 
 let build_constraint_map instrs =
@@ -3334,7 +3367,7 @@ let build_constraint_map instrs =
    duration given the instrument's allowed modes and duration range. Empty
    list means the note is fine. *)
 let instrument_repeated_problem (note : note) =
-  if note.instrument_repeated then
+  if note.diagnostics.instrument_repeated then
     [
       "instrument reused within this chord (not enough distinct instruments to \
        reach the vertical density)";
@@ -3382,7 +3415,7 @@ let note_problems constraint_map (note : note) =
           [ Printf.sprintf "duration %.3f (valid: %.3f-%.3f)" d min max ]
       in
       let dur_relation_problem =
-        if note.duration_ok then []
+        if note.diagnostics.duration_ok then []
         else
           let (Duration d) = note.duration in
           [
@@ -3393,7 +3426,7 @@ let note_problems constraint_map (note : note) =
           ]
       in
       let pitch_problem =
-        if note.pitch_ok then []
+        if note.diagnostics.pitch_ok then []
         else
           [
             Printf.sprintf "pitch %s did not agree between register and harmony"
@@ -3401,7 +3434,7 @@ let note_problems constraint_map (note : note) =
           ]
       in
       let interval_matrix_problem =
-        if note.harmony_matrix_ok then []
+        if note.diagnostics.harmony_matrix_ok then []
         else [ "INTERVAL RESTRICTIONS TOO STRICT" ]
       in
       perf_problem @ dyn_problem @ dur_problem @ dur_relation_problem

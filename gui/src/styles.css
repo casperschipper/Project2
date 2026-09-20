@@ -1461,15 +1461,9 @@ input.token__input:focus {
 }
 
 /* A resolved index, shown on hover over a table cell. */
-.tooltip {
-  position: relative;
-}
-
+/* Rendered in a portal; top/left are set inline from the anchor's rect. */
 .tooltip__content {
-  position: absolute;
-  bottom: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
+  position: fixed;
   background: var(--text);
   color: var(--bg);
   padding: 5px 9px;
@@ -1478,6 +1472,6 @@ input.token__input:focus {
   font-family: var(--font-sans);
   white-space: nowrap;
   pointer-events: none;
-  z-index: 20;
+  z-index: 1000;
   box-shadow: var(--shadow);
 }
