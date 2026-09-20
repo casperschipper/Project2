@@ -85,7 +85,7 @@ export function OutputScreen() {
   const { text, empty } = content();
 
   return (
-    <div className="screen" style={{ maxWidth: 1100 }}>
+    <div className="screen" style={{ maxWidth: "none" }}>
       <h1 className="screen__title">Output</h1>
       <p className="screen__intro">
         What the engine generated from the current formula. More formats and ways of

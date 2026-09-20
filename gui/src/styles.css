@@ -422,6 +422,19 @@ input[type="number"] {
   padding-right: 18px;
 }
 
+/* Real input is full-strength text; a placeholder is visibly only a hint. */
+input,
+textarea {
+  color: var(--text);
+}
+
+input::placeholder,
+textarea::placeholder {
+  font-style: italic;
+  color: var(--text-faint);
+  opacity: 1;
+}
+
 input:focus,
 select:focus,
 textarea:focus {
@@ -440,8 +453,9 @@ select.is-error {
   width: 96px;
 }
 
+/* Wide enough for a float such as 0.125 beside the native spinner. */
 .input--tiny {
-  width: 64px;
+  width: 84px;
 }
 
 .input--medium {
