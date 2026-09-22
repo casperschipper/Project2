@@ -25,9 +25,9 @@
   (instrument-table
     (0))
 
-  (entrydelays (1/8 1/7 1/6 1/5 1/4 1/3 1/2 1/1 1 2 3 4 5 6))
+  (entrydelays (0.004 0.001 0.003 0.03 0.01 0.6 0.7 0.8))
   (entrydelay-table
-    (0 1 2 3 4 5 6 7 8 9 10 11 12 13))
+    (0 1 2 3 4))
 
   (durations (0.01 0.02 0.1 0.2 0.3 0.5 2.0))
   (duration-table
@@ -51,8 +51,8 @@
 
   (harmony
     (principle row)
-    (row (1 6 11))
-    (transposition none))
+    (row (1 8 2 5 7))
+    (transposition series))
 
   (principles
     (instrument (ensemble (sequence 0)) (order series))

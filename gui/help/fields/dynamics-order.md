@@ -1,6 +1,6 @@
 # Dynamics order
 
-> How dynamics are drawn from the active group, event by event. All six [selection principles](concepts/selection-principles) are available.
+> How dynamics are drawn from the active ensemble, event by event - more than one group under combination. All six [selection principles](concepts/selection-principles) are available.
 
 The order principle produces the dynamic surface of the layer. Dynamics is the parameter where the difference between the principles is most immediately audible, because a listener hears loudness change without needing to analyse anything.
 

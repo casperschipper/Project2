@@ -1,6 +1,6 @@
 # Entry delay order
 
-> How entry delays are drawn from the active group, event by event. This is the parameter that produces the rhythm.
+> How entry delays are drawn from the active ensemble, event by event - more than one group under combination. This is the parameter that produces the rhythm.
 
 Once the [ensemble](fields/entrydelay-ensemble) has fixed which delays are available, the order principle decides their succession — and since entry points are formed by accumulating these values, the order principle *is* the rhythm. All six [selection principles](concepts/selection-principles) are available.
 

@@ -1,6 +1,6 @@
 # Instrument order
 
-> How instruments are drawn from the active group, event by event. All six [selection principles](concepts/selection-principles) are available here.
+> How instruments are drawn from the active ensemble, event by event - which may hold more than one group at once. All six [selection principles](concepts/selection-principles) are available here.
 
 Once the [instrument ensemble](fields/instrument-ensemble) has decided which group is active, the order principle reads that group in time and produces the actual succession of instruments. This is where the instrumentation acquires its rhythm.
 

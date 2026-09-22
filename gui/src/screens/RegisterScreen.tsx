@@ -119,12 +119,12 @@ export function RegisterScreen() {
         </Field>
       </Section>
 
-      <Section title="Order — how values are drawn from the group">
+      <Section title="Order — how values are drawn from the ensemble">
         <Field
           label="Order principle"
           helpKey="fields/register-order"
           path="register.principle"
-          hint="How successive registers are selected from within the active group."
+          hint="How successive registers are selected from within the active ensemble."
         >
           <PrincipleEditor
             principle={project.registerPrinciple}

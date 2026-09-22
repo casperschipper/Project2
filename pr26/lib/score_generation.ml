@@ -1320,7 +1320,37 @@ let no_chord_seeds =
     case, they are calculated only for the entry and copied over for each note
     within the chord.
 
-    Now there can be some complicated cases around entry delay:
+    Short version:
+
+    - General rule: a parameter set to per-chord is drawn once for the whole
+      chord and copied to every note in it. Everything below is about which
+      order and hierarchy conditions decide what that one draw is filtered by.
+    - Entry delay is always per-chord. Its place in the hierarchy relative to
+      duration decides which one filters the other:
+      - Entry delay before duration: entry delay is drawn once for the chord;
+        each note's duration is then filtered by it, same as a single note.
+      - Duration before entry delay: each note's duration is drawn
+        unfiltered; the chord's entry delay is drawn once afterwards, filtered
+        by the longest duration in the chord ("shorter than entry delay" -
+        "independent" stays unfiltered).
+      - Exception: "duration = entry delay" is always per-chord regardless of
+        hierarchy order. The first note's duration is drawn unfiltered and
+        becomes the chord's entry delay; every other note's duration is just
+        copied from it.
+    - Performance and dynamics only depend on the instrument, so per-chord
+      draws for them follow the same before/after-instrument rule as any
+      single note's own draw would.
+    - Register depends on the instrument and on harmony. Harmony is never
+      per-chord, and instrument always comes before harmony in the hierarchy.
+      So the only question for register is still before/after the
+      instrument: before - drawn unfiltered by harmony, and each note's own
+      harmony draw then follows the fixed register; after - filtered by the
+      instrument and harmony of every note in the chord.
+    - Duration, when per-chord and not "duration = entry delay", depends on
+      both the instrument (like performance/dynamics) and on entry delay's
+      order (as above), so both rules apply to it together.
+
+    Full detail below (implementation notes, keep for reference):
 
     Entry delay's own before/after split is the simplest case, and the template
     every other extraction below follows: it's governed by wherever the composer

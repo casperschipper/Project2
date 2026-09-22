@@ -110,7 +110,7 @@ export function InstrumentsScreen() {
           label="Order principle"
           helpKey="fields/instrument-order"
           path="instrument.principle"
-          hint="How instruments are drawn from within the active group."
+          hint="How instruments are drawn from the active ensemble - which may be more than one group under combination."
         >
           <PrincipleEditor
             principle={project.instrumentPrinciple}

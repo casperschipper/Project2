@@ -2,7 +2,7 @@
 
 > A selection principle is a rule for drawing elements out of a stockpile. The stockpile is fixed; the principle decides the behaviour in time.
 
-PROJECT TWO offers six: **alea**, **series**, **sequence**, **ratio**, **group** and **tendency**. They are used in two places, and it is worth being clear which is which. The *ensemble* slot of a parameter uses a principle to choose which table group becomes active (only `alea`, `series` and `sequence` are available there, plus `combination`). The *order* slot uses a principle to draw the actual values from the active group — all six are available. See [list, table, ensemble, order](concepts/list-table-ensemble-order).
+PROJECT TWO offers six: **alea**, **series**, **sequence**, **ratio**, **group** and **tendency**. They are used in two places, and it is worth being clear which is which. The *ensemble* slot of a parameter uses a principle to choose which table group becomes active (only `alea`, `series` and `sequence` are available there, plus `combination`). The *order* slot uses a principle to draw the actual values from the active ensemble — all six are available. See [list, table, ensemble, order](concepts/list-table-ensemble-order).
 
 The set is not arbitrary. It lays out a continuum from the fully aleatoric to the fully determined, which is the axis Koenig's work is organised around. At one end you specify only the supply and let chance do everything; at the other you specify the exact succession and chance does nothing. The interesting positions are in between, and that is where most of the composing happens.
 

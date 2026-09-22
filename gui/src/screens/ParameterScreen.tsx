@@ -137,12 +137,12 @@ export function ParameterScreen({ config }: { config: ParameterConfig }) {
         </Field>
       </Section>
 
-      <Section title="Order — how values are drawn from the group">
+      <Section title="Order — how values are drawn from the ensemble">
         <Field
           label="Order principle"
           helpKey={`fields/${paramId}-order`}
           path={`${paramId}.principle`}
-          hint="How successive values are selected from within the active group."
+          hint="How successive values are selected from within the active ensemble."
         >
           <PrincipleEditor
             principle={config.get.principle(project)}

@@ -1,6 +1,6 @@
 # Duration order
 
-> How durations are drawn from the active group, event by event. All six [selection principles](concepts/selection-principles) are available.
+> How durations are drawn from the active ensemble, event by event - more than one group under combination. All six [selection principles](concepts/selection-principles) are available.
 
 The order principle decides the succession of tone lengths, and therefore the succession of gaps and overlaps against the [entry delays](fields/entrydelay-order). Duration is a less immediately perceptible parameter than rhythm — a listener registers *when* attacks arrive before registering how long each tone lasts — but it governs the density of the sounding texture, which is very perceptible indeed.
 

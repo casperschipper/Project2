@@ -31,7 +31,7 @@ Setting a factor to 0 removes the element from the supply. This is a legitimate 
 
 ## Where it can be used
 
-The manual is explicit that `ratio` applies to the ensemble, that is, to the *order* slot — drawing values from the active group. It is not available for choosing which table group becomes active; use `alea`, `series` or `sequence` there. See [list, table, ensemble, order](concepts/list-table-ensemble-order).
+The manual is explicit that `ratio` applies to the ensemble, that is, to the *order* slot — drawing values from the active ensemble - more than one group when combination is used. It is not available for choosing which table group becomes active; use `alea`, `series` or `sequence` there. See [list, table, ensemble, order](concepts/list-table-ensemble-order).
 
 If a list item appears more than once in the ensemble, its factor is counted for each appearance, so repeated [indices](concepts/indices) in a table group multiply with the ratio weight rather than replacing it.
 

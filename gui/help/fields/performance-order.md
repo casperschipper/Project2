@@ -1,6 +1,6 @@
 # Performance order
 
-> How performance modes are drawn from the active group, event by event. All six [selection principles](concepts/selection-principles) are available.
+> How performance modes are drawn from the active ensemble, event by event - more than one group under combination. All six [selection principles](concepts/selection-principles) are available.
 
 The order principle decides the succession of articulations. Because modes of performance are usually strongly characteristic — a `pizzicato` is not a shade of `normal`, it is a different sound — this parameter tends to produce the timbral foreground of a variant.
 
