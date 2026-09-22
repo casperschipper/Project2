@@ -3,7 +3,7 @@ open Structure_formula
 open Selection
 open Tools
 
-(* Sometimes, PR2  *)
+(* Warnings about conditions that could not be met *)
 type note_diagnostics = {
   (* [false] if could not keep duration requirement *)
   duration_ok : bool;
@@ -72,9 +72,9 @@ type entry = {
 }
 
 (* Extract all elements from any ensemble as a flat array. Each element
-   keeps the LIST index it was resolved from (not just its value) so that
-   RATIO can weight by original LIST index rather than by ensemble
-   position - see [sel_init]'s [Ratio] branch. *)
+   keeps the LIST index it was resolved from (not just its value)
+  this is important for RATIO, as the weights always refer to the original LIST index.
+   *)
 let ensemble_values_union ensemble =
   match ensemble with
   | Ensemble groups ->
@@ -316,9 +316,11 @@ let value_at note_values i =
   match note_values with Shared v -> v | PerNote vs -> List.nth vs i
 
 (* 
-  A prototype is a note being build up parameter by parameter.
-  The hierarchy order defines which parameter is computed first.
-  Subsequent parameters may be limited in what they can pick by the others already filled in.
+  A "proto" is a note being build up parameter by parameter.
+  The "hierarchy" in PR2 refers to the order of computation. 
+  Later parameters may be limited in their choice by already computed ones.
+  The filtering for this always happens on the ensemble level. 
+  If no element can be picked, PR2 will pick a "wrong" one and insert a warning.
   If instrument density is used, the density is only known when the instrument has been picked @luc?
   *)
 type proto = {
@@ -1327,71 +1329,28 @@ let no_chord_seeds =
       order and hierarchy conditions decide what that one draw is filtered by.
     - Entry delay is always per-chord. Its place in the hierarchy relative to
       duration decides which one filters the other:
-      - Entry delay before duration: entry delay is drawn once for the chord;
-        each note's duration is then filtered by it, same as a single note.
-      - Duration before entry delay: each note's duration is drawn
-        unfiltered; the chord's entry delay is drawn once afterwards, filtered
-        by the longest duration in the chord ("shorter than entry delay" -
-        "independent" stays unfiltered).
-      - Exception: "duration = entry delay" is always per-chord regardless of
-        hierarchy order. The first note's duration is drawn unfiltered and
-        becomes the chord's entry delay; every other note's duration is just
-        copied from it.
-    - Performance and dynamics only depend on the instrument, so per-chord
-      draws for them follow the same before/after-instrument rule as any
-      single note's own draw would.
+    - Entry delay before duration: entry delay is drawn once for the chord; each
+      note's duration is then filtered by it, same as a single note.
+    - Duration before entry delay: each note's duration is drawn unfiltered; the
+      chord's entry delay is drawn once afterwards, filtered by the longest
+      duration in the chord ("shorter than entry delay" - "independent" stays
+      unfiltered).
+    - Exception: "duration = entry delay" is always per-chord regardless of
+      hierarchy order. The first note's duration is drawn unfiltered and becomes
+      the chord's entry delay; every other note's duration is just copied from
+      it.
+    - Performance and dynamics only depend on the instrument, so per-chord draws
+      for them follow the same before/after-instrument rule as any single note's
+      own draw would.
     - Register depends on the instrument and on harmony. Harmony is never
-      per-chord, and instrument always comes before harmony in the hierarchy.
-      So the only question for register is still before/after the
-      instrument: before - drawn unfiltered by harmony, and each note's own
-      harmony draw then follows the fixed register; after - filtered by the
-      instrument and harmony of every note in the chord.
-    - Duration, when per-chord and not "duration = entry delay", depends on
-      both the instrument (like performance/dynamics) and on entry delay's
-      order (as above), so both rules apply to it together.
-
-    Full detail below (implementation notes, keep for reference):
-
-    Entry delay's own before/after split is the simplest case, and the template
-    every other extraction below follows: it's governed by wherever the composer
-    put [Ent] relative to [Dur] ([ent_before_dur]), using the exact same
-    predicates [resolve_step] already uses for a single sub-pick
-    ([dur_pred_from]/[ed_pred_from]) - just fed a value that's fixed for the
-    whole group instead of one proto:
-    - [Ent] before [Dur]: the group's entry delay is drawn once, up front, and
-      every sub-pick's [Dur] step conditions on it exactly as it would if [Ent]
-      had run first for that one sub-pick (seeded via [resolve_entry]'s
-      [~start], never drawn again).
-    - [Dur] before [Ent]: every sub-pick's [Dur] resolves unconstrained (no
-      entry delay exists yet), and the group's entry delay is drawn once *after*
-      the loop, either unconstrained ([DurIndependent]) or bounded by the
-      longest duration seen anywhere in the group ([DurShorterThanEntry] -
-      generalizing [ed_pred_from]'s own per-proto max-over-per-note-values check
-      to a max over the whole group). [DurEqualsEntry] is the one relation where
-      this ordering still settles the shared value mid-loop: the first
-      sub-pick's freely-drawn duration *becomes* the group's entry delay, and
-      every later sub-pick is then forced to copy it (mirroring the original
-      single-sub-pick "[Dur] before [Ent]" case, just decided once for the whole
-      chord instead of once per sub-pick) - so [DurEqualsEntry] (always
-      [PerChord] already, by definition) needs no further extraction below.
-
-    [Per]/[Dyn] each depend on nothing but the instrument, so their own
-    extraction ([fill_group_with_note_modes]) is a direct copy of the same
-    before/after-[Ins] idea. [Reg] depends on the instrument *and* on harmony -
-    but harmony is always per-note (never extracted, EMR-3 entry 19 has no "per
-    chord" reading) and [Ins] always precedes [Har] (enforced at formula-load
-    time), so by the time a sub-pick's own fold reaches [Har] (if it's still in
-    [subpick_hierarchy]), [Ins] has necessarily already run for that sub-pick
-    too - meaning "before or after [Ins]" is still the only question that
-    matters for [Reg]'s own extraction: either nothing has run for anyone yet
-    (seed forward, unconstrained by harmony, letting every sub-pick's own
-    harmony draw agree with the now-fixed register instead), or the *entire*
-    group - including every note's harmony - is already known (aggregate over
-    both). [Dur] (when [DurIndependent]/[DurShorterThanEntry] and [PerChord])
-    has the same [Ins] dependency as [Per]/[Dyn], plus entry delay's own
-    dependency - so its extraction combines both splits, and stays inline in
-    [fill_group] rather than joining [fill_group_with_note_modes], since it
-    needs branch-local knowledge of whether entry delay is already fixed. *)
+      per-chord, and instrument always comes before harmony in the hierarchy. So
+      the only question for register is still before/after the instrument:
+      before - drawn unfiltered by harmony, and each note's own harmony draw
+      then follows the fixed register; after - filtered by the instrument and
+      harmony of every note in the chord.
+    - Duration, when per-chord and not "duration = entry delay", depends on both
+      the instrument (like performance/dynamics) and on entry delay's order (as
+      above), so both rules apply to it together. *)
 let resolve_layer_autonomous ~variant ~layer ~n_events ~hierarchy ~perf_mode
     ~dyn_mode ~dur_relation ~reg_mode ~low ~high ~selection_principle states0 =
   let dens_arr =
@@ -1825,32 +1784,20 @@ let resolve_layer_autonomous ~variant ~layer ~n_events ~hierarchy ~perf_mode
   in
   (List.rev groups, final_states)
 
-(* HARMONY's CHORD principle (EMR-3 §8.2/§9.2): HARMONY is the main
-   parameter here - each entry point's whole chord (tones *and* how many of
-   them) is drawn first, via [chord_next], and vertical density is simply
-   whatever size that chord turns out to be; [density] itself is never
-   consulted (validated to be [ChordDensity] at formula-load time, and
-   ignored here beyond that). Reuses the same "keep picking instruments
-   until the target is reached, trim the last one" [fill_subpicks] shape
-   [resolve_layer_autonomous] uses for [Autonomous] density (see its own
-   doc comment for the general rationale - entry delay/duration extraction
-   below is a direct copy of that reasoning, unaffected by anything here) -
-   but a drawn chord's tones split into (at most) two homogeneous
-   sub-targets first: an instrument's own [pitchrange] is atomically either
-   percussion or pitched, never both, so "scoring" a chord that mixes the
-   two (EMR-3 8.16: percussion instruments "can participate in the
-   'scoring' of the vertical density") necessarily means picking some
-   percussion sub-picks and some pitched ones - there is no per-note choice
-   once a sub-pick's instrument is fixed. [Har] is excluded from
-   [subpick_hierarchy] entirely (unlike [Autonomous]'s [PerChord]-
-   conditional exclusions): under CHORD its value is always a whole-group
-   fact, seeded into every sub-pick's [start] proto as a dummy percussion/
-   pitched marker (purely so [Ins]/[Reg]'s existing percussion-agreement
-   predicates fire correctly) *before* its own fold runs, then overwritten
-   with the real, sliced-from-the-drawn-chord per-note values by
-   [assign_harmony] once every sub-pick's [nr_of_notes] is final. *)
+(* HARMONY's CHORD principle (EMR-3 §8.2/§9.2): 
+  When you choose CHORD principle, the harmony is formed by picking chords from a table provided by the composer.
+  You can choose what principle is used to pick the order chords are picked.
+  You can also set a principle for transposing the chords.
+  Using the chord principle, will also mean that vertical density per entry is controlled by the same principles.
+  
+  Chords are voiced by picking instruments until the required density for the chord is reached.
+  (This works similar to autonomous density).
+
+  Note that chords may also contain percussion notes, but these are not transposed.
+*)
 let resolve_layer_chord_density ~variant ~layer ~n_events ~hierarchy ~perf_mode
     ~dyn_mode ~dur_relation ~reg_mode states0 =
+  (* ---- setup: where does each property sit in the hierarchy? ---- *)
   let index_of x =
     let rec go i = function
       | [] -> assert false
@@ -1878,6 +1825,7 @@ let resolve_layer_chord_density ~variant ~layer ~n_events ~hierarchy ~perf_mode
     |> List.filter (fun e -> not (e = Reg && reg_extracted))
     |> List.filter (fun e -> not (e = Dur && dur_extracted))
   in
+  (* ---- fill instruments until the chord's note count is reached ---- *)
   let resolve_subpick ~ctx ?seed_entrydelay ?max_notes ?used ~seeds states =
     let start =
       {
@@ -1917,9 +1865,7 @@ let resolve_layer_chord_density ~variant ~layer ~n_events ~hierarchy ~perf_mode
   in
   let stamp_ok ok proto = { proto with duration_ok = Some (Shared ok) } in
   let fill_subpicks ~ctx states target ~seed ~next_seed ~seeds =
-    (* [used] threads every instrument already picked earlier in this same
-       chord into [resolve_subpick]'s own [Ins] step, mirroring
-       [resolve_layer_autonomous]'s [fill_subpicks] - see its comment. *)
+    (* [used] tracks instruments already picked, so the same one isn't picked twice. *)
     let rec loop states total used acc settled =
       let states', proto =
         resolve_subpick ~ctx ?seed_entrydelay:settled
@@ -1932,11 +1878,7 @@ let resolve_layer_chord_density ~variant ~layer ~n_events ~hierarchy ~perf_mode
       let n = Option.value proto.nr_of_notes ~default:1 in
       let total' = total + n in
       let used' = picked :: used in
-      (* [Ins] was already capped to [target - total] above, so [total']
-         should already land exactly on [target] whenever this is the last
-         sub-pick needed - the further adjustment below is now just a
-         defensive no-op (kept rather than removed, in case [n] somehow still
-         overshoots), not the load-bearing trim it used to be. *)
+      (* Trim in case the pick overshot the target note count. *)
       if total' >= target then
         let proto' =
           { proto with nr_of_notes = Some (n - (total' - target)) }
@@ -1946,15 +1888,8 @@ let resolve_layer_chord_density ~variant ~layer ~n_events ~hierarchy ~perf_mode
     in
     loop states 0 [] [] seed
   in
-  (* Two homogeneous [fill_subpicks] calls, one per tone type, concatenated -
-     the chord-aware generalization of a single [fill_subpicks] call. A
-     segment with target 0 (the common case for an all-pitched or
-     all-percussion chord) is skipped entirely rather than resolving a
-     "phantom" zero-note sub-pick, which would needlessly consume an
-     instrument-selection-cycle draw (and could pick a mismatched instrument
-     if no instrument of that tone type exists at all - harmless once
-     trimmed to zero notes, but wasteful and pollutes [instrument_repeated]
-     bookkeeping for no benefit). *)
+  (* ---- fill percussion and pitched tones separately, then concatenate ---- *)
+  (* A tone type with 0 notes is skipped, not resolved as an empty sub-pick. *)
   let fill_subpicks_split ~ctx states (percussion_n, pitched_n) ~seed ~next_seed
       ~seeds1 ~seeds2 =
     let settled1, perc_group, states1 =
@@ -1969,6 +1904,7 @@ let resolve_layer_chord_density ~variant ~layer ~n_events ~hierarchy ~perf_mode
     in
     (settled2, perc_group @ pitched_group, states2)
   in
+  (* ---- resolve duration and entry delay, per the DurRelation/hierarchy combination ---- *)
   let keep_seed settled _ = settled in
   let draw_duration_before ~ed_opt states =
     let pred, _ =
@@ -2049,13 +1985,7 @@ let resolve_layer_chord_density ~variant ~layer ~n_events ~hierarchy ~perf_mode
           fill_subpicks_split ~ctx states split ~seed:None ~next_seed ~seeds1
             ~seeds2
         in
-        (* Unlike [resolve_layer_autonomous] (guaranteed at least one
-           sub-pick via [low >= 1] on [Autonomous]'s own density range), a
-           drawn chord could in principle be empty (zero tones); [settled]
-           would then never get set by any sub-pick. Falls back to a zero
-           entry delay rather than crash - a degenerate case the composer's
-           chord table should avoid, not one the runtime needs to repair
-           further. *)
+        (* A chord could in principle have zero tones; fall back to a zero entry delay. *)
         let ed = Option.value settled ~default:(Entrydelay 0.0) in
         let ok =
           match group with
@@ -2114,6 +2044,7 @@ let resolve_layer_chord_density ~variant ~layer ~n_events ~hierarchy ~perf_mode
           in
           finish_with_computed_entrydelay group states'
   in
+  (* ---- resolve per-chord properties (performance/dynamic/register), then fill the group ---- *)
   let fill_group_with_note_modes ~ctx states (percussion_n, pitched_n) =
     let states, perf_seed =
       if perf_extracted && perf_before_ins then
@@ -2137,11 +2068,7 @@ let resolve_layer_chord_density ~variant ~layer ~n_events ~hierarchy ~perf_mode
         ({ states with dyn_state = dyn_state' }, Some (Shared v))
       else (states, None)
     in
-    (* Two shared registers instead of one when [Reg] is extracted, before
-       or after [Ins]: a single shared register can never be simultaneously
-       percussion- and pitched-compatible, and a chord mixing both tone
-       types is real (EMR-3 8.16). Skipped for whichever segment is empty
-       for this particular chord. *)
+    (* Percussion and pitched tones need separate registers - one register cannot fit both. *)
     let states, perc_reg_seed, pitched_reg_seed =
       if reg_extracted && reg_before_ins then
         let draw_for harmony_seed states =
@@ -2255,6 +2182,7 @@ let resolve_layer_chord_density ~variant ~layer ~n_events ~hierarchy ~perf_mode
     in
     (ed, group, states')
   in
+  (* ---- split the chord into percussion/pitched tone counts, then assign actual pitches ---- *)
   let split_chord (Chord arr) =
     let tones = Array.to_list arr in
     let percussion_n =
@@ -2265,15 +2193,7 @@ let resolve_layer_chord_density ~variant ~layer ~n_events ~hierarchy ~perf_mode
     in
     (percussion_n, pitched_tones)
   in
-  (* Post-hoc slice-and-stamp pass, run once the whole group's [nr_of_notes]
-     are final: each percussion sub-pick's tones all become [RowPercussion];
-     each pitched sub-pick consumes the next [nr_of_notes] tones off the
-     shared, in-order [pitched_tones] list (which [fill_subpicks]' own
-     target-trimming guarantees sums to exactly [List.length pitched_tones]
-     across the pitched sub-picks). Always fully "ok" - the group was
-     engineered to exactly match the drawn chord; a genuine pitch/register
-     mismatch can still surface as [pitch_ok = false] via [resolve_pitch],
-     unchanged. *)
+  (* Percussion notes all get [RowPercussion]; pitched notes take the next pitches off the chord. *)
   let assign_harmony pitched_tones group =
     let all_true n = PerNote (List.init n (fun _ -> true)) in
     let rec go remaining = function
@@ -2306,6 +2226,7 @@ let resolve_layer_chord_density ~variant ~layer ~n_events ~hierarchy ~perf_mode
     in
     go pitched_tones group
   in
+  (* ---- main loop: one chord drawn and filled per event ---- *)
   let final_states, groups =
     List.init n_events (fun i -> i)
     |> List.fold_left
