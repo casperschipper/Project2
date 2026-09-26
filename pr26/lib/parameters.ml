@@ -873,6 +873,28 @@ type vertical_density =
   | InstrumentDensity
   | ChordDensity
 
+(* Densities legal under union = common-harmony (EMR-3 6.2's "s=1"): every
+   [vertical_density] except [ChordDensity], which is structurally
+   incompatible with it (CHORD makes HARMONY the main parameter and
+   resolves it first, §9.2; common-harmony forces HARMONY to resolve last,
+   across a merged cross-layer timeline, §6.2) - already rejected at
+   formula-load time (see structure_formula.ml's
+   [common_harmony_chord_consistency_errors]). Kept as its own type so that
+   rejection also makes the pairing unrepresentable in
+   [Score_generation]'s own common-harmony pipeline, rather than resting on
+   an [assert false] several calls deep in code that has no direct view of
+   why it's safe. *)
+type common_harmony_density = CHAutonomous of autonomous_density | CHInstrumentDensity
+
+let common_harmony_density_of_vertical_density = function
+  | Autonomous a -> Some (CHAutonomous a)
+  | InstrumentDensity -> Some CHInstrumentDensity
+  | ChordDensity -> None
+
+let vertical_density_of_common_harmony_density = function
+  | CHAutonomous a -> Autonomous a
+  | CHInstrumentDensity -> InstrumentDensity
+
 let mk_autonomous ~low ~high ~selection_principle =
   if low < 1 then Error (InvalidDensity DensityTooSmall)
   else if high < low then Error (InvalidDensity DensityMaxBelowMin)

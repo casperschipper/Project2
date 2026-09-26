@@ -1,6 +1,7 @@
 open Pr26.Parameters
 open Pr26.Structure_formula
 open Pr26.Score_generation
+open Pr26.Score_printing
 
 (* Where the generated artefacts go. Defaults to the cwd (the historical
    behaviour); the GUI passes --out-dir so repeated validation runs don't

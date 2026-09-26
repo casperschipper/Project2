@@ -1,5 +1,6 @@
 open Pr26.Parameters
 open Pr26.Score_generation
+open Pr26.Instrumented_selection
 open Pr26.Selection
 open Pr26.Debug_log
 
@@ -10,10 +11,10 @@ let test_series_restart_and_opt_in () =
   let ctx = { variant = 0; layer = 0; seq = Resolved 0; param = PIns } in
   let state0 = sel_init Series 3 arr in
   let draw4 state0 =
-    let _, s1 = sel_draw_debug ~ctx state0 in
-    let _, s2 = sel_draw_debug ~ctx s1 in
-    let _, s3 = sel_draw_debug ~ctx s2 in
-    let _, s4 = sel_draw_debug ~ctx s3 in
+    let _, s1 = sel_draw ~ctx state0 in
+    let _, s2 = sel_draw ~ctx s1 in
+    let _, s3 = sel_draw ~ctx s2 in
+    let _, s4 = sel_draw ~ctx s3 in
     s4
   in
   (* Disabled: the exact same draw sequence produces zero events - the

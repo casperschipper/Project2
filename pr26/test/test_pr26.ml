@@ -432,7 +432,7 @@ let () =
 
   (harmony
     (principle interval)
-    (matrix (adjacency (1 (1 2 3 4 5 6 7 8 9 10 11 12)) (2 (1 2 3 4 5 6 7 8 9 10 11 12)) (3 (1 2 3 4 5 6 7 8 9 10 11 12)) (4 (1 2 3 4 5 6 7 8 9 10 11 12)) (5 (1 2 3 4 5 6 7 8 9 10 11 12)) (6 (1 2 3 4 5 6 7 8 9 10 11 12)) (7 (1 2 3 4 5 6 7 8 9 10 11 12)) (8 (1 2 3 4 5 6 7 8 9 10 11 12)) (9 (1 2 3 4 5 6 7 8 9 10 11 12)) (10 (1 2 3 4 5 6 7 8 9 10 11 12)) (11 (1 2 3 4 5 6 7 8 9 10 11 12)) (12 (1 2 3 4 5 6 7 8 9 10 11 12)))))
+    (matrix (adjacency (1 (1 2 3 4 5 6 7 8 9 10 11)) (2 (1 2 3 4 5 6 7 8 9 10 11)) (3 (1 2 3 4 5 6 7 8 9 10 11)) (4 (1 2 3 4 5 6 7 8 9 10 11)) (5 (1 2 3 4 5 6 7 8 9 10 11)) (6 (1 2 3 4 5 6 7 8 9 10 11)) (7 (1 2 3 4 5 6 7 8 9 10 11)) (8 (1 2 3 4 5 6 7 8 9 10 11)) (9 (1 2 3 4 5 6 7 8 9 10 11)) (10 (1 2 3 4 5 6 7 8 9 10 11)) (11 (1 2 3 4 5 6 7 8 9 10 11)))))
 
   (principles
     (instrument (ensemble alea) (order series))
@@ -513,7 +513,7 @@ let () =
 
   (harmony
     (principle interval)
-    (matrix (adjacency (1 (1 2 3 4 5 6 7 8 9 10 11 12)) (2 (1 2 3 4 5 6 7 8 9 10 11 12)) (3 (1 2 3 4 5 6 7 8 9 10 11 12)) (4 (1 2 3 4 5 6 7 8 9 10 11 12)) (5 (1 2 3 4 5 6 7 8 9 10 11 12)) (6 (1 2 3 4 5 6 7 8 9 10 11 12)) (7 (1 2 3 4 5 6 7 8 9 10 11 12)) (8 (1 2 3 4 5 6 7 8 9 10 11 12)) (9 (1 2 3 4 5 6 7 8 9 10 11 12)) (10 (1 2 3 4 5 6 7 8 9 10 11 12)) (11 (1 2 3 4 5 6 7 8 9 10 11 12)) (12 (1 2 3 4 5 6 7 8 9 10 11 12)))))
+    (matrix (adjacency (1 (1 2 3 4 5 6 7 8 9 10 11)) (2 (1 2 3 4 5 6 7 8 9 10 11)) (3 (1 2 3 4 5 6 7 8 9 10 11)) (4 (1 2 3 4 5 6 7 8 9 10 11)) (5 (1 2 3 4 5 6 7 8 9 10 11)) (6 (1 2 3 4 5 6 7 8 9 10 11)) (7 (1 2 3 4 5 6 7 8 9 10 11)) (8 (1 2 3 4 5 6 7 8 9 10 11)) (9 (1 2 3 4 5 6 7 8 9 10 11)) (10 (1 2 3 4 5 6 7 8 9 10 11)) (11 (1 2 3 4 5 6 7 8 9 10 11)))))
 
   (principles
     (instrument (ensemble alea) (order series))
@@ -1227,7 +1227,7 @@ let () =
    [compute_rest_insertions] tests below hand-verify exact insertion
    points/times without depending on any other part of the pipeline. *)
 let fixed_rest_state value =
-  Pr26.Score_generation.sel_init (Pr26.Selection.Sequence [ 0 ]) 1
+  Pr26.Instrumented_selection.sel_init (Pr26.Selection.Sequence [ 0 ]) 1
     (Pr26.Parameters.elements_of_array [| Pr26.Parameters.Duration value |])
 
 (* Sound-entry vs. general-entry divergence, and the "recomputed against
