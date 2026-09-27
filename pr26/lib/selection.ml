@@ -73,7 +73,7 @@ let series_init (arr : 'a array) : 'a series_state =
   let options = shuffle arr |> Array.to_list in
   SeriesState { initial; options }
 
-(* drawing a value does not *)
+(* drawing a value does not change state *)
 let series_draw : 'a series_state -> 'a selection_result * 'a series_state =
  fun (SeriesState { initial; options }) ->
   let pick x xs = (Value x, SeriesState { initial; options = xs }) in
@@ -84,6 +84,8 @@ let series_draw : 'a series_state -> 'a selection_result * 'a series_state =
       | x :: xs -> pick x xs
       | [] -> failwith "series_draw: empty")
 
+(* drawing a value, under restrictions. The restricions only work on what values are allowed, 
+the principle otherwise works as normal. It is not "steered" to pick something specific *)
 let series_draw_predicate p (SeriesState { initial; options }) =
   let pick x xs =
     (* we pick the first possible option *)
@@ -103,6 +105,7 @@ let series_draw_predicate p (SeriesState { initial; options }) =
 let to_seq stream = Seq.unfold (fun s -> Some (stream s))
 
 (* ── Alea ── *)
+(* Random with possible "premature" repetition*)
 (* ---------- *)
 type 'a alea_state = AleaState of 'a array
 
@@ -118,6 +121,8 @@ let alea_draw_predicate p (AleaState arr) =
   | _ -> (Value (List.nth yes (Random.int (List.length yes))), AleaState arr)
 
 (* ── Ratio ── *)
+(* Random with weights, this is actually a series where the weights are the number 
+of times a value appears *)
 (* ---------- *)
 type 'a ratio_state = RatioState of { initial : 'a list; options : 'a list }
 
@@ -130,7 +135,7 @@ let ratio_init weighted =
   RatioState { initial; options }
 
 let ratio_draw (RatioState { initial; options }) =
-  (* note that for aestetic reasons, I have chosen a similarity to SERIES. 
+  (* 
       a ratio driven set of values is drawn up, that is shuffled consumed fully before renewed.
       It is not exactly a weighted choice, but with the predicate situation it is slightly better balanced. 
       Especially note predicate: even if we get blocked by hierarchy, the ratio will still be expressed pretty well, 
@@ -162,6 +167,8 @@ let ratio_draw_predicate p (RatioState { initial; options }) =
       | [] -> failwith "ratio_draw: empty")
 
 (* ── Sequence ── *)
+(* A user defined sequence of indexes, note that if the ensemble formation is 
+  a random process this may still result in differences, but the pattern is constant *)
 (* -------------- *)
 
 (* TODO: protect empty list *)
@@ -177,6 +184,8 @@ let sequence_draw (SequenceState { initial; options }) =
       | [] -> failwith "sequence_draw: empty")
 
 (* ── Group ── *)
+(* An alea or series, but picked elements are repeated.
+ The number of repetitions can be controlled by alea or series as well *)
 type 'a group_elem_state = GEAlea of 'a array | GESeries of 'a series_state
 type group_rep_state = GRAlea of int * int | GRSeries of int series_state
 
@@ -281,6 +290,9 @@ let group_draw_predicate p
         } )
 
 (* ── Tendency ── *)
+(* Alea with moving boundaries *)
+(* Important aspect: not updated by looking at a "clock" but updated per entry-point
+The stepsize is number of entries deviced by the total, the tendency mask is defined in percentages *)
 
 let tendency_counts count (TendencyMask sections) =
   let portions = List.map (fun (TendencySection s) -> s.portion) sections in

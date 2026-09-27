@@ -1,11 +1,11 @@
-(* A thin, instrumented layer over [Selection]'s six selection principles:
-   [sel_state] wraps whichever principle's own state is in play behind one
-   type, and [sel_draw]/[sel_sample]/[sel_draw_pred_tagged]/
-   [sel_sample_pred_tagged]/[sel_sample_pred] are the single primitives
-   every draw in [Score_generation] goes through - each one optionally
-   reports what it did to [Debug_log] (SERIES/RATIO pool exhaustion, a new
-   GROUP repetition starting, a TENDENCY window) when given a [~ctx],
-   costing nothing when it isn't. There is deliberately no separate
+(* The six selection principles from [Selection], with the option to debug
+   them. [sel_state] holds the state of whichever principle is in use, and
+   every draw in [Score_generation] goes through [sel_draw]/[sel_sample]/
+   [sel_draw_pred_tagged]/[sel_sample_pred_tagged]/[sel_sample_pred].
+   Pass one of these a [~ctx] and it writes what it did to [Debug_log]
+   (SERIES/RATIO pool exhaustion, a new GROUP repetition starting, a
+   TENDENCY window); leave [~ctx] out and nothing is logged, at no extra
+   cost. There is deliberately no separate
    "_debug"-suffixed twin of any of these to remember to call - see
    "manuals and notes/analysis of score generation module.md"'s section on
    debug mode for why that used to exist and why it doesn't now. *)
@@ -74,15 +74,13 @@ let emit_sel_events ~(ctx : Debug_log.context) ~(to_string : 'a -> string)
         Debug_log.push (Debug_log.TendencyWindow { ctx; lo; hi })
     | SAlea _ | SSequence _ | SSeries _ | SRatio _ -> ()
 
-(* Every draw goes through exactly one of these primitives - there is no
-   separate "_debug" twin to remember to call, so no call site can silently
-   omit instrumentation by picking the wrong one of a pair. [ctx] is
-   optional only because a couple of call sites (see [sel_draw_n], used by
-   [expected_value]'s own estimate) run before any entry/layer/variant
-   context exists at all; every real hierarchy-resolution draw always has
-   one and always passes it. Passing [ctx] costs nothing when
-   [Debug_log.enabled] is [false] - the same short-circuit [Debug_log.emit]
-   already relies on. *)
+(* Draw one value from [state] and return it with the advanced state.
+   When [ctx] is given, also write the resulting series restart / ratio
+   refresh / group repetition / tendency window to [Debug_log] (only if
+   [Debug_log.enabled] is true, otherwise nothing is written).
+   [ctx] is optional because [sel_draw_n] (used by [expected_value]) draws
+   before any entry/layer/variant exists, so there is nothing to put in it.
+   All draws in [Score_generation] pass a [ctx]. *)
 let sel_draw ?ctx ?(to_string = fun _ -> "") (state : 'a sel_state) :
     'a * 'a sel_state =
   let result, state' =
@@ -135,9 +133,7 @@ let sel_draw_pred_tagged ?ctx ?(to_string = fun _ -> "") (p : 'a -> bool)
         (* Sample from the predicate-filtered array within the current
            window, then advance the state to the next window position. *)
         let (TendencyState { arr; lo; hi; _ }) = s in
-        let filtered =
-          arr |> Array.to_list |> List.filter p |> Array.of_list
-        in
+        let filtered = arr |> Array.to_list |> List.filter p |> Array.of_list in
         let v =
           if Array.length filtered = 0 then
             Impossible (tendency_sample arr lo hi)
@@ -199,11 +195,8 @@ let sel_advance_window : 'a sel_state -> 'a sel_state = function
   | st -> st
 
 (* Same as [sel_draw_pred], but for [Tendency] this samples within the
-   current window without moving it (mirrors how [sel_sample] relates to
-   [sel_draw]). Used to draw several values within one timepoint (e.g. several
-   entries sharing an autonomous-density timepoint, or several notes within
-   one entry) while only moving each tendency mask's window once per
-   timepoint, via a single later [sel_advance_window] call. *)
+   current window without moving it, when there are more notes in one entry point, 
+   the borders of tendency should not be updated until the next entry point *)
 let sel_sample_pred_tagged ?ctx ?(to_string = fun _ -> "") (p : 'a -> bool)
     (state : 'a sel_state) : 'a selection_result * 'a sel_state =
   match state with
