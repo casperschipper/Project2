@@ -15,6 +15,45 @@ let in_out_dir name = Filename.concat !out_dir name
    visualisation tool, not something read as text. *)
 let debug_mode = ref false
 
+(* Opt-in post-processing: snap the finished score to notatable rhythms,
+   tuplets included (see [Pr26.Quantize]). [None] leaves the score exactly
+   as generated. *)
+let quantize_bpm = ref None
+let meter = ref (4, 4)
+let beat_division = ref Pr26.Quantize.default_settings.beat_division
+let max_tuplet = ref Pr26.Quantize.default_settings.max_tuplet
+
+let set_meter str =
+  let is_pow2 n = n > 0 && n land (n - 1) = 0 in
+  match String.split_on_char '/' str with
+  | [ n; d ] -> (
+      match (int_of_string_opt n, int_of_string_opt d) with
+      | Some n, Some d when n >= 1 && is_pow2 d -> meter := (n, d)
+      | _ -> raise (Arg.Bad ("--meter expects N/D with D a power of two, got " ^ str)))
+  | _ -> raise (Arg.Bad ("--meter expects N/D, e.g. 3/4, got " ^ str))
+
+(* The score after optional quantization, plus the tempo the MIDI files
+   should carry (only when quantized - otherwise their fixed default). *)
+let postprocess variants =
+  match !quantize_bpm with
+  | None -> (variants, None)
+  | Some bpm ->
+      let beats_per_measure, beat_unit = !meter in
+      let settings =
+        {
+          Pr26.Score_quantize.bpm;
+          quantize =
+            {
+              Pr26.Quantize.default_settings with
+              beats_per_measure;
+              beat_division = !beat_division;
+              max_tuplet = !max_tuplet;
+            };
+        }
+      in
+      ( Pr26.Score_quantize.quantize_score settings variants,
+        Some { Pr26.Midi_export.bpm; beats_per_measure; beat_unit } )
+
 let read_whole_file path =
   let ic = open_in_bin path in
   Fun.protect
@@ -38,7 +77,7 @@ let variant_midi_prefix n v =
 
 let generate sf =
   let instrs = match sf.instr_list with ParameterList arr -> Array.to_list arr in
-  let variants = build_score sf in
+  let variants, tempo = postprocess (build_score sf) in
   let n = List.length variants in
   variants
   |> List.iteri (fun v layers ->
@@ -46,7 +85,7 @@ let generate sf =
       write_entries_score
         (in_out_dir (variant_entries_name n v))
         instrs ~density:sf.density layers;
-      Pr26.Midi_export.write_layers_midi
+      Pr26.Midi_export.write_layers_midi ?tempo
         ~prefix:(in_out_dir (variant_midi_prefix n v))
         ~tr:sf.tr layers);
   (instrs, variants)
@@ -224,10 +263,31 @@ let () =
       ( "--debug",
         Arg.Set debug_mode,
         "Include a machine-readable \"debug\" event log in the --json output \
-         (no effect without --json)" )
+         (no effect without --json)" );
+      ( "--quantize",
+        Arg.Float
+          (fun bpm ->
+            if bpm <= 0.0 then raise (Arg.Bad "--quantize expects a tempo > 0");
+            quantize_bpm := Some bpm),
+        "BPM Snap the finished score to notatable rhythms (with tuplets) at \
+         this tempo; MIDI files then carry this tempo and --meter" );
+      ( "--meter",
+        Arg.String set_meter,
+        "N/D Time signature for --quantize (default 4/4)" );
+      ( "--beat-division",
+        Arg.Int
+          (fun n ->
+            if n < 1 then raise (Arg.Bad "--beat-division expects N >= 1");
+            beat_division := n),
+        "N Finest plain division of a beat for --quantize (default 4)" );
+      ( "--max-tuplet",
+        Arg.Set_int max_tuplet,
+        "N Largest tuplet --quantize may use; below 3 disables tuplets \
+         (default 7)" )
     ]
     (fun arg -> file := Some arg)
-    "main_sexp <file.sexp> [--watch] [--json] [--debug] [--out-dir DIR]";
+    "main_sexp <file.sexp> [--watch] [--json] [--debug] [--out-dir DIR] \
+     [--quantize BPM [--meter N/D] [--beat-division N] [--max-tuplet N]]";
   match !file with
   | None ->
       prerr_endline

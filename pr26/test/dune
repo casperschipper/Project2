@@ -9,3 +9,7 @@
 (test
  (name debug_log_test)
  (libraries pr26))
+
+(test
+ (name quantize_test)
+ (libraries pr26))

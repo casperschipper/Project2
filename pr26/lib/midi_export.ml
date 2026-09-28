@@ -26,13 +26,24 @@ let midi_note_of_pitch ~tr = function
       max 0 (min 127 ((12 * o) + semitone))
 
 let ticks_per_quarter = 480
-let microseconds_per_quarter = 500_000 (* fixed 120bpm - the score has no tempo of its own *)
 
-let ticks_per_second =
-  float_of_int ticks_per_quarter
-  /. (float_of_int microseconds_per_quarter /. 1_000_000.0)
+(* The score itself has no tempo, so by default the files are written at a
+   fixed 120bpm with no time signature. A quantized score ([Score_quantize])
+   passes its own tempo and metre instead, so its beats land on the MIDI
+   file's beats. [bpm] counts beats of [beat_unit] (4 = quarter). *)
+type tempo = { bpm : float; beats_per_measure : int; beat_unit : int }
 
-let tick_of_seconds s = int_of_float (Float.round (s *. ticks_per_second))
+let microseconds_per_quarter = function
+  | None -> 500_000
+  | Some t ->
+      int_of_float
+        (Float.round (60_000_000.0 /. t.bpm *. float_of_int t.beat_unit /. 4.0))
+
+let tick_of_seconds ~us_per_quarter s =
+  let ticks_per_second =
+    float_of_int ticks_per_quarter /. (float_of_int us_per_quarter /. 1_000_000.0)
+  in
+  int_of_float (Float.round (s *. ticks_per_second))
 
 let velocity_of_dynamic (d : Dynamic.t) =
   match Dynamic.to_string d with
@@ -79,12 +90,23 @@ let add_meta_end_of_track buf =
   add_vlq buf 0;
   Buffer.add_string buf "\xFF\x2F\x00"
 
-let add_tempo buf =
+let add_tempo buf ~us_per_quarter =
   add_vlq buf 0;
   Buffer.add_string buf "\xFF\x51\x03";
-  Buffer.add_char buf (Char.chr ((microseconds_per_quarter asr 16) land 0xff));
-  Buffer.add_char buf (Char.chr ((microseconds_per_quarter asr 8) land 0xff));
-  Buffer.add_char buf (Char.chr (microseconds_per_quarter land 0xff))
+  Buffer.add_char buf (Char.chr ((us_per_quarter asr 16) land 0xff));
+  Buffer.add_char buf (Char.chr ((us_per_quarter asr 8) land 0xff));
+  Buffer.add_char buf (Char.chr (us_per_quarter land 0xff))
+
+(* Time signature meta event: numerator, denominator as a power of two,
+   24 MIDI clocks per metronome click, 8 32nds per quarter. *)
+let add_time_signature buf { beats_per_measure; beat_unit; _ } =
+  let rec log2 n = if n <= 1 then 0 else 1 + log2 (n / 2) in
+  add_vlq buf 0;
+  Buffer.add_string buf "\xFF\x58\x04";
+  Buffer.add_char buf (Char.chr (beats_per_measure land 0xff));
+  Buffer.add_char buf (Char.chr (log2 beat_unit));
+  Buffer.add_char buf (Char.chr 24);
+  Buffer.add_char buf (Char.chr 8)
 
 let track_chunk body =
   let buf = Buffer.create (Buffer.length body + 8) in
@@ -102,9 +124,10 @@ let header_chunk ~ntracks =
   add_u16_be buf ticks_per_quarter;
   buf
 
-let tempo_track () =
-  let buf = Buffer.create 16 in
-  add_tempo buf;
+let tempo_track tempo =
+  let buf = Buffer.create 24 in
+  add_tempo buf ~us_per_quarter:(microseconds_per_quarter tempo);
+  Option.iter (add_time_signature buf) tempo;
   add_meta_end_of_track buf;
   track_chunk buf
 
@@ -112,13 +135,15 @@ let tempo_track () =
    becomes a Note On followed by a Note Off at its own resolved pitch; ties
    at the same tick are ordered Off-before-On so a note that reuses the
    previous one's pitch back-to-back doesn't leave a hanging note. *)
-let instrument_track ~channel ~tr ~name (notes : Score_generation.note list) =
+let instrument_track ~us_per_quarter ~channel ~tr ~name (notes : Score_generation.note list) =
   let events =
     notes
     |> List.concat_map (fun (n : Score_generation.note) ->
         let (Duration dur) = n.duration in
-        let start = tick_of_seconds n.time in
-        let stop = max (start + 1) (tick_of_seconds (n.time +. dur)) in
+        let start = tick_of_seconds ~us_per_quarter n.time in
+        let stop =
+          max (start + 1) (tick_of_seconds ~us_per_quarter (n.time +. dur))
+        in
         let pitch = midi_note_of_pitch ~tr n.pitch in
         [
           (start, true, pitch, velocity_of_dynamic n.dynamic);
@@ -150,26 +175,28 @@ let distinct_instruments (notes : Score_generation.note list) =
 
 (* One layer -> one file: one track per instrument that actually plays in
    this layer, each on its own channel. *)
-let write_layer_midi ~tr filename (entries : Score_generation.entry list) =
+let write_layer_midi ?tempo ~tr filename (entries : Score_generation.entry list) =
   let notes = entries |> List.concat_map (fun (e : Score_generation.entry) -> e.notes) in
   let instruments = distinct_instruments notes in
+  let us_per_quarter = microseconds_per_quarter tempo in
   let tracks =
     instruments
     |> List.mapi (fun i instr ->
         let (InstrumentName name) = instr in
         let channel = i mod 16 in
         let notes_for_instr = notes |> List.filter (fun (n : Score_generation.note) -> n.instrument = instr) in
-        instrument_track ~channel ~tr ~name notes_for_instr)
+        instrument_track ~us_per_quarter ~channel ~tr ~name notes_for_instr)
   in
   let oc = open_out_bin filename in
   Buffer.output_buffer oc (header_chunk ~ntracks:(1 + List.length tracks));
-  Buffer.output_buffer oc (tempo_track ());
+  Buffer.output_buffer oc (tempo_track tempo);
   List.iter (Buffer.output_buffer oc) tracks;
   close_out oc
 
 (* Each layer becomes its own file ([prefix]_layer0.mid, [prefix]_layer1.mid,
    ...) so they can be imported into a DAW as separate parts. *)
-let write_layers_midi ~prefix ~tr (layers : Score_generation.entry list list) =
+let write_layers_midi ?tempo ~prefix ~tr
+    (layers : Score_generation.entry list list) =
   layers
   |> List.iteri (fun i entries ->
-      write_layer_midi ~tr (Printf.sprintf "%s_layer%d.mid" prefix i) entries)
+      write_layer_midi ?tempo ~tr (Printf.sprintf "%s_layer%d.mid" prefix i) entries)
