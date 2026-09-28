@@ -21,7 +21,28 @@ let debug_mode = ref false
 let quantize_bpm = ref None
 let meter = ref (4, 4)
 let beat_division = ref Pr26.Quantize.default_settings.beat_division
-let max_tuplet = ref Pr26.Quantize.default_settings.max_tuplet
+let tuplets = ref Pr26.Quantize.default_settings.tuplets
+
+(* "3,5,7", or "none" for no tuplets. *)
+let set_tuplets str =
+  if String.trim str = "none" then tuplets := []
+  else
+    let parse s =
+      match int_of_string_opt (String.trim s) with
+      | Some j when j >= 3 && j mod 2 = 1 -> j
+      | _ ->
+          raise
+            (Arg.Bad
+               ("--tuplets expects odd numbers >= 3 separated by commas (e.g. \
+                 3,5,7) or \"none\", got " ^ str))
+    in
+    tuplets := List.map parse (String.split_on_char ',' str)
+
+(* Only halving is ever done below the beat, so only powers of two mean
+   anything here; the GUI offers exactly these. *)
+let set_beat_division n =
+  if List.mem n [ 1; 2; 4; 8; 16 ] then beat_division := n
+  else raise (Arg.Bad "--beat-division expects 1, 2, 4, 8 or 16")
 
 let set_meter str =
   let is_pow2 n = n > 0 && n land (n - 1) = 0 in
@@ -47,7 +68,7 @@ let postprocess variants =
               Pr26.Quantize.default_settings with
               beats_per_measure;
               beat_division = !beat_division;
-              max_tuplet = !max_tuplet;
+              tuplets = !tuplets;
             };
         }
       in
@@ -275,19 +296,16 @@ let () =
         Arg.String set_meter,
         "N/D Time signature for --quantize (default 4/4)" );
       ( "--beat-division",
-        Arg.Int
-          (fun n ->
-            if n < 1 then raise (Arg.Bad "--beat-division expects N >= 1");
-            beat_division := n),
-        "N Finest plain division of a beat for --quantize (default 4)" );
-      ( "--max-tuplet",
-        Arg.Set_int max_tuplet,
-        "N Largest tuplet --quantize may use; below 3 disables tuplets \
-         (default 7)" )
+        Arg.Int set_beat_division,
+        "N Finest plain division of a beat for --quantize: 1, 2, 4, 8 or 16 \
+         (default 4)" );
+      ( "--tuplets",
+        Arg.String set_tuplets,
+        "LIST Tuplets --quantize may use, e.g. 3,5,7 (the default), or none" )
     ]
     (fun arg -> file := Some arg)
     "main_sexp <file.sexp> [--watch] [--json] [--debug] [--out-dir DIR] \
-     [--quantize BPM [--meter N/D] [--beat-division N] [--max-tuplet N]]";
+     [--quantize BPM [--meter N/D] [--beat-division N] [--tuplets LIST]]";
   match !file with
   | None ->
       prerr_endline
