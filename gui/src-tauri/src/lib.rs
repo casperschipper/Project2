@@ -1,9 +1,15 @@
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::OnceLock;
 #[cfg(not(target_os = "macos"))]
 use tauri::menu::HELP_SUBMENU_ID;
 use tauri::menu::{AboutMetadata, Menu, PredefinedMenuItem};
+use tauri::Manager;
+
+/// The bundle's resource directory (where `help/` is shipped), recorded at
+/// startup because the help commands have no `AppHandle` of their own.
+static RESOURCE_DIR: OnceLock<PathBuf> = OnceLock::new();
 
 /// Locate a sibling directory of the GUI project (`pr26` for the engine,
 /// `help` for the markdown).
@@ -31,12 +37,45 @@ fn find_dir(env_var: &str, name: &str) -> Option<PathBuf> {
     None
 }
 
-fn engine_dir() -> Option<PathBuf> {
-    find_dir("PR2_ENGINE_DIR", "pr26")
+/// The engine as built by dune inside a `pr26` checkout.
+fn dune_engine() -> Option<PathBuf> {
+    let exe = find_dir("PR2_ENGINE_DIR", "pr26")?.join("_build/default/bin/main_sexp.exe");
+    exe.exists().then_some(exe)
 }
 
+/// The engine shipped inside the bundle: Tauri places the `externalBin`
+/// sidecar next to the app's own executable, minus its target-triple suffix.
+fn bundled_engine() -> Option<PathBuf> {
+    let name = format!("pr2-engine{}", std::env::consts::EXE_SUFFIX);
+    let exe = std::env::current_exe().ok()?.parent()?.join(name);
+    exe.exists().then_some(exe)
+}
+
+/// Development builds prefer the live dune build (so rebuilding the engine
+/// takes effect without rebuilding the app); release builds prefer the copy
+/// bundled with them. An explicit `PR2_ENGINE_DIR` always wins.
+fn engine_exe() -> Option<PathBuf> {
+    if std::env::var_os("PR2_ENGINE_DIR").is_some() || cfg!(debug_assertions) {
+        dune_engine().or_else(bundled_engine)
+    } else {
+        bundled_engine().or_else(dune_engine)
+    }
+}
+
+/// Same preference order as the engine: the source tree's `help/` while
+/// developing (it is where help gets edited), the bundled copy when installed.
 fn help_dir() -> Option<PathBuf> {
-    find_dir("PR2_HELP_DIR", "help")
+    let bundled = || {
+        RESOURCE_DIR
+            .get()
+            .map(|d| d.join("help"))
+            .filter(|d| d.is_dir())
+    };
+    if std::env::var_os("PR2_HELP_DIR").is_some() || cfg!(debug_assertions) {
+        find_dir("PR2_HELP_DIR", "help").or_else(bundled)
+    } else {
+        bundled().or_else(|| find_dir("PR2_HELP_DIR", "help"))
+    }
 }
 
 /// Resolve a help key to a path, refusing anything that would escape the help
@@ -92,20 +131,12 @@ fn midi_files_in(dir: &Path) -> Vec<String> {
 /// useful to point at once the temp directory is gone).
 #[tauri::command]
 fn run_engine(sexp: String, out_dir: Option<String>, debug: Option<bool>) -> Value {
-    let Some(dir) = engine_dir() else {
+    let Some(exe) = engine_exe() else {
         return engine_error(
-            "could not find the engine directory (expected a 'pr26' folder \
-             beside the GUI, or set PR2_ENGINE_DIR)",
+            "could not find the engine - run `dune build` in the 'pr26' folder \
+             beside the GUI, or set PR2_ENGINE_DIR",
         );
     };
-
-    let exe = dir.join("_build/default/bin/main_sexp.exe");
-    if !exe.exists() {
-        return engine_error(format!(
-            "the engine is not built - run `dune build` in {}",
-            dir.display()
-        ));
-    }
 
     // Keeps the TempDir guard alive for the ephemeral case (it deletes on
     // drop, at the end of this function) without needing one in the
@@ -140,7 +171,7 @@ fn run_engine(sexp: String, out_dir: Option<String>, debug: Option<bool>) -> Val
     if debug.unwrap_or(false) {
         command.arg("--debug");
     }
-    let output = command.current_dir(&dir).output();
+    let output = command.current_dir(&run_dir).output();
 
     match output {
         Err(e) => engine_error(format!("could not start the engine: {e}")),
@@ -259,6 +290,12 @@ pub fn run() {
     tauri::Builder::default()
         .menu(app_menu)
         .plugin(tauri_plugin_dialog::init())
+        .setup(|app| {
+            if let Ok(dir) = app.path().resource_dir() {
+                let _ = RESOURCE_DIR.set(dir);
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             run_engine,
             read_help,
