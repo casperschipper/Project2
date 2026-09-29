@@ -16,6 +16,12 @@ on:
 permissions:
   contents: write # only needed to create the release on a tag
 
+# Starting a new run cancels one still in progress for the same branch/tag,
+# so a fix can be retried straight away without the old run using up minutes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     strategy:
@@ -34,7 +40,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install Tauri's Linux system libraries
         if: runner.os == 'Linux'
@@ -80,7 +86,7 @@ jobs:
 
       # ---- The app ---------------------------------------------------------
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -97,7 +103,7 @@ jobs:
         working-directory: gui
         run: npx tauri build --bundles ${{ matrix.bundles }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: projekt2-${{ runner.os }}
           path: |
@@ -110,7 +116,7 @@ jobs:
 
       - name: Attach to a draft release
         if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           draft: true
           files: |
