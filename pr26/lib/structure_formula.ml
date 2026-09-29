@@ -1501,7 +1501,7 @@ module Parse = struct
       ~rest_combination ~rest_principle ~rest_mode
 
   let read_file path =
-    let ic = open_in path in
+    let ic = open_in_bin path in
     let content =
       let n = in_channel_length ic in
       let s = Bytes.create n in
