@@ -1,5 +1,3 @@
-2h
-call kees [luc]
 
 1. what is pr2 historical context and basic model [luc]
 
