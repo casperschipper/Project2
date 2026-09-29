@@ -25,13 +25,13 @@ mac app [casper]
 linux apppack? [luc]
 page with download
 
-going through 1 or 2 structure formulas fully
+going through 1 or 2 structure formulas fully [ ] casper
 then letting people experiment with it
 
 maybe an exercise or idea for people to experiment with, without just playing
-around
+around [ ] 
 
-7. state of the project and future features, what remains to be done, limitations,
+1. state of the project and future features, what remains to be done, limitations,
 ideas etc
 lilypond [casper and luc]
 
