@@ -376,7 +376,7 @@ val draw
 ```
 
 No `_debug`-suffixed twin, no call site that can "forget" to opt in — every
-call to `draw` is instrumented by construction, at zero marginal cost when
+call to `draw` is observable by construction, at zero marginal cost when
 `Debug_log.enabled` is `false` (same short-circuit the current code already
 relies on, just centralized to one function instead of five).
 

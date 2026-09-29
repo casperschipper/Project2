@@ -3,7 +3,7 @@
 
   (seed 3)
   (variant-duration 120.0)
-  (n-variants 3)
+  (n-variants 1)
   (octave-division 12)
 
   (dynamics (ppp pp p mf f ff fff))
@@ -25,12 +25,9 @@
   (instrument-table
     (0))
 
-  (entrydelays (1/1000 2/1000 5/1000 1/100 2/100 5/100 1/10 2/10 5/10 1 2 5))
+  (entrydelays (0.004 0.001 0.003 0.03 0.01 0.6 0.7 0.8))
   (entrydelay-table
-    (3 0 1 2 4 5 6 7 8 9 10 11)
-    (1 2 3 4 0)
-    (3 3 4)
-    (9 10 11))
+    (0 1 2 3 4))
 
   (durations (0.01 0.02 0.1 0.2 0.3 0.5 2.0))
   (duration-table
@@ -54,19 +51,31 @@
 
   (harmony
     (principle interval)
-    (matrix (chord (1 2 7 8 12 4)))
+    (matrix (rows (
+        (0 0 0 0 0 0 0 0 0 0 0)
+        (0 0 0 0 0 0 0 0 0 0 0)
+        (0 0 0 0 0 0 0 0 0 0 0)
+        (0 0 0 0 0 0 0 0 0 0 0)
+        (0 0 0 0 0 0 0 0 0 0 0)
+        (0 0 0 0 0 0 0 0 0 0 0)
+        (0 0 0 0 0 0 0 0 0 0 0)
+        (0 0 0 0 0 0 0 0 0 0 0)
+        (0 0 0 0 0 0 0 0 0 0 0)
+        (0 0 0 0 0 0 0 0 0 0 0)
+        (0 0 0 0 0 0 0 0 0 0 0)
+      )))
     (forbidden-tones ()))
 
   (principles
     (instrument (ensemble (sequence 0)) (order series))
-    (entrydelay (ensemble alea) (order (tendency (section 1.0 (start 0.0 0.1) (end 0.0 1.0)) (section 1.0 (start 0.5 1.0) (end 0.0 1.0)) (section 1.0 (start 0.1 0.2) (end 0.8 1.0)))))
+    (entrydelay (ensemble (sequence 0)) (order (tendency (section 1.0 (start 0.0 0.1) (end 0.0 1.0)) (section 1.0 (start 0.5 1.0) (end 0.0 1.0)) (section 1.0 (start 0.1 0.2) (end 0.8 1.0)))))
     (performance (ensemble (sequence 0)) (order (sequence (0 1 2))) (mode per-chord))
     (dynamics (ensemble series) (order (group (element series) (repetition series) (repetitions 1 4))) (mode per-note))
-    (duration (ensemble (sequence 0)) (order (tendency (section 1.0 (start 0.0 0.1) (end 0.8 1.0)) (section 1.0 (start 0.45 0.6) (end 0.0 1.0)))) (relation equals-entry))
-    (register (ensemble (sequence 0)) (order alea) (mode per-note))
+    (duration (ensemble (sequence 0)) (order (tendency (section 1.0 (start 0.0 0.1) (end 0.8 1.0)) (section 1.0 (start 0.45 0.6) (end 0.0 1.0)))) (relation (independent per-chord)))
+    (register (ensemble (sequence 0)) (order (tendency (section 1.0 (start 0.1 0.1) (end 0.0 1.0)) (section 1.0 (start 0.0 1.0) (end 0.0 0.1)) (section 1.0 (start 0.9 1.0) (end 0.1 0.1)) (section 1.0 (start 1.0 0.1) (end 0.1 0.1)))) (mode per-note))
     (rest (ensemble alea) (order alea)))
 
   (hierarchy (Ins Reg Har Per Dyn Ent Dur))
   (union none)
-  (density (autonomous (low 1) (high 1) (principle alea)))
+  (density (autonomous (low 1) (high 1) (principle (group (element series) (repetition series) (repetitions 1 4)))))
 )

@@ -1227,7 +1227,7 @@ let () =
    [compute_rest_insertions] tests below hand-verify exact insertion
    points/times without depending on any other part of the pipeline. *)
 let fixed_rest_state value =
-  Pr26.Instrumented_selection.sel_init (Pr26.Selection.Sequence [ 0 ]) 1
+  Pr26.Observable_selection.sel_init (Pr26.Selection.Sequence [ 0 ]) 1
     (Pr26.Parameters.elements_of_array [| Pr26.Parameters.Duration value |])
 
 (* Sound-entry vs. general-entry divergence, and the "recomputed against

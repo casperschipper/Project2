@@ -155,9 +155,12 @@ export function HarmonyScreen() {
                   onClick={() =>
                     update((p) => {
                       if (p.intervalMatrixSource.kind !== "matrix") {
+                        // Leaving chord mode keeps what the chord produced
+                        // (the chord itself is dropped) - an empty grid only
+                        // when the chord isn't valid yet.
                         p.intervalMatrixSource = {
                           kind: "matrix",
-                          rows: emptyIntervalMatrix(p.octaveDivision),
+                          rows: effectiveIntervalMatrix(p) ?? emptyIntervalMatrix(p.octaveDivision),
                         };
                       }
                     })

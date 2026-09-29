@@ -2,7 +2,7 @@ open Parameters
 open Structure_formula
 open Selection
 open Tools
-open Instrumented_selection
+open Observable_selection
 
 (* Warnings about conditions that could not be met *)
 type note_diagnostics = {

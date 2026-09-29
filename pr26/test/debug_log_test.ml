@@ -1,6 +1,6 @@
 open Pr26.Parameters
 open Pr26.Score_generation
-open Pr26.Instrumented_selection
+open Pr26.Observable_selection
 open Pr26.Selection
 open Pr26.Debug_log
 
