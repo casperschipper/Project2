@@ -1,6 +1,9 @@
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+#[cfg(not(target_os = "macos"))]
+use tauri::menu::HELP_SUBMENU_ID;
+use tauri::menu::{AboutMetadata, Menu, PredefinedMenuItem};
 
 /// Locate a sibling directory of the GUI project (`pr26` for the engine,
 /// `help` for the markdown).
@@ -203,8 +206,58 @@ fn write_text_file(path: String, contents: String) -> Result<(), String> {
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
+/// Credits for the About panel. Plain text: the native panel shows the string
+/// as-is, so there is no bold or other markup here.
+const ABOUT_CREDITS: &str = "\
+Project 2 Reimplementation
+Based on Gottfried Michael Koenig\u{2019}s Project 2
+This version is developed by Casper Schipper and Luc D\u{f6}bereiner
+
+Software development and implementation: Casper Schipper
+Conceptual development and project direction: Luc D\u{f6}bereiner
+Design and development: Casper Schipper and Luc D\u{f6}bereiner
+
+Developed with the support of the Konrad Boehmer Foundation.
+
+With thanks to Kees Tazelaar, Bjarni Gunnarsson and Darien Brito.";
+
+const ABOUT_COPYRIGHT: &str = "Copyright \u{a9} Casper Schipper";
+
+/// Tauri's default menu, with its About item swapped for one that carries
+/// the credits. The About item sits first in the app menu on macOS and first
+/// in the Help menu elsewhere.
+fn app_menu<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<Menu<R>> {
+    let menu = Menu::default(app)?;
+    let pkg = app.package_info();
+    let about = PredefinedMenuItem::about(
+        app,
+        None,
+        Some(AboutMetadata {
+            name: Some(pkg.name.clone()),
+            version: Some(pkg.version.to_string()),
+            copyright: Some(ABOUT_COPYRIGHT.into()),
+            // macOS shows `credits`; Windows and Linux only show `comments`.
+            credits: Some(ABOUT_CREDITS.into()),
+            comments: Some(ABOUT_CREDITS.into()),
+            ..Default::default()
+        }),
+    )?;
+
+    #[cfg(target_os = "macos")]
+    let submenu = menu.items()?.into_iter().next();
+    #[cfg(not(target_os = "macos"))]
+    let submenu = menu.get(HELP_SUBMENU_ID);
+
+    if let Some(submenu) = submenu.as_ref().and_then(|item| item.as_submenu()) {
+        submenu.remove_at(0)?;
+        submenu.insert(&about, 0)?;
+    }
+    Ok(menu)
+}
+
 pub fn run() {
     tauri::Builder::default()
+        .menu(app_menu)
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             run_engine,
