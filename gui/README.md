@@ -132,51 +132,34 @@ hit engine-compatibility warnings from npm, upgrading Node is the fix.
 ## Building a distributable app
 
 ```sh
-cd ../pr26 && dune build && cd ../gui   # the engine, freshly built
 npm install
-npm run app:build                       # i.e. `tauri build`
+npm run app:build        # builds the engine, then `tauri build`
 ```
 
-This compiles a release build and bundles it as a native installer for
-whichever platform you run it on - `src-tauri/tauri.conf.json` already
-targets all three, and the icon set for each (`.icns`, `.ico`, and the PNG
-tiles) is already in `src-tauri/icons/`:
+`npm run app:build` (and `npm run app`) first runs `scripts/prepare-engine.sh`,
+which builds the engine with dune and copies it to
+`src-tauri/binaries/pr2-engine-<target triple>`. Tauri ships it as a
+[sidecar](https://v2.tauri.app/develop/sidecar/) next to the app's executable,
+and ships `help/` as a bundle resource, so the result is self-contained: no
+`pr26` checkout or OCaml toolchain is needed to run it.
 
-* **macOS** — a `.app` in `src-tauri/target/release/bundle/macos/`, and a
-  `.dmg` in `bundle/dmg/`.
-* **Linux** — a `.deb` and an `.AppImage`, in `bundle/deb/` and
-  `bundle/appimage/`.
-* **Windows** — an `.msi` and an NSIS `.exe` installer, in `bundle/msi/` and
-  `bundle/nsis/`.
+On Linux this produces, in `src-tauri/target/release/bundle/`:
 
-Tauri *targets* one OS's bundle formats per run; it does not cross-*compile*
-between operating systems. To ship all three you build once per platform
-(natively, in a VM, or - the usual approach for real releases - one CI runner
-per OS).
+* `appimage/Projekt 2_<version>_amd64.AppImage` — a single portable file:
+  `chmod +x` it and run it.
+* `deb/Projekt 2_<version>_amd64.deb` — for installing on Debian/Ubuntu.
 
-### This does not (yet) embed the engine
+An AppImage runs on distributions whose glibc is at least as new as the build
+machine's, so build on the oldest distribution you want to support.
 
-The app currently finds the OCaml engine and the help content by looking for
-sibling `pr26`/`help` folders at run time (`find_dir` in
-`src-tauri/src/lib.rs`), or the `PR2_ENGINE_DIR`/`PR2_HELP_DIR` environment
-variables - it does not link the compiled `main_sexp.exe` into the app or
-declare `pr26`/`help` as [Tauri bundle resources](https://v2.tauri.app/develop/resources/),
-so `tauri build` does not pull either in.
+How the app finds the engine and help (`engine_exe`/`help_dir` in
+`src-tauri/src/lib.rs`): `PR2_ENGINE_DIR`/`PR2_HELP_DIR` always win. After
+that, development builds prefer the live `pr26` dune build and the source
+`help/` folder (so engine rebuilds and help edits take effect immediately),
+while release builds prefer the copies bundled with them.
 
-That makes the installer above "portable" in the sense of needing no
-development toolchain *to run* - but only once it can still find those two
-folders. On your own machine that's already true, since they're right there.
-To hand the app to someone else today, the straightforward path is to zip the
-built app together with `pr26/_build/default/bin/main_sexp.exe` (built for
-their platform) and the `help/` folder, and either place all three as
-siblings in one folder, or set `PR2_ENGINE_DIR`/`PR2_HELP_DIR` to point at
-wherever you put the first two.
-
-Making the bundle fully self-contained - the engine and help content baked
-into the installer, so a single file is all an end user ever needs - is a
-reasonably small follow-up (`bundle.resources` in `tauri.conf.json`, plus
-reading `app.path().resource_dir()` in `lib.rs` instead of walking up from
-the working directory). Ask if you'd like that built.
+Tauri builds one OS's bundles per run and does not cross-compile the OCaml
+engine, so macOS and Windows builds are made on those platforms.
 
 ## How it fits together
 
@@ -260,5 +243,3 @@ selector, and several list fields are double-nested).
 
 - The output screen shows the engine's text output only. Other formats and
   ways of displaying a score are the obvious next step.
-- The distributable app doesn't yet embed the engine/help content - see
-  "Building a distributable app" above.
