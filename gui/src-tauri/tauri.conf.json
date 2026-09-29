@@ -42,6 +42,9 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "copyright": "Copyright © Casper Schipper"
+    "copyright": "Copyright © Casper Schipper",
+    "macOS": {
+      "signingIdentity": "-"
+    }
   }
 }
