@@ -13,8 +13,8 @@
 
 * Serial thinking is very present, however it also has generators that are the exact opposite (forced repetition, series with repeated elements, or even hand-composed sequences). The one exception is harmony, that is "protected" from the composers "attacks"
 
-* The generators are more "diverse" than in PR1, which only had a spectrum from irregular to regular.
 * Hierarchy, note events are build parameter by parameter, a selected parameter can limit what values another parameter can take. Mostly, this is due to a certain value only playable by a certain instrument. This instrument will not be able to play all values in another parameter.
+
 * It has some Combination and Union concepts which are unique to PR2 and allow the composer to have multiple groups of material.
 It allows a composer to construct vertical relationships. For example a group of durations and dynamics that may only occur together in one voice and not in the others.
   
