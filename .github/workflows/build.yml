@@ -1,0 +1,121 @@
+# Builds the self-contained app (GUI + bundled OCaml engine + help) on all
+# three platforms. Tauri can't cross-compile and neither can the OCaml engine,
+# so each platform builds on its own runner.
+#
+# Run it by hand from the Actions tab ("Run workflow"): the installers show up
+# as downloadable artifacts on the run's page. Pushing a tag like `v0.2.0`
+# does the same and also attaches them to a draft GitHub release.
+
+name: Build app
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write # only needed to create the release on a tag
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The oldest supported Ubuntu, so the AppImage also runs on older
+          # distributions (it needs a glibc at least as new as the builder's).
+          - os: ubuntu-22.04
+            bundles: appimage,deb
+          # Apple Silicon. Intel Macs would need a separate Intel runner.
+          - os: macos-latest
+            bundles: app,dmg
+          - os: windows-latest
+            bundles: nsis,msi
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Tauri's Linux system libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      # ---- The engine ------------------------------------------------------
+
+      - uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: "5.4"
+
+      - name: Build the engine
+        working-directory: pr26
+        run: |
+          opam install . --deps-only --yes
+          opam exec -- dune build --profile release bin/main_sexp.exe
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      # Same job as gui/scripts/prepare-engine.sh, done here directly because
+      # that script can't run under `opam env` on Windows and doesn't add the
+      # `.exe` Tauri expects there.
+      - name: Stage the engine as a Tauri sidecar
+        shell: bash
+        run: |
+          triple=$(rustc -vV | sed -n 's/^host: //p' | tr -d '\r')
+          ext=""
+          if [ "$RUNNER_OS" = "Windows" ]; then ext=".exe"; fi
+          mkdir -p gui/src-tauri/binaries
+          cp pr26/_build/default/bin/main_sexp.exe "gui/src-tauri/binaries/pr2-engine-$triple$ext"
+          ls -l gui/src-tauri/binaries
+
+      # Runs the staged copy (the one that gets bundled) on the sample
+      # formula, so a broken engine fails here rather than in the user's hands.
+      - name: Smoke-test the engine
+        shell: bash
+        run: |
+          out=$(mktemp -d)
+          gui/src-tauri/binaries/pr2-engine-* pr26/formula.sexp --json --out-dir "$out" > "$out/result.json"
+          grep -q '"ok":true' "$out/result.json"
+
+      # ---- The app ---------------------------------------------------------
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: gui/package-lock.json
+
+      - name: Install GUI dependencies
+        working-directory: gui
+        run: npm ci
+
+      # `npx tauri build` rather than `npm run app:build`: the engine is
+      # already staged above. --bundles overrides tauri.conf.json's
+      # Linux-only `targets` list with this platform's formats.
+      - name: Build the app
+        working-directory: gui
+        run: npx tauri build --bundles ${{ matrix.bundles }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: projekt2-${{ runner.os }}
+          path: |
+            gui/src-tauri/target/release/bundle/appimage/*.AppImage
+            gui/src-tauri/target/release/bundle/deb/*.deb
+            gui/src-tauri/target/release/bundle/dmg/*.dmg
+            gui/src-tauri/target/release/bundle/nsis/*.exe
+            gui/src-tauri/target/release/bundle/msi/*.msi
+          if-no-files-found: error
+
+      - name: Attach to a draft release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: |
+            gui/src-tauri/target/release/bundle/appimage/*.AppImage
+            gui/src-tauri/target/release/bundle/deb/*.deb
+            gui/src-tauri/target/release/bundle/dmg/*.dmg
+            gui/src-tauri/target/release/bundle/nsis/*.exe
+            gui/src-tauri/target/release/bundle/msi/*.msi
