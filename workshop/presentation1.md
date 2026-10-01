@@ -293,7 +293,7 @@ Koenig’s layer concept moves from one-dimensional sequence toward simultaneous
 
 - Koenig's original (~1966) on an Electrologica X1/X8.
 
-![bg right:45% contain](img/Electrologica_X8.jpg)
+* ![](img/Electrologica_X8.jpg)
 
 ---
 
@@ -441,7 +441,6 @@ It has some extra possibilities as well though:
 - Serial thinking is very present, however Pr2 also has generators that are the exact opposite (forced repetition, series with repeated elements, or even hand-composed sequences). 
 
 ---
-
 
 When parameters are combinated, it allows a composer to construct vertical relationships. For example a group of durations and dynamics that may only occur together in one voice and not in the others.
 
