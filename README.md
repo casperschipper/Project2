@@ -11,4 +11,7 @@ Developed with the support of the Konrad Boehmer Foundation.
 
 We would like to thank **Kees Tazelaar**, **Bjarni Gunnarsson** and **Darien Brito** for their support and advice!
 
+You can download binaries for MacOS (Apple Silicon), Linux and Windows here
+<https://github.com/casperschipper/Project2/releases/tag/v0.1.0>
+
 Copyright © Casper Schipper  
