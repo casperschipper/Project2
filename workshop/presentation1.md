@@ -291,7 +291,7 @@ Koenig’s layer concept moves from one-dimensional sequence toward simultaneous
 
 ## Command line versions
 
-* Koenig's original (~1966) on an Electrologica X1/X8.
+- Koenig's original (~1966) on an Electrologica X1/X8.
 
 ![bg right:45% contain](img/Electrologica_X8.jpg)
 
@@ -307,16 +307,16 @@ This made experimenting through various variants difficult, as you could not qui
 
 Atari Version (1990, Ramon Gonzalez-Arroyo & Koenig)
 
-* Based on the manual, the Atari version was very similar to the first version, with some minor differences.
+- Based on the manual, the Atari version was very similar to the first version, with some minor differences.
 
 ---
 
 ## GUI versions
 
-* Koenig's Visual Studio version with GUI (late 1990's? not released)
-* ? supercollider implementation ?
-* Luc's version (2010, Ocaml + JAVA GUI, in testing stage)
-* Python (2020, Brito & Gunnarsson)
+- Koenig's Visual Studio version with GUI (late 1990's? not released)
+- ? supercollider implementation ?
+- Luc's version (2010, Ocaml + JAVA GUI, in testing stage)
+- Python (2020, Brito & Gunnarsson)
 
 ---
 
@@ -332,12 +332,13 @@ We take over from Bjarni and Darien’s work as a practical and conceptual start
 
 ---
 
-* First attempt was to finish the python version, but although the code was of high quality, it was difficult to get into.
+- First attempt was to finish the python version, but it was hard to find a starting point, ironically because it was so far developed.
 
 ---
 
 ## New Approach
 
+- Read the manual(s)
 * We split the program into an "engine" and a "gui" (following the attempt of 2010)
 * We started with the engine first
 * No series of questions, but an input defined as a "structure formula"
@@ -346,9 +347,9 @@ We take over from Bjarni and Darien’s work as a practical and conceptual start
 
 ## Engine
 
-* Written in OCaml
-* We started with only two parameters, instrument and entrydelay beginning to end.
-* List - Table - Ensemble, selection principles
+- Written in OCaml
+- I started with only two parameters, instrument and entrydelay beginning to end.
+- List - Table - Ensemble, selection principles
 
 ---
 
@@ -358,9 +359,9 @@ The S-Expression is the simplest representation of a PR2 program
 
 ## Challenges with making a GUI for PR2
 
-* There is a lot of input required
-* Many inputs in pr2 are "entangled"
-* Generic words like "union", "combination" & "group" have specific usages within pr2, and when combined may have different consequences.
+- There is a lot of input required
+- Many inputs in pr2 are "entangled"
+- Generic words like "union", "combination" & "group" have specific usages within pr2, and when combined may have different consequences.
 
 ---
 
@@ -368,21 +369,21 @@ I was worried at some point wether hierarchy actually meant that it was very dif
 
 ---
 
-* In Pr2, values are often refered to by index (in table, ensemble)
-* In this GUI, we show the index and the value it refers to
+- In Pr2, values are often refered to by index (in table, ensemble)
+- In this GUI, we show the index and the value it refers to
 
 ---
 
-* The user should be informed but not overwhelmed
-* Warnings should appear where they matter
-* The shape of inputs should reflect the values that are "correct" for them, reduce "string obsession"
-* "make impossible states impossible"
+- The user should be informed but not overwhelmed
+- Warnings should appear where they matter
+- The shape of inputs should reflect the values that are "correct" for them, reduce "string obsession"
+- "make impossible states impossible"
 
 ---
 
-* Short feedback mechanisms for learning and experiment
-* If a values causes problems inform the user immediately
-* Generic terms are labeled with what they actually mean
+- Short feedback mechanisms for learning and experiment
+- If a values causes problems inform the user immediately
+- Generic terms are labeled with what they actually mean
 
 ---
 
@@ -394,53 +395,55 @@ When the engine was done, we started to generate a GUI based on the structure fo
 
 ## Some choices we made along the way
 
-* The GUI provides a lot of hints when the users enters values
-* The documentation is closely integrated in the GUI.
+- The GUI provides a lot of hints when the users enters values
+- The documentation is closely integrated in the GUI.
 
 ---
 
-* We intentionally left out the option to randomize the selection principles themselves (for now..)
-* Optional elements in the GUI appear only when relevant
-* Some parameter lists are derived from the instrument parameter (as it make no sense to have values that cannot be performed by any instrument)
+- We intentionally left out the option to randomize the selection principles themselves (for now..)
+- Optional elements in the GUI appear only when relevant
+- Some parameter lists are derived from the instrument parameter (as it make no sense to have values that cannot be performed by any instrument)
 
 ---
 
-* We added a arrow graph visualisation of interval method
-* You can name instrument groups to track them better in different parameters
+- We added a arrow graph visualisation of interval method
+- You can name instrument groups to track them better in different parameters
 
 ---
 
 # Observations while working on PR2, what makes PR2 different?
 
-* Although the order of values is highly automated in PR2, the actual values of parameters are provided by the composer as a list and never modified, the program permutates orders and layers. This seems important, for example, in harmony, there is a way to forbid certain pitches from ever occuring anywhere.
+- Although the order of values is highly automated in PR2, the actual values of parameters are provided by the composer as a list and never modified, the program permutates orders and layers. This seems important, for example, in harmony, there is a way to forbid certain pitches from ever occuring anywhere.
 
 ---
 
-* Tendency masks in PR2 do not act on continuous ranges, they are moving boundaries over the formed ensemble. Therefore the name "mask".
+- Tendency masks in PR2 do not act on continuous ranges, they are moving boundaries over the formed ensemble. Therefore the name "mask".
 
 ----
 
-* PR2 is an instrumental program: it thinks of music as instruments playing notes. 
+  -PR2 is an instrumental program: it thinks of music as instruments playing notes. 
 
 ----
 
 It has some extra possibilities as well though:
 
-  * Non standard (/= 12) octave divisions
-  * Any performance techniques defined to the composer
-  * Percussion (specifically as non-pitched) instruments
-  * Arbitrary durations and metres, things may not line up to any quantization unless you force it to. (This also makes generating readable scores difficult).
+  - Arbitrary durations and metres, things may not line up to any quantization unless you force it to. (This also makes generating readable scores difficult).
+  - Extreme densities
+  - Non standard (/= 12) octave divisions
+  - Any performance techniques defined to the composer
+  - Percussion (specifically as non-pitched) instruments
+  
 
 ---
 
-* RATIO is not a weighted choice, but may better be understood as a series with repetitions int its seed-row. Also: the weights of RATIO always refer to the full list not the ensemble.
+- RATIO is not a weighted choice, but may better be understood as a series with repetitions int its seed-row. Also: the weights of RATIO always refer to the full list not the ensemble.
 
-* Serial thinking is very present, however Pr2 also has generators that are the exact opposite (forced repetition, series with repeated elements, or even hand-composed sequences). 
+- Serial thinking is very present, however Pr2 also has generators that are the exact opposite (forced repetition, series with repeated elements, or even hand-composed sequences). 
 
 ---
 
-* It has some Combination and Union concepts which are unique to PR2 and allow the composer to have multiple groups of material.
-It allows a composer to construct vertical relationships. For example a group of durations and dynamics that may only occur together in one voice and not in the others.
+
+When parameters are combinated, it allows a composer to construct vertical relationships. For example a group of durations and dynamics that may only occur together in one voice and not in the others.
 
 ---
 
