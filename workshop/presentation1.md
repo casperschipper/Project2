@@ -238,22 +238,11 @@ Koenig’s layer concept moves from one-dimensional sequence toward simultaneous
 ---
 
 <!-- _class: lead -->
-
-# Our starting point
-
-Bjarni Gunnarsson’s 2020 Research Catalogue project described a modern implementation effort based on recent specifications by Koenig and Koenig’s input.
-
-We take over from Bjarni and Darien’s work as a practical and conceptual starting point for a new cross-platform reimplementation.
+Implementing Project 2
 
 ---
 
-<!-- _class: lead -->
-
-# The many lives of Project 2
-
----
-
-## Command line versions
+## 
 
 * Koenig's original (~1966) on an Electrologica X1/X8.
 
@@ -269,9 +258,9 @@ This made experimenting through various variants difficult, as you could not qui
 
 ---
 
-* Atari Version (1990, Ramon Gonzalez-Arroyo & Koenig)
+Atari Version (1990, Ramon Gonzalez-Arroyo & Koenig)
 
-Based on the manual, the Atari version was very similar to the first version, with some minor differences.
+* Based on the manual, the Atari version was very similar to the first version, with some minor differences.
 
 ---
 
@@ -284,7 +273,11 @@ Based on the manual, the Atari version was very similar to the first version, wi
 
 ---
 
-This last Python version was my starting point, as it was created with Koenigs involvement and fairly complete gui:
+<!-- _class: lead -->
+
+# Our starting point
+
+Bjarni Gunnarsson’s 2020 Research Catalogue project described a modern implementation effort based on recent specifications by Koenig and Koenig’s input.
 
 <https://www.researchcatalogue.net/view/1081939/1081944>
 
@@ -367,3 +360,56 @@ When the engine was done, we started to generate a GUI based on the structure fo
 
 * We added a arrow graph visualisation of interval method
 * You can name instrument groups to track them better in different parameters
+
+---
+
+# Observations while working on PR2, what makes PR2 different?
+
+* Although the order of values is highly automated in PR2, the actual values of parameters are provided by the composer as a list and never modified, the program permutates orders and layers. This seems important, for example, in harmony, there is a way to forbid certain pitches from ever occuring anywhere.
+
+---
+
+* Tendency masks in PR2 do not act on continuous ranges, they are moving boundaries over the formed ensemble. Therefore the name "mask".
+
+----
+
+* PR2 is an instrumental program: it thinks of music as instruments playing notes. 
+
+----
+
+It has some extra possibilities as well though:
+
+  * Non standard (/= 12) octave divisions
+  * Any performance techniques defined to the composer
+  * Percussion (specifically as non-pitched) instruments
+  * Arbitrary durations and metres, things may not line up to any quantization unless you force it to. (This also makes generating readable scores difficult).
+
+---
+
+* RATIO is not a weighted choice, but may better be understood as a series with repetitions int its seed-row. Also: the weights of RATIO always refer to the full list not the ensemble.
+
+* Serial thinking is very present, however Pr2 also has generators that are the exact opposite (forced repetition, series with repeated elements, or even hand-composed sequences). 
+
+---
+
+* It has some Combination and Union concepts which are unique to PR2 and allow the composer to have multiple groups of material.
+It allows a composer to construct vertical relationships. For example a group of durations and dynamics that may only occur together in one voice and not in the others.
+
+---
+
+> In my understanding, one of the
+> most important decision the user has make is whether the instrument will be the last
+> (or one of the last) or the first parameter. When the instrument parameter is last in
+> the hierarchy (and provided there are a variety of differently defined instruments and
+> possible parameter values given), the program has to find an instrument that matches all
+> the constraints set by the chosen values. In other words, the program is orchestrating a
+> given structure. If it is the case that the instrument is the first element in the hierarchy,
+> the choice of instrument precedes and conditions all subsequent selections. In that case,
+> the orchestration is given and the rest of the structure has to follow its possibilities2.
+> There are of course other parameters which depend on each other such as register and
+> harmony or entry delay and duration.
+
+<https://sonology.org/wp-content/uploads/2019/10/Doebereiner-Model-and-Material.pdf>
+
+---
+

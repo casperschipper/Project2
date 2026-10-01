@@ -1,5 +1,6 @@
-# Builds the self-contained app (GUI + bundled OCaml engine + help) on all
-# three platforms. Tauri can't cross-compile and neither can the OCaml engine,
+# Builds the self-contained app (GUI + bundled OCaml engine + help) for Linux
+# and Windows, and for macOS on request (it is normally built locally, see
+# gui/README.md). Tauri can't cross-compile and neither can the OCaml engine,
 # so each platform builds on its own runner.
 #
 # Run it by hand from the Actions tab ("Run workflow"): the installers show up
@@ -12,12 +13,14 @@ on:
   workflow_dispatch:
     inputs:
       # Building one platform saves Actions minutes while fixing a build
-      # (macOS minutes count ten times, Windows twice).
+      # (macOS minutes count ten times, Windows twice). macOS is left out of
+      # the default because it's built locally (`npm run app:build:mac` in
+      # gui/); pick "macos" or "all" for a clean-runner check.
       platform:
         description: "Platform to build"
         type: choice
-        options: [all, linux, macos, windows]
-        default: all
+        options: [linux-windows, linux, windows, macos, all]
+        default: linux-windows
   push:
     tags: ["v*"]
 
@@ -33,7 +36,7 @@ concurrency:
 jobs:
   build:
     # One entry per platform, picked by the `platform` input (a tag push has
-    # no input, so it builds all three). Linux uses the oldest supported
+    # no input, so it builds Linux and Windows). Linux uses the oldest supported
     # Ubuntu, so the AppImage also runs on older distributions (it needs a
     # glibc at least as new as the builder's). macOS is Apple Silicon; Intel
     # Macs would need a separate Intel runner.
@@ -45,10 +48,12 @@ jobs:
           "linux": [{"os": "ubuntu-22.04", "bundles": "appimage,deb"}],
           "macos": [{"os": "macos-latest", "bundles": "app,dmg"}],
           "windows": [{"os": "windows-latest", "bundles": "nsis,msi"}],
+          "linux-windows": [{"os": "ubuntu-22.04", "bundles": "appimage,deb"},
+          {"os": "windows-latest", "bundles": "nsis,msi"}],
           "all": [{"os": "ubuntu-22.04", "bundles": "appimage,deb"},
           {"os": "macos-latest", "bundles": "app,dmg"},
           {"os": "windows-latest", "bundles": "nsis,msi"}]
-          }')[inputs.platform || 'all'] }}
+          }')[inputs.platform || 'linux-windows'] }}
     runs-on: ${{ matrix.os }}
 
     steps:

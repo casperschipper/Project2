@@ -152,6 +152,20 @@ On Linux this produces, in `src-tauri/target/release/bundle/`:
 An AppImage runs on distributions whose glibc is at least as new as the build
 machine's, so build on the oldest distribution you want to support.
 
+On macOS, build with `npm run app:build:mac` instead: the `targets` list in
+`tauri.conf.json` names only the Linux formats, so this passes
+`--bundles app,dmg`. It produces, in `src-tauri/target/release/bundle/`:
+
+* `macos/Projekt 2.app` — the app itself, engine and help inside.
+* `dmg/Projekt 2_<version>_aarch64.dmg` — the disk image to hand out.
+
+The app is ad-hoc signed (`signingIdentity: "-"`), not notarized, so on
+another Mac Gatekeeper blocks the first launch: right-click the app and choose
+Open. The CI workflow leaves macOS out by default (it costs ten times the
+Actions minutes), so for a release build it locally from a clean, committed
+checkout and add the `.dmg` to the draft release with
+`gh release upload <tag> src-tauri/target/release/bundle/dmg/*.dmg`.
+
 How the app finds the engine and help (`engine_exe`/`help_dir` in
 `src-tauri/src/lib.rs`): `PR2_ENGINE_DIR`/`PR2_HELP_DIR` always win. After
 that, development builds prefer the live `pr26` dune build and the source
