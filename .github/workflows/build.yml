@@ -10,6 +10,14 @@ name: Build app
 
 on:
   workflow_dispatch:
+    inputs:
+      # Building one platform saves Actions minutes while fixing a build
+      # (macOS minutes count ten times, Windows twice).
+      platform:
+        description: "Platform to build"
+        type: choice
+        options: [all, linux, macos, windows]
+        default: all
   push:
     tags: ["v*"]
 
@@ -24,19 +32,23 @@ concurrency:
 
 jobs:
   build:
+    # One entry per platform, picked by the `platform` input (a tag push has
+    # no input, so it builds all three). Linux uses the oldest supported
+    # Ubuntu, so the AppImage also runs on older distributions (it needs a
+    # glibc at least as new as the builder's). macOS is Apple Silicon; Intel
+    # Macs would need a separate Intel runner.
     strategy:
       fail-fast: false
       matrix:
-        include:
-          # The oldest supported Ubuntu, so the AppImage also runs on older
-          # distributions (it needs a glibc at least as new as the builder's).
-          - os: ubuntu-22.04
-            bundles: appimage,deb
-          # Apple Silicon. Intel Macs would need a separate Intel runner.
-          - os: macos-latest
-            bundles: app,dmg
-          - os: windows-latest
-            bundles: nsis,msi
+        include: >-
+          ${{ fromJSON('{
+          "linux": [{"os": "ubuntu-22.04", "bundles": "appimage,deb"}],
+          "macos": [{"os": "macos-latest", "bundles": "app,dmg"}],
+          "windows": [{"os": "windows-latest", "bundles": "nsis,msi"}],
+          "all": [{"os": "ubuntu-22.04", "bundles": "appimage,deb"},
+          {"os": "macos-latest", "bundles": "app,dmg"},
+          {"os": "windows-latest", "bundles": "nsis,msi"}]
+          }')[inputs.platform || 'all'] }}
     runs-on: ${{ matrix.os }}
 
     steps:
