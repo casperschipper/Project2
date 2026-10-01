@@ -289,11 +289,14 @@ Koenig’s layer concept moves from one-dimensional sequence toward simultaneous
 
 ---
 
-## Command line versions
 
-- Koenig's original (~1966) on an Electrologica X1/X8.
+Koenig's original (1966-1968*) was developed in Algol 60 on a Electrologica X8.
 
-* ![](img/Electrologica_X8.jpg)
+<div class="quote-source">* Koenig 1978, "Composition-Processes"</div>
+
+---
+
+![w:640px](img/Electrologica_X8.jpg)
 
 ---
 
@@ -351,9 +354,6 @@ We take over from Bjarni and Darien’s work as a practical and conceptual start
 - I started with only two parameters, instrument and entrydelay beginning to end.
 - List - Table - Ensemble, selection principles
 
----
-
-The S-Expression is the simplest representation of a PR2 program
 
 ---
 
@@ -361,29 +361,24 @@ The S-Expression is the simplest representation of a PR2 program
 
 - There is a lot of input required
 - Many inputs in pr2 are "entangled"
-- Generic words like "union", "combination" & "group" have specific usages within pr2, and when combined may have different consequences.
+- Generic words like "union", "combination", "entry" & "group" have specific usages within pr2, and when combined may have different meanings.
 
 ---
 
-I was worried at some point wether hierarchy actually meant that it was very difficult to get any output at all.
+One concern was that there were so many ways to have an "incorrect" input, it would be very difficult to get any output at all.
+
 
 ---
 
-- In Pr2, values are often refered to by index (in table, ensemble)
-- In this GUI, we show the index and the value it refers to
-
----
-
-- The user should be informed but not overwhelmed
-- Warnings should appear where they matter
-- The shape of inputs should reflect the values that are "correct" for them, reduce "string obsession"
-- "make impossible states impossible"
+- The user should be informed
+- Warnings should appear at the location of the problem
+- The shape of inputs needs to be appropriate (numbers, elements, octave, pitch-class)
+- Avoid meaningless repetitions of earlier inputs
 
 ---
 
 - Short feedback mechanisms for learning and experiment
-- If a values causes problems inform the user immediately
-- Generic terms are labeled with what they actually mean
+- Use the manuals' yargon, but include what they mean
 
 ---
 
@@ -393,7 +388,7 @@ When the engine was done, we started to generate a GUI based on the structure fo
 
 ---
 
-## Some choices we made along the way
+<!-- ## Some choices we made along the way
 
 - The GUI provides a lot of hints when the users enters values
 - The documentation is closely integrated in the GUI.
@@ -409,7 +404,7 @@ When the engine was done, we started to generate a GUI based on the structure fo
 - We added a arrow graph visualisation of interval method
 - You can name instrument groups to track them better in different parameters
 
----
+--- -->
 
 # Observations while working on PR2, what makes PR2 different?
 
@@ -427,7 +422,6 @@ When the engine was done, we started to generate a GUI based on the structure fo
 
 It has some extra possibilities as well though:
 
-  - Arbitrary durations and metres, things may not line up to any quantization unless you force it to. (This also makes generating readable scores difficult).
   - Extreme densities
   - Non standard (/= 12) octave divisions
   - Any performance techniques defined to the composer
@@ -446,17 +440,7 @@ When parameters are combinated, it allows a composer to construct vertical relat
 
 ---
 
-> In my understanding, one of the
-> most important decision the user has make is whether the instrument will be the last
-> (or one of the last) or the first parameter. When the instrument parameter is last in
-> the hierarchy (and provided there are a variety of differently defined instruments and
-> possible parameter values given), the program has to find an instrument that matches all
-> the constraints set by the chosen values. In other words, the program is orchestrating a
-> given structure. If it is the case that the instrument is the first element in the hierarchy,
-> the choice of instrument precedes and conditions all subsequent selections. In that case,
-> the orchestration is given and the rest of the structure has to follow its possibilities2.
-> There are of course other parameters which depend on each other such as register and
-> harmony or entry delay and duration.
+When instrument is first 
 
 <https://sonology.org/wp-content/uploads/2019/10/Doebereiner-Model-and-Material.pdf>
 
