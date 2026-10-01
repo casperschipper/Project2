@@ -77,12 +77,18 @@ jobs:
 
       # Runs the staged copy (the one that gets bundled) on the sample
       # formula, so a broken engine fails here rather than in the user's hands.
+      # The output folder is relative: on Windows this bash is Cygwin's, whose
+      # absolute paths (/tmp/...) mean nothing to the native engine .exe. The
+      # engine reports failures inside its JSON, so print that on failure.
       - name: Smoke-test the engine
         shell: bash
         run: |
-          out=$(mktemp -d)
-          gui/src-tauri/binaries/pr2-engine-* pr26/formula.sexp --json --out-dir "$out" > "$out/result.json"
-          grep -q '"ok":true' "$out/result.json"
+          out=$(mktemp -d smoke-test.XXXXXX)
+          if ! gui/src-tauri/binaries/pr2-engine-* pr26/formula.sexp --json --out-dir "$out" > "$out/result.json" \
+             || ! grep -q '"ok":true' "$out/result.json"; then
+            cat "$out/result.json"
+            exit 1
+          fi
 
       # ---- The app ---------------------------------------------------------
 
