@@ -9,6 +9,6 @@ Design and development: **Casper Schipper** and **Luc Döbereiner**
 
 Developed with the support of the Konrad Boehmer Foundation.  
 
-With thanks to Kees Tazelaar, Bjarni Gunnarsson and Darien Brito.  
+We would like to thank Kees Tazelaar, Bjarni Gunnarsson and Darien Brito for their support and advice!
 
 Copyright © Casper Schipper  
