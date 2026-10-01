@@ -303,9 +303,7 @@ Bjarni Gunnarsson’s 2020 Research Catalogue project described a modern impleme
 
 ---
 
-* We integrated Instrument and the Combination/Union mechanisms.
-* The other parameters were added one-by-one.
-* The "structure formula" remains the only link between the two
+The S-Expression is the simplest representation of a PR2 program
 
 ---
 

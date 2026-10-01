@@ -14,6 +14,7 @@
     "app": "npm run engine && tauri dev",
     "app:build": "npm run engine && tauri build",
     "app:build:mac": "npm run engine && tauri build --bundles app,dmg",
+    "app:release:mac": "sh scripts/release-mac.sh",
     "engine": "sh scripts/prepare-engine.sh"
   },
   "dependencies": {
