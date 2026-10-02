@@ -159,11 +159,18 @@ On macOS, build with `npm run app:build:mac` instead: the `targets` list in
 * `macos/Projekt 2.app` — the app itself, engine and help inside.
 * `dmg/Projekt 2_<version>_aarch64.dmg` — the disk image to hand out.
 
-The app is ad-hoc signed (`signingIdentity: "-"`), not notarized, so on
-another Mac Gatekeeper blocks the first launch: right-click the app and choose
-Open. The CI workflow leaves macOS out by default (it costs ten times the
-Actions minutes), so for a release build it locally from a clean, committed
-checkout and add the `.dmg` to the draft release with
+That build is ad-hoc signed (`signingIdentity: "-"`), not notarized, so on
+another Mac Gatekeeper blocks the first launch. Fine for testing; for a release
+use `npm run app:release:mac`, which does the same build signed with the
+Developer ID certificate and notarized by Apple (this takes a few minutes
+longer). It needs the certificate and an app-specific password in the login
+keychain; see the comment in `scripts/release-mac.sh`. Check the result with
+`spctl -a -vv "src-tauri/target/release/bundle/macos/Projekt 2.app"`, which
+should say `source=Notarized Developer ID`.
+
+The CI workflow leaves macOS out by default (it costs ten times the Actions
+minutes), so for a release build it locally from a clean, committed checkout
+and add the `.dmg` to the draft release with
 `gh release upload <tag> src-tauri/target/release/bundle/dmg/*.dmg`.
 
 How the app finds the engine and help (`engine_exe`/`help_dir` in
