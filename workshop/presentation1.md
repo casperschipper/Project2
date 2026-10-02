@@ -386,6 +386,11 @@ When the engine was done, we started to generate a GUI based on the structure fo
 
 ---
 
+![](img/Project2GithubQR.png) 
+https://github.com/casperschipper/Project2
+
+---
+
 <!-- # Some choices we made along the way
 
 - The GUI provides a lot of hints when the user enters values
