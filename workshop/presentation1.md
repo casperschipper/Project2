@@ -220,6 +220,12 @@ The parameters are not independent: once one parameter has been composed, later 
 
 ---
 
+<!-- _backgroundColor: white -->
+
+![bg contain](img/emr3-p27.png)
+
+---
+
 # List, Table, Ensemble
 
 <div class="flow">
@@ -296,6 +302,12 @@ Koenig’s original (1966–1968*) was developed in Algol 60 on an Electrologica
 ![w:640px](img/Electrologica_X8.jpg)
 
 <div class="quote-source">* Koenig, “Composition Processes,” 1978.</div>
+
+---
+
+<!-- _backgroundColor: white -->
+
+![bg contain](img/emr3-p11.png)
 
 ---
 
