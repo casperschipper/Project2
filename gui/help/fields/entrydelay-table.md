@@ -2,7 +2,7 @@
 
 > Rows are groups of entry delays; cells are positions in the [entry delay list](fields/entrydelay-list). Each group is a rhythmic vocabulary a layer might work from.
 
-The table carves your list of delays into characters. A group of short values is a fast layer; a group of long values a sparse one; a group spanning the whole list a layer that can be either. Which group becomes active is decided by the [ensemble](fields/entrydelay-ensemble) principle. See [indices](concepts/indices) for why the cells hold positions rather than values.
+The table allows you to organise your list into subgroups. A group of short values will result in high density of entires; a group of long values a sparse one; a group spanning the whole list a layer that can be either. Which group becomes active is decided by the [ensemble selection](fields/entrydelay-ensemble) principle.
 
 Grouping entry delays has a consequence the other parameters do not have: because the number of entry points in a layer is estimated from the *average* delay of the active group, choosing a group changes not only the character of the rhythm but the number of events in the layer. Two layers on different groups over the same 30 seconds will have quite different event counts. This is the main mechanism for rhythmic differentiation between [layers](concepts/layers).
 
