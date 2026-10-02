@@ -1,0 +1,504 @@
+{
+  "formatVersion": 1,
+  "seed": 3,
+  "variantDuration": "60.0",
+  "numberOfVariants": 1,
+  "octaveDivision": 12,
+  "hierarchy": [
+    "Ins",
+    "Ent",
+    "Reg",
+    "Har",
+    "Per",
+    "Dyn",
+    "Dur"
+  ],
+  "union": "none",
+  "density": {
+    "kind": "instrument-density"
+  },
+  "durationRelation": {
+    "kind": "independent",
+    "mode": "per-note"
+  },
+  "startIndex": 0,
+  "comment": "",
+  "outputDir": "/Users/casperschipper/Documents/PR2/OneInstrument",
+  "numberOfInstrumentGroups": 3,
+  "instruments": [
+    {
+      "name": "Piano",
+      "chordSizeMin": 1,
+      "chordSizeMax": 1,
+      "performance": [
+        "sul tasto",
+        "normal",
+        "pluck"
+      ],
+      "dynamics": [
+        "ppp",
+        "pp",
+        "p",
+        "mf",
+        "ff",
+        "fff",
+        "ffff",
+        "f"
+      ],
+      "pitchRange": {
+        "kind": "pitch",
+        "low": {
+          "octave": 1,
+          "pitch": 1
+        },
+        "high": {
+          "octave": 7,
+          "pitch": 12
+        }
+      },
+      "durationMin": "0.0",
+      "durationMax": "16.0"
+    }
+  ],
+  "instrumentTable": [
+    [
+      0
+    ],
+    [
+      0
+    ],
+    [
+      0
+    ]
+  ],
+  "instrumentGroupNames": [
+    "Main group",
+    "",
+    ""
+  ],
+  "instrumentEnsemble": {
+    "kind": "series"
+  },
+  "instrumentPrinciple": {
+    "kind": "series"
+  },
+  "entrydelays": [
+    "0.01",
+    "0.02",
+    "0.3",
+    "0.4",
+    "0.5",
+    "1.0",
+    "2.0",
+    "3.0",
+    "5.0"
+  ],
+  "entrydelayTable": [
+    [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0
+    ],
+    [
+      8
+    ]
+  ],
+  "entrydelayEnsemble": {
+    "kind": "series"
+  },
+  "entrydelayPrinciple": {
+    "kind": "alea"
+  },
+  "durations": [
+    "0.1",
+    "0.2",
+    "0.3",
+    "0.5",
+    "0.8",
+    "5.0",
+    "0.01"
+  ],
+  "durationTable": [
+    [
+      0,
+      1,
+      5
+    ]
+  ],
+  "durationEnsemble": {
+    "kind": "series"
+  },
+  "durationPrinciple": {
+    "kind": "ratio",
+    "pairs": [
+      {
+        "index": 0,
+        "weight": 4
+      },
+      {
+        "index": 1,
+        "weight": 7
+      },
+      {
+        "index": 2,
+        "weight": 1
+      },
+      {
+        "index": 3,
+        "weight": 1
+      },
+      {
+        "index": 4,
+        "weight": 1
+      },
+      {
+        "index": 5,
+        "weight": 1
+      },
+      {
+        "index": 6,
+        "weight": 1
+      }
+    ]
+  },
+  "dynamics": [
+    "ppp",
+    "pp",
+    "p",
+    "mf",
+    "f",
+    "ff",
+    "fff",
+    "ffff"
+  ],
+  "dynamicsTable": [
+    [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    [
+      2,
+      3,
+      4
+    ],
+    [
+      0,
+      6
+    ]
+  ],
+  "dynamicsEnsemble": {
+    "kind": "series"
+  },
+  "dynamicsPrinciple": {
+    "kind": "series"
+  },
+  "dynamicsMode": "per-note",
+  "performance": [
+    "sul tasto",
+    "normal",
+    "pluck"
+  ],
+  "performanceTable": [
+    [
+      0,
+      1,
+      2
+    ],
+    [
+      0,
+      1,
+      2
+    ],
+    [
+      0
+    ]
+  ],
+  "performanceEnsemble": {
+    "kind": "sequence",
+    "values": [
+      2
+    ]
+  },
+  "performancePrinciple": {
+    "kind": "alea"
+  },
+  "performanceMode": "per-note",
+  "registers": [
+    {
+      "kind": "pitch",
+      "low": {
+        "octave": 2,
+        "pitch": 1
+      },
+      "high": {
+        "octave": 3,
+        "pitch": 12
+      }
+    },
+    {
+      "kind": "pitch",
+      "low": {
+        "octave": 3,
+        "pitch": 1
+      },
+      "high": {
+        "octave": 4,
+        "pitch": 12
+      }
+    },
+    {
+      "kind": "pitch",
+      "low": {
+        "octave": 4,
+        "pitch": 1
+      },
+      "high": {
+        "octave": 5,
+        "pitch": 12
+      }
+    },
+    {
+      "kind": "pitch",
+      "low": {
+        "octave": 5,
+        "pitch": 1
+      },
+      "high": {
+        "octave": 6,
+        "pitch": 12
+      }
+    }
+  ],
+  "registerTable": [
+    [
+      0,
+      1,
+      2,
+      3
+    ]
+  ],
+  "registerEnsemble": {
+    "kind": "series"
+  },
+  "registerPrinciple": {
+    "kind": "tendency",
+    "sections": [
+      {
+        "portion": 1,
+        "startMin": 0.9,
+        "startMax": 1,
+        "endMin": 0,
+        "endMax": 0.5
+      }
+    ]
+  },
+  "registerMode": "per-note",
+  "restMode": {
+    "kind": "off"
+  },
+  "rests": [
+    "0.5",
+    "1.0"
+  ],
+  "restTable": [
+    [
+      0,
+      1
+    ]
+  ],
+  "restEnsemble": {
+    "kind": "alea"
+  },
+  "restPrinciple": {
+    "kind": "alea"
+  },
+  "harmonyPrinciple": "row",
+  "row": [
+    "1",
+    "3",
+    "7"
+  ],
+  "transposition": "none",
+  "intervalMatrixSource": {
+    "kind": "matrix",
+    "rows": [
+      [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      [
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false
+      ],
+      [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      [
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false
+      ],
+      [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    ]
+  },
+  "forbiddenTones": [],
+  "chords": [
+    [
+      "1",
+      "3",
+      "5"
+    ]
+  ],
+  "chordOrder": {
+    "kind": "series"
+  },
+  "chordTransposition": "none"
+}
