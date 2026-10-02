@@ -388,6 +388,12 @@ When the engine was done, we started to generate a GUI based on the structure fo
 
 ---
 
+
+![](img/Project2GithubQR.png) 
+https://github.com/casperschipper/Project2
+
+---
+
 <!-- ## Some choices we made along the way
 
 - The GUI provides a lot of hints when the users enters values
@@ -417,16 +423,6 @@ When the engine was done, we started to generate a GUI based on the structure fo
 ----
 
   -PR2 is an instrumental program: it thinks of music as instruments playing notes. 
-
-----
-
-It has some extra possibilities as well though:
-
-  - Extreme densities
-  - Non standard (/= 12) octave divisions
-  - Any performance techniques defined to the composer
-  - Percussion (specifically as non-pitched) instruments
-  
 
 ---
 
