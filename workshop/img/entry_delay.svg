@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 100 1030 320" width="1030" height="320" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2f6fb0"/>
+    </marker>
+    <marker id="arrg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#666"/>
+    </marker>
+    <style>
+      .t    { font-size: 13px; fill: #222; }
+      .s    { font-size: 11px; fill: #555; }
+      .h    { font-size: 16px; font-weight: bold; fill: #222; }
+      .ent  { fill: #2f6fb0; }
+      .sp   { fill: #c7772a; }
+      .nt   { fill: #3d8a4f; }
+      .hdr  { font-size: 12px; font-weight: bold; letter-spacing: 1px; }
+      .bar  { fill: #d7ecdc; stroke: #3d8a4f; stroke-width: 1.2; }
+      .barl { font-size: 12px; fill: #1f4d2a; }
+      .guide{ stroke: #2f6fb0; stroke-width: 1; stroke-dasharray: 4 3; }
+      .br   { fill: none; stroke: #c7772a; stroke-width: 2; }
+      .link { stroke: #888; stroke-width: 1.2; fill: none; }
+      .mute { fill: #888; }
+    </style>
+  </defs>
+
+  <rect x="0" y="100" width="1030" height="320" fill="#ffffff"/>
+
+
+  <!-- entry guides -->
+  <line x1="90"  y1="108" x2="90"  y2="312" class="guide"/>
+  <line x1="370" y1="108" x2="370" y2="312" class="guide"/>
+  <line x1="550" y1="108" x2="550" y2="312" class="guide"/>
+  <line x1="750" y1="108" x2="750" y2="312" class="guide"/>
+
+  <!-- notes as bars: x = start (entry time), width = duration (100 px per second) -->
+  <rect x="90"  y="115" width="320" height="22" rx="3" class="bar"/>
+  <text x="97"  y="130" class="barl">Harp C5</text>
+  <rect x="90"  y="145" width="200" height="22" rx="3" class="bar"/>
+  <text x="97"  y="160" class="barl">Harp E4</text>
+  <rect x="90"  y="175" width="360" height="22" rx="3" class="bar"/>
+  <text x="97"  y="190" class="barl">Cello G#3</text>
+  <rect x="370" y="205" width="100" height="22" rx="3" class="bar"/>
+  <text x="377" y="220" class="barl">Oboe B3</text>
+  <rect x="550" y="235" width="150" height="22" rx="3" class="bar"/>
+  <text x="557" y="250" class="barl">Piano F4</text>
+  <rect x="550" y="265" width="150" height="22" rx="3" class="bar"/>
+  <text x="557" y="280" class="barl">Piano D5</text>
+
+  <!-- sub-pick brackets -->
+  <path d="M84,117 L79,117 L79,165 L84,165" class="br"/>
+  <text x="74" y="145" class="s" text-anchor="end" style="fill:#c7772a">sub-pick 1</text>
+  <path d="M84,177 L79,177 L79,195 L84,195" class="br"/>
+  <text x="74" y="190" class="s" text-anchor="end" style="fill:#c7772a">sub-pick 2</text>
+  <path d="M364,207 L359,207 L359,225 L364,225" class="br"/>
+  <path d="M544,237 L539,237 L539,285 L544,285" class="br"/>
+
+  <!-- duration annotations -->
+  <text x="458" y="190" class="s">← duration 3.6 s: may run on past the next entry</text>
+  <line x1="472" y1="216" x2="546" y2="216" stroke="#888" stroke-width="1" stroke-dasharray="2 3"/>
+  <text x="556" y="220" class="s">duration shorter than entry delay → silence until the next entry</text>
+
+  <!-- time axis -->
+  <line x1="90" y1="312" x2="960" y2="312" stroke="#444" stroke-width="1.2" marker-end="url(#arrg)"/>
+  <text x="962" y="330" class="s" text-anchor="end">time</text>
+  <g class="ent">
+    <circle cx="90"  cy="312" r="5"/>
+    <circle cx="370" cy="312" r="5"/>
+    <circle cx="550" cy="312" r="5"/>
+    <circle cx="750" cy="312" r="5" fill="#fff" stroke="#2f6fb0" stroke-width="1.5"/>
+  </g>
+  <text x="90"  y="332" class="t ent" text-anchor="middle" font-weight="bold">entry 1</text>
+  <text x="370" y="332" class="t ent" text-anchor="middle" font-weight="bold">entry 2</text>
+  <text x="550" y="332" class="t ent" text-anchor="middle" font-weight="bold">entry 3</text>
+  <text x="750" y="332" class="t ent" text-anchor="middle">entry 4 …</text>
+  <text x="90"  y="347" class="s" text-anchor="middle">t = 0.0</text>
+  <text x="370" y="347" class="s" text-anchor="middle">t = 2.8</text>
+  <text x="550" y="347" class="s" text-anchor="middle">t = 4.6</text>
+  <text x="750" y="347" class="s" text-anchor="middle">t = 6.6</text>
+
+  <!-- entry delay arrows -->
+  <line x1="94"  y1="365" x2="366" y2="365" stroke="#2f6fb0" stroke-width="1.5" marker-start="url(#arr)" marker-end="url(#arr)"/>
+  <text x="230" y="383" class="t ent" text-anchor="middle">entry delay 2.8 s</text>
+  <line x1="374" y1="365" x2="546" y2="365" stroke="#2f6fb0" stroke-width="1.5" marker-start="url(#arr)" marker-end="url(#arr)"/>
+  <text x="460" y="383" class="t ent" text-anchor="middle">entry delay 1.8 s</text>
+  <line x1="554" y1="365" x2="746" y2="365" stroke="#2f6fb0" stroke-width="1.5" marker-start="url(#arr)" marker-end="url(#arr)"/>
+  <text x="650" y="383" class="t ent" text-anchor="middle">entry delay 2.0 s</text>
+  <text x="790" y="383" class="s">entry delay = time until the next entry;</text>
+  <text x="790" y="397" class="s">duration = how long a note sounds.</text>
+  <text x="790" y="411" class="s">The two are separate parameters.</text>
+</svg>

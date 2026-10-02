@@ -289,6 +289,12 @@ Koenig’s layer concept moves from one-dimensional sequence toward simultaneous
 
 ---
 
+# Entry delay and duration
+
+![w:1120](img/entry_delay.svg)
+
+---
+
 <!-- _class: lead -->
 
 # Implementing Project 2
