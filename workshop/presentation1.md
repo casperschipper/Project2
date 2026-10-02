@@ -289,37 +289,37 @@ Koenig’s layer concept moves from one-dimensional sequence toward simultaneous
 
 ---
 
+# The original
 
-Koenig's original (1966-1968*) was developed in Algol 60 on a Electrologica X8.
-
-<div class="quote-source">* Koenig 1978, "Composition-Processes"</div>
-
----
+Koenig’s original (1966–1968*) was developed in Algol 60 on an Electrologica X8.
 
 ![w:640px](img/Electrologica_X8.jpg)
 
----
-
-It had a terminal interface by answering a series of questions (over 60).
-
-There were separate programs for each step, all reading and writing to disk (memory being limited).
-
-This made experimenting through various variants difficult, as you could not quickly switch a parameter and rerender.
+<div class="quote-source">* Koenig, “Composition Processes,” 1978.</div>
 
 ---
 
-Atari Version (1990, Ramon Gonzalez-Arroyo & Koenig)
+# Working with the original
 
-- Based on the manual, the Atari version was very similar to the first version, with some minor differences.
+- A terminal interface: the user answered a series of questions (over 60)
+- Separate programs for each step, all reading and writing to disk (memory was limited)
+- Experimenting with variants was difficult: you could not quickly change a parameter and re-render
 
 ---
 
-## GUI versions
+# Atari version
 
-- Koenig's Visual Studio version with GUI (late 1990's? not released)
-- ? supercollider implementation ?
-- Luc's version (2010, Ocaml + JAVA GUI, in testing stage)
-- Python (2020, Brito & Gunnarsson)
+- 1990, Ramon Gonzalez-Arroyo and Koenig
+- Based on the manual, very similar to the first version, with some minor differences
+
+---
+
+# GUI versions
+
+- Koenig’s Visual Studio version with GUI (late 1990s?, not released)
+- SuperCollider implementation (?)
+- Luc’s version (2010, OCaml + Java GUI, in testing stage)
+- Python (2020, Brito and Gunnarsson)
 
 ---
 
@@ -335,114 +335,110 @@ We take over from Bjarni and Darien’s work as a practical and conceptual start
 
 ---
 
-- First attempt was to finish the python version, but it was hard to find a starting point, ironically because it was so far developed.
+# First attempt
+
+- Our first attempt was to finish the Python version
+- It was hard to find a starting point, ironically because it was already so far developed
 
 ---
 
-## New Approach
+# New approach
 
 - Read the manual(s)
-* We split the program into an "engine" and a "gui" (following the attempt of 2010)
-* We started with the engine first
-* No series of questions, but an input defined as a "structure formula"
+- Split the program into an “engine” and a “GUI” (following the attempt of 2010)
+- Start with the engine first
+- No series of questions: the input is defined as a “structure formula”
 
 ---
 
-## Engine
+# Engine
 
 - Written in OCaml
-- I started with only two parameters, instrument and entrydelay beginning to end.
-- List - Table - Ensemble, selection principles
-
-
----
-
-## Challenges with making a GUI for PR2
-
-- There is a lot of input required
-- Many inputs in pr2 are "entangled"
-- Generic words like "union", "combination", "entry" & "group" have specific usages within pr2, and when combined may have different meanings.
+- Started with only two parameters, instrument and entry delay, from beginning to end
+- List – Table – Ensemble, selection principles
 
 ---
 
-One concern was that there were so many ways to have an "incorrect" input, it would be very difficult to get any output at all.
+# Challenges with making a GUI for PR2
 
+- A lot of input is required
+- Many inputs in PR2 are “entangled”
+- Generic words like “union”, “combination”, “entry” and “group” have specific usages within PR2, and when combined may have different meanings
 
 ---
+
+# Avoiding incorrect input
+
+There are so many ways to make an “incorrect” input that it could be very difficult to get any output at all.
 
 - The user should be informed
 - Warnings should appear at the location of the problem
-- The shape of inputs needs to be appropriate (numbers, elements, octave, pitch-class)
+- The shape of inputs needs to be appropriate (numbers, elements, octave, pitch class)
 - Avoid meaningless repetitions of earlier inputs
+- Short feedback loops for learning and experimenting
+- Use the manuals’ jargon, but explain what it means
 
 ---
 
-- Short feedback mechanisms for learning and experiment
-- Use the manuals' yargon, but include what they mean
+# Our Tauri GUI
+
+When the engine was done, we started to generate a GUI based on the structure formula, following these principles.
 
 ---
 
-## Our Tauri GUI
+<!-- # Some choices we made along the way
 
-When the engine was done, we started to generate a GUI based on the structure formula (using our principles).
-
----
-
-<!-- ## Some choices we made along the way
-
-- The GUI provides a lot of hints when the users enters values
-- The documentation is closely integrated in the GUI.
-
----
-
-- We intentionally left out the option to randomize the selection principles themselves (for now..)
+- The GUI provides a lot of hints when the user enters values
+- The documentation is closely integrated in the GUI
+- We intentionally left out the option to randomize the selection principles themselves (for now)
 - Optional elements in the GUI appear only when relevant
-- Some parameter lists are derived from the instrument parameter (as it make no sense to have values that cannot be performed by any instrument)
-
----
-
-- We added a arrow graph visualisation of interval method
+- Some parameter lists are derived from the instrument parameter (it makes no sense to have values that cannot be performed by any instrument)
+- We added an arrow graph visualisation of the interval method
 - You can name instrument groups to track them better in different parameters
 
 --- -->
 
-# Observations while working on PR2, what makes PR2 different?
+# What makes PR2 different?
 
-- Although the order of values is highly automated in PR2, the actual values of parameters are provided by the composer as a list and never modified, the program permutates orders and layers. This seems important, for example, in harmony, there is a way to forbid certain pitches from ever occuring anywhere.
-
----
-
-- Tendency masks in PR2 do not act on continuous ranges, they are moving boundaries over the formed ensemble. Therefore the name "mask".
-
-----
-
-  -PR2 is an instrumental program: it thinks of music as instruments playing notes. 
-
-----
-
-It has some extra possibilities as well though:
-
-  - Extreme densities
-  - Non standard (/= 12) octave divisions
-  - Any performance techniques defined to the composer
-  - Percussion (specifically as non-pitched) instruments
-  
+- The order of values is highly automated, but the values themselves are provided by the composer as a list and never modified; the program permutes orders and layers
+- This matters: in harmony, for example, certain pitches can be forbidden from ever occurring anywhere
 
 ---
 
-- RATIO is not a weighted choice, but may better be understood as a series with repetitions int its seed-row. Also: the weights of RATIO always refer to the full list not the ensemble.
+# Tendency masks
 
-- Serial thinking is very present, however Pr2 also has generators that are the exact opposite (forced repetition, series with repeated elements, or even hand-composed sequences). 
-
----
-
-When parameters are combinated, it allows a composer to construct vertical relationships. For example a group of durations and dynamics that may only occur together in one voice and not in the others.
+- Tendency masks in PR2 do not act on continuous ranges
+- They are moving boundaries over the formed ensemble, hence the name “mask”
 
 ---
 
-When instrument is first 
+# An instrumental program
+
+PR2 thinks of music as instruments playing notes. It has some extra possibilities as well:
+
+- Extreme densities
+- Non-standard (≠ 12) octave divisions
+- Any performance techniques defined by the composer
+- Percussion (specifically non-pitched) instruments
+
+---
+
+# Selection, revisited
+
+- **RATIO** is not simply a weighted choice: it is better understood as a series with repetitions in its seed row
+- The weights of **RATIO** always refer to the full list, not the ensemble
+- Serial thinking is very present, but PR2 also has generators that are the exact opposite: forced repetition, series with repeated elements, or hand-composed sequences
+
+---
+
+# Combining parameters
+
+When parameters are combined, the composer can construct vertical relationships.
+
+- For example: a group of durations and dynamics that may only occur together in one voice and not in the others
+
+---
+
+# When instrument is first
 
 <https://sonology.org/wp-content/uploads/2019/10/Doebereiner-Model-and-Material.pdf>
-
----
-
