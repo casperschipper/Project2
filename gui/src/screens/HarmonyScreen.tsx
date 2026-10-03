@@ -1,9 +1,9 @@
-import { useState } from "react";
 import { useStore } from "../state/store";
 import { Field, Section } from "../components/Field";
 import { TokenListEditor } from "../components/ListEditors";
 import { MatrixEditor } from "../components/MatrixEditor";
 import { IntervalGraph } from "../components/IntervalGraph";
+import { RowPreview } from "../components/RowPreview";
 import { PrincipleEditor } from "../components/PrincipleEditor";
 import { effectiveIntervalMatrix, emptyIntervalMatrix } from "../schema/defaults";
 import type { ChordTransposition, HarmonyPrinciple, Transposition } from "../schema/types";
@@ -27,9 +27,6 @@ import type { ChordTransposition, HarmonyPrinciple, Transposition } from "../sch
 export function HarmonyScreen() {
   const { project, update } = useStore();
   const matrixSize = Math.max(project.octaveDivision - 1, 0);
-  // Grid vs. graph is purely a display choice - not part of the project, so
-  // it isn't persisted or emitted, just local to this screen.
-  const [view, setView] = useState<"grid" | "graph">("grid");
   // What the INTERVAL principle actually resolves to at run time - chord-
   // derived if applicable. `null` while the chord (or, in principle, a
   // malformed direct matrix) isn't valid yet.
@@ -226,34 +223,30 @@ export function HarmonyScreen() {
               }
             >
               <div className="field__row" style={{ marginBottom: 8 }}>
-                <div className="kind-switch" role="radiogroup">
-                  <button
-                    type="button"
-                    className={`kind-switch__option${
-                      view === "grid" ? " kind-switch__option--active" : ""
-                    }`}
-                    aria-pressed={view === "grid"}
-                    onClick={() => setView("grid")}
-                  >
-                    Grid
-                  </button>
-                  <button
-                    type="button"
-                    className={`kind-switch__option${
-                      view === "graph" ? " kind-switch__option--active" : ""
-                    }`}
-                    aria-pressed={view === "graph"}
-                    onClick={() => setView("graph")}
-                  >
-                    Graph
-                  </button>
-                </div>
-
                 {project.intervalMatrixSource.kind === "matrix" && (
                   <button
                     type="button"
                     className="btn btn--ghost btn--small"
                     style={{ marginLeft: "auto" }}
+                    disabled={!project.intervalMatrixSource.rows.some((row) => row.some(Boolean))}
+                    title="Uncheck every cell, to start the matrix over"
+                    onClick={() => {
+                      // No undo in the GUI, so ask first.
+                      if (!window.confirm("Clear the whole interval matrix?")) return;
+                      update((p) => {
+                        if (p.intervalMatrixSource.kind !== "matrix") return;
+                        p.intervalMatrixSource.rows = emptyIntervalMatrix(p.octaveDivision);
+                      });
+                    }}
+                  >
+                    Clear all
+                  </button>
+                )}
+
+                {project.intervalMatrixSource.kind === "matrix" && (
+                  <button
+                    type="button"
+                    className="btn btn--ghost btn--small"
                     title="Flip every cell: every allowed transition becomes forbidden and vice versa"
                     onClick={() =>
                       update((p) => {
@@ -292,7 +285,7 @@ export function HarmonyScreen() {
               </div>
 
               {project.intervalMatrixSource.kind === "matrix" ? (
-                view === "grid" ? (
+                <div className="matrix-views">
                   <MatrixEditor
                     size={matrixSize}
                     value={project.intervalMatrixSource.rows}
@@ -300,19 +293,34 @@ export function HarmonyScreen() {
                       update((p) => (p.intervalMatrixSource = { kind: "matrix", rows }))
                     }
                   />
-                ) : (
-                  <IntervalGraph size={matrixSize} matrix={effective ?? []} />
-                )
+                  <div className="matrix-graphs">
+                    <IntervalGraphPanel size={matrixSize} matrix={effective ?? []} />
+                    {effective && (
+                      <RowPreview
+                        tr={project.octaveDivision}
+                        matrix={effective}
+                        forbiddenTones={project.forbiddenTones}
+                      />
+                    )}
+                  </div>
+                </div>
               ) : effective ? (
-                view === "grid" ? (
+                <div className="matrix-views">
                   <MatrixEditor size={matrixSize} value={effective} readOnly />
-                ) : (
-                  <IntervalGraph size={matrixSize} matrix={effective} />
-                )
+                  <div className="matrix-graphs">
+                    <IntervalGraphPanel size={matrixSize} matrix={effective} />
+                    <RowPreview
+                      tr={project.octaveDivision}
+                      matrix={effective}
+                      forbiddenTones={project.forbiddenTones}
+                    />
+                  </div>
+                </div>
               ) : (
                 <div className="empty-note">Enter a valid chord above to see its matrix.</div>
               )}
             </Field>
+
           </Section>
 
           <Section title="Forbidden tones">
@@ -478,5 +486,18 @@ function ChordTableEditor({
         </button>
       </div>
     </div>
+  );
+}
+
+/** The interval graph with its caption, matching `RowPreview`'s header. */
+function IntervalGraphPanel({ size, matrix }: { size: number; matrix: boolean[][] }) {
+  return (
+    <figure className="graph-panel">
+      <figcaption className="graph-panel__caption">
+        <span className="graph-panel__title">Interval graph</span>
+        <span className="graph-panel__sub">arrow = interval that may follow</span>
+      </figcaption>
+      <IntervalGraph size={size} matrix={matrix} />
+    </figure>
   );
 }

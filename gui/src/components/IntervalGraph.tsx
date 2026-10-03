@@ -14,12 +14,13 @@
  * spotting isolated nodes, not producing a publication-quality diagram.
  */
 
-const VIEW_SIZE = 400;
-const CENTER = VIEW_SIZE / 2;
-const RADIUS = 155;
-const NODE_RADIUS = 13;
+// Shared with `RowPreview`, so the two circles next to each other match.
+export const VIEW_SIZE = 400;
+export const CENTER = VIEW_SIZE / 2;
+export const RADIUS = 155;
+export const NODE_RADIUS = 13;
 
-function nodePos(i: number, total: number) {
+export function nodePos(i: number, total: number) {
   const theta = (2 * Math.PI * (i - 1)) / total - Math.PI / 2;
   return { x: CENTER + RADIUS * Math.cos(theta), y: CENTER + RADIUS * Math.sin(theta) };
 }

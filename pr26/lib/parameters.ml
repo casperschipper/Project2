@@ -214,7 +214,10 @@ let display_problem p =
   | InvalidRestRange RestRangeMaxBelowMin ->
       "rest entry-range's second percentage must not be below the first"
 
-(* Closed vocabulary of path components identifying where in a
+(* This is a key that helps locate errors/warnings to their position in the structure formula
+
+
+Closed vocabulary of path components identifying where in a
    structure_formula (and, one level down, in the composer's sexp) a
    [problem] belongs - reused contextually across path positions rather than
    having one variant per (kind, position) pair. E.g. [KPerformance] appears
@@ -884,7 +887,9 @@ type vertical_density =
    [Score_generation]'s own common-harmony pipeline, rather than resting on
    an [assert false] several calls deep in code that has no direct view of
    why it's safe. *)
-type common_harmony_density = CHAutonomous of autonomous_density | CHInstrumentDensity
+type common_harmony_density =
+  | CHAutonomous of autonomous_density
+  | CHInstrumentDensity
 
 let common_harmony_density_of_vertical_density = function
   | Autonomous a -> Some (CHAutonomous a)

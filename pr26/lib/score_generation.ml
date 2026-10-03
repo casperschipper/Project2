@@ -87,7 +87,6 @@ let ensemble_values_no_union ensemble =
   | Ensemble groups -> groups |> List.map elements_from_indexed_ensemble
   | SingleGroup g -> [ g |> elements_from_indexed_ensemble ]
 
-
 let calculate_number_of_events variant_duration entry_delay_principle
     entry_delay_ensemble =
   let avg_ed = expected_value entry_delay_principle entry_delay_ensemble in
@@ -347,9 +346,7 @@ let resolve_note_param_tagged ?ctx ?to_string mode n_notes pred state =
         List.init n (fun _ -> ())
         |> List.fold_left
              (fun (acc, oks_acc, st) () ->
-               let v, st' =
-                 sel_sample_pred_tagged ?ctx ?to_string pred st
-               in
+               let v, st' = sel_sample_pred_tagged ?ctx ?to_string pred st in
                let ok = result_ok v in
                (get_value v :: acc, ok :: oks_acc, st'))
              ([], [], state)
@@ -942,8 +939,8 @@ let resolve_step ~(ctx : Debug_log.context) ~perf_mode ~dyn_mode ~dur_relation
           emit_restriction ~ctx restricted_by;
           let pred (Entrydelay ed) = dur_pred (Duration ed) in
           let v, ed_state' =
-            sel_sample_pred_tagged ~ctx ~to_string:entrydelay_to_string
-              pred states.ed_state
+            sel_sample_pred_tagged ~ctx ~to_string:entrydelay_to_string pred
+              states.ed_state
           in
           let ok = result_ok v in
           ( { states with ed_state = ed_state' },
@@ -1091,7 +1088,6 @@ type plan_step =
   | ComputeNotesForInstrument of hierarchy
 
 type hierarchy_plan = plan_step list
-
 type elem_role = EntryLevel | InstrumentLevel | StrategyManaged
 
 (* Where a given hierarchy element's value is actually decided. [Ins] is
@@ -1106,8 +1102,8 @@ type elem_role = EntryLevel | InstrumentLevel | StrategyManaged
    a plain predicate draw the way [Per]/[Dyn]/[Reg]/[Dur] are, so it too is
    [StrategyManaged] rather than a normal plan step; everywhere else it
    stays per-note ([resolve_harmony] via ROW/INTERVAL). *)
-let classify_elem ~is_chord_density ~perf_mode ~dyn_mode ~dur_relation
-    ~reg_mode : hierarchy_elem -> elem_role = function
+let classify_elem ~is_chord_density ~perf_mode ~dyn_mode ~dur_relation ~reg_mode
+    : hierarchy_elem -> elem_role = function
   | Ins -> InstrumentLevel
   | Ent -> if dur_relation = DurEqualsEntry then StrategyManaged else EntryLevel
   | Har -> if is_chord_density then StrategyManaged else InstrumentLevel
@@ -1115,7 +1111,8 @@ let classify_elem ~is_chord_density ~perf_mode ~dyn_mode ~dur_relation
   | Dyn -> if dyn_mode = PerChord then EntryLevel else InstrumentLevel
   | Reg -> if reg_mode = PerChord then EntryLevel else InstrumentLevel
   | Dur ->
-      if dur_relation = DurEqualsEntry then InstrumentLevel
+      if dur_relation = DurEqualsEntry then
+        InstrumentLevel
         (* stays per-note - [resolve_step]'s own [Dur] case already copies
            it from a seeded entry delay when one is present, exactly as
            every other per-note element would read an already-fixed value *)
@@ -1144,10 +1141,11 @@ type compiled_hierarchy = {
 let compile_hierarchy ~is_chord_density ~perf_mode ~dyn_mode ~dur_relation
     ~reg_mode (hierarchy : hierarchy) : compiled_hierarchy =
   let role =
-    classify_elem ~is_chord_density ~perf_mode ~dyn_mode ~dur_relation
-      ~reg_mode
+    classify_elem ~is_chord_density ~perf_mode ~dyn_mode ~dur_relation ~reg_mode
   in
-  let subpick_hierarchy = hierarchy |> List.filter (fun e -> role e = InstrumentLevel) in
+  let subpick_hierarchy =
+    hierarchy |> List.filter (fun e -> role e = InstrumentLevel)
+  in
   let plan =
     hierarchy
     |> List.filter_map (fun e ->
@@ -1228,7 +1226,10 @@ type chord_seeds = {
    case for an all-pitched or all-percussion chord) is skipped entirely
    rather than resolving a "phantom" zero-note instrument-pick, which would
    needlessly consume an instrument-selection-cycle draw. *)
-type segment = { seg_target : int; seg_harmony_seed : row_value note_value option }
+type segment = {
+  seg_target : int;
+  seg_harmony_seed : row_value note_value option;
+}
 
 let instruments_of group =
   List.map
@@ -1290,9 +1291,9 @@ let fill_subpicks ~ctx ~subpick_hierarchy ~perf_mode ~dyn_mode ~dur_relation
     ~reg_mode states target ~seed ~next_seed ~seeds =
   let rec loop states total used acc settled =
     let states', proto =
-      resolve_subpick ~ctx ~subpick_hierarchy ~perf_mode ~dyn_mode
-        ~dur_relation ~reg_mode ?seed_entrydelay:settled
-        ~max_notes:(target - total) ~used ~seeds states
+      resolve_subpick ~ctx ~subpick_hierarchy ~perf_mode ~dyn_mode ~dur_relation
+        ~reg_mode ?seed_entrydelay:settled ~max_notes:(target - total) ~used
+        ~seeds states
     in
     let picked =
       match proto.instrument with Some i -> i | None -> assert false
@@ -1315,8 +1316,8 @@ let fill_subpicks ~ctx ~subpick_hierarchy ~perf_mode ~dyn_mode ~dur_relation
    across every segment, is the one that settles it, regardless of which
    segment it happens to fall in (percussion or pitched). *)
 let fill_segments ~ctx ~subpick_hierarchy ~perf_mode ~dyn_mode ~dur_relation
-    ~reg_mode states (segments : (segment * chord_seeds) list) ~seed
-    ~next_seed =
+    ~reg_mode states (segments : (segment * chord_seeds) list) ~seed ~next_seed
+    =
   segments
   |> List.fold_left
        (fun (seed, group_acc, states) (seg, seeds) ->
@@ -1415,7 +1416,8 @@ let fill_duration_equals_entry ~ctx ~subpick_hierarchy ~perf_mode ~dyn_mode
        exactly like a single instrument's own case this generalizes - it
        must itself be achievable as *some* instrument's duration. *)
     let pred (Entrydelay ed) =
-      fst (dur_pred_from ~instr_arr:states.instr_arr empty_proto dur_relation)
+      fst
+        (dur_pred_from ~instr_arr:states.instr_arr empty_proto dur_relation)
         (Duration ed)
     in
     let v, ed_state' =
@@ -1470,30 +1472,38 @@ let fill_group_general ~ctx ~subpick_hierarchy ~perf_mode ~dyn_mode
     let ed = get_value v in
     let states = { states with ed_state = ed_state' } in
     if dur_extracted && dur_before_ins then
-      let states, dur_seed = draw_duration_before ~ctx ~dur_relation ~ed_opt:(Some ed) states in
+      let states, dur_seed =
+        draw_duration_before ~ctx ~dur_relation ~ed_opt:(Some ed) states
+      in
       let segments' =
-        segments |> List.map (fun (seg, seeds) -> (seg, { seeds with cs_dur = dur_seed }))
+        segments
+        |> List.map (fun (seg, seeds) ->
+            (seg, { seeds with cs_dur = dur_seed }))
       in
       let _, group, states' =
-        fill_segments ~ctx ~subpick_hierarchy ~perf_mode ~dyn_mode
-          ~dur_relation ~reg_mode states segments' ~seed:(Some ed)
-          ~next_seed:keep_seed
+        fill_segments ~ctx ~subpick_hierarchy ~perf_mode ~dyn_mode ~dur_relation
+          ~reg_mode states segments' ~seed:(Some ed) ~next_seed:keep_seed
       in
       (ed, group, states')
     else
       let _, group, states' =
-        fill_segments ~ctx ~subpick_hierarchy ~perf_mode ~dyn_mode
-          ~dur_relation ~reg_mode states segments ~seed:(Some ed)
-          ~next_seed:keep_seed
+        fill_segments ~ctx ~subpick_hierarchy ~perf_mode ~dyn_mode ~dur_relation
+          ~reg_mode states segments ~seed:(Some ed) ~next_seed:keep_seed
       in
       if dur_extracted then
-        let group, states' = stamp_duration_after ~ctx ~dur_relation ~ed_opt:(Some ed) group states' in
+        let group, states' =
+          stamp_duration_after ~ctx ~dur_relation ~ed_opt:(Some ed) group
+            states'
+        in
         (ed, group, states')
       else (ed, group, states')
   else if dur_extracted && dur_before_ins then
-    let states, dur_seed = draw_duration_before ~ctx ~dur_relation ~ed_opt:None states in
+    let states, dur_seed =
+      draw_duration_before ~ctx ~dur_relation ~ed_opt:None states
+    in
     let segments' =
-      segments |> List.map (fun (seg, seeds) -> (seg, { seeds with cs_dur = dur_seed }))
+      segments
+      |> List.map (fun (seg, seeds) -> (seg, { seeds with cs_dur = dur_seed }))
     in
     let _, group, states' =
       fill_segments ~ctx ~subpick_hierarchy ~perf_mode ~dyn_mode ~dur_relation
@@ -1506,7 +1516,8 @@ let fill_group_general ~ctx ~subpick_hierarchy ~perf_mode ~dyn_mode
         ~reg_mode states segments ~seed:None ~next_seed:keep_seed
     in
     let group, states' =
-      if dur_extracted then stamp_duration_after ~ctx ~dur_relation ~ed_opt:None group states'
+      if dur_extracted then
+        stamp_duration_after ~ctx ~dur_relation ~ed_opt:None group states'
       else (group, states')
     in
     finish_with_computed_entrydelay ~ctx ~dur_relation group states'
@@ -1532,7 +1543,7 @@ let resolve_group ~ctx (compiled : compiled_hierarchy) ~perf_mode ~dyn_mode
     ~dur_relation ~reg_mode ~split_reg_by_tone_type states
     (raw_segments : segment list) =
   let states, perf_seed =
-    if compiled.perf_extracted && compiled.perf_before_ins then
+    if compiled.perf_extracted && compiled.perf_before_ins then (
       let ctx = { ctx with Debug_log.param = PPer } in
       let pred, restricted_by =
         mode_pred_from_instrument ~instr_arr:states.instr_arr
@@ -1544,11 +1555,11 @@ let resolve_group ~ctx (compiled : compiled_hierarchy) ~perf_mode ~dyn_mode
         sel_sample_pred ~ctx ~to_string:Performance.to_string pred
           states.perf_state
       in
-      ({ states with perf_state = perf_state' }, Some (Shared v))
+      ({ states with perf_state = perf_state' }, Some (Shared v)))
     else (states, None)
   in
   let states, dyn_seed =
-    if compiled.dyn_extracted && compiled.dyn_before_ins then
+    if compiled.dyn_extracted && compiled.dyn_before_ins then (
       let ctx = { ctx with Debug_log.param = PDyn } in
       let pred, restricted_by =
         mode_pred_from_instrument ~instr_arr:states.instr_arr
@@ -1559,7 +1570,7 @@ let resolve_group ~ctx (compiled : compiled_hierarchy) ~perf_mode ~dyn_mode
       let v, dyn_state' =
         sel_sample_pred ~ctx ~to_string:Dynamic.to_string pred states.dyn_state
       in
-      ({ states with dyn_state = dyn_state' }, Some (Shared v))
+      ({ states with dyn_state = dyn_state' }, Some (Shared v)))
     else (states, None)
   in
   let states, reg_seeds =
@@ -1733,14 +1744,14 @@ let resolve_group ~ctx (compiled : compiled_hierarchy) ~perf_mode ~dyn_mode
   in
   (ed, group, states')
 
-(** With [Autonomous] density, each timepoint picks a target density using
-    the composer's selection principle, then fills instruments (one segment,
-    no harmony seed) until that target is reached. *)
+(** With [Autonomous] density, each timepoint picks a target density using the
+    composer's selection principle, then fills instruments (one segment, no
+    harmony seed) until that target is reached. *)
 let resolve_layer_autonomous ~variant ~layer ~n_events ~hierarchy ~perf_mode
     ~dyn_mode ~dur_relation ~reg_mode ~low ~high ~selection_principle states0 =
   let compiled =
-    compile_hierarchy ~is_chord_density:false ~perf_mode ~dyn_mode
-      ~dur_relation ~reg_mode hierarchy
+    compile_hierarchy ~is_chord_density:false ~perf_mode ~dyn_mode ~dur_relation
+      ~reg_mode hierarchy
   in
   let dens_arr =
     Array.init (high - low + 1) (fun i -> low + i) |> elements_of_array
@@ -1781,8 +1792,8 @@ let resolve_layer_autonomous ~variant ~layer ~n_events ~hierarchy ~perf_mode
 let resolve_layer_chord_density ~variant ~layer ~n_events ~hierarchy ~perf_mode
     ~dyn_mode ~dur_relation ~reg_mode states0 =
   let compiled =
-    compile_hierarchy ~is_chord_density:true ~perf_mode ~dyn_mode
-      ~dur_relation ~reg_mode hierarchy
+    compile_hierarchy ~is_chord_density:true ~perf_mode ~dyn_mode ~dur_relation
+      ~reg_mode hierarchy
   in
   let split_chord (Chord arr) =
     let tones = Array.to_list arr in
@@ -2360,15 +2371,17 @@ let calculate_layer_common_harmony_phase1 ~variant ~layer_idx ~n_events
     ~variant_n_events ~hierarchy ~instr_arr ~instr_principle ~ed_arr
     ~ed_principle ~perf_arr ~perf_principle ~perf_mode ~dyn_arr ~dyn_principle
     ~dyn_mode ~dur_arr ~dur_principle ~dur_relation ~reg_arr ~reg_principle
-    ~reg_mode ~(density : common_harmony_density) (continuing : continuing_state)
-    : common_harmony_group list * continuing_state =
+    ~reg_mode ~(density : common_harmony_density)
+    (continuing : continuing_state) :
+    common_harmony_group list * continuing_state =
   let hierarchy_no_har = List.filter (fun e -> e <> Har) hierarchy in
   let groups, states' =
     resolve_layer_groups ~variant ~layer:layer_idx ~n_events ~variant_n_events
       ~hierarchy:hierarchy_no_har ~instr_arr ~instr_principle ~ed_arr
       ~ed_principle ~perf_arr ~perf_principle ~perf_mode ~dyn_arr ~dyn_principle
       ~dyn_mode ~dur_arr ~dur_principle ~dur_relation ~reg_arr ~reg_principle
-      ~reg_mode ~density:(vertical_density_of_common_harmony_density density)
+      ~reg_mode
+      ~density:(vertical_density_of_common_harmony_density density)
       continuing
   in
   let tagged =
@@ -2939,4 +2952,3 @@ let count_interval_restrictions_too_strict (variants : entry list list list) =
   |> List.concat_map (fun (e : entry) -> e.notes)
   |> List.filter (fun (n : note) -> not n.diagnostics.harmony_matrix_ok)
   |> List.length
-

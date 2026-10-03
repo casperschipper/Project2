@@ -26,10 +26,7 @@ A parameter that is not combined means:
      whatever hierarchy position the composer gave it and resolves inside
      each layer's own pass, in that layer's own internal order (this is
      what the old, only, [NoUnion] constructor already meant). *)
-type union =
-  | Union
-  | NoUnionCommonHarmony
-  | NoUnionPerLayer
+type union = Union | NoUnionCommonHarmony | NoUnionPerLayer
 
 (* MOD-DUR / MOD-DYN / MOD-PERF (EMR-3 7.3/7.5/7.6): one shared mechanism,
    reused by duration, dynamics and performance alike - a parameter is
@@ -52,6 +49,8 @@ selected duration are rejected. If such "allowed" entry delays Chord duration al
 
 (* the number of layers is equal to the number of groups in the ensemble, the combined parameters also have same number of groups *)
 
+(* This is a complete formulation of a PR2 program, 
+   a score is completely defined by this *)
 type structure_formula = {
   seed : int;
   variant_duration : float;
@@ -166,10 +165,9 @@ let mk_structure_formula ~seed ~variant_duration ~n_variants ~instr_list
     ~entrydelay_principle ~performance_principle ~performance_combination
     ~performance_mode ~dynamics_principle ~dynamics_combination ~dynamics_mode
     ~reg_list ~register_table ~register_principle ~register_combination
-    ~register_mode ~harmony ~tr ~union ~hierarchy
-    ~density ~dur_list ~dur_table ~duration_combination
-    ~duration_relation_mode ~duration_principle ~rest_list ~rest_table
-    ~rest_combination ~rest_principle ~rest_mode =
+    ~register_mode ~harmony ~tr ~union ~hierarchy ~density ~dur_list ~dur_table
+    ~duration_combination ~duration_relation_mode ~duration_principle ~rest_list
+    ~rest_table ~rest_combination ~rest_principle ~rest_mode =
   let hierarchy_errors =
     match (density, hierarchy) with
     | InstrumentDensity, first :: _ ->
@@ -374,9 +372,10 @@ let mk_structure_formula ~seed ~variant_duration ~n_variants ~instr_list
        chord (and hence the note count) itself, so Ins must come *after* Har
        - enforced separately, by [hierarchy_errors] above via
        [HarmonyRequiresHarFirst], not here. *)
-    @ (match harmony with
-      | HarmRow _ | HarmInterval _ -> needs_ins_first_always [ Key KHarmony ] Har
-      | HarmChord _ -> [])
+    @
+    match harmony with
+    | HarmRow _ | HarmInterval _ -> needs_ins_first_always [ Key KHarmony ] Har
+    | HarmChord _ -> []
   in
   (* Fig. 8-5's own well-formedness caution: a row with no allowed successor
      at all is a genuine dead end - the composer's to avoid, not something
@@ -387,11 +386,11 @@ let mk_structure_formula ~seed ~variant_duration ~n_variants ~instr_list
     | HarmInterval { matrix; _ } ->
         interval_matrix_dead_end_rows matrix
         |> List.map (fun i ->
-               {
-                 location = [ Key KHarmony; Key KMatrix; Index (i - 1) ];
-                 severity = Severity.Warning;
-                 problem = IntervalMatrixRowHasNoSuccessor i;
-               })
+            {
+              location = [ Key KHarmony; Key KMatrix; Index (i - 1) ];
+              severity = Severity.Warning;
+              problem = IntervalMatrixRowHasNoSuccessor i;
+            })
     | HarmRow _ | HarmChord _ -> []
   in
   (* EMR-3 §8.2: "Maximum number of tones per group = pitch grid tr." *)
@@ -400,11 +399,11 @@ let mk_structure_formula ~seed ~variant_duration ~n_variants ~instr_list
     | HarmChord { table; _ } ->
         chord_table_too_long_indices ~tr table
         |> List.map (fun (i, len) ->
-               {
-                 location = [ Key KHarmony; Key KChord; Index i ];
-                 severity = Severity.Error;
-                 problem = ChordTooLong { len; tr };
-               })
+            {
+              location = [ Key KHarmony; Key KChord; Index i ];
+              severity = Severity.Error;
+              problem = ChordTooLong { len; tr };
+            })
     | HarmRow _ | HarmInterval _ -> []
   in
   (* REST is never in [hierarchy] (see [rest_mode]), so it needs no
@@ -418,8 +417,8 @@ let mk_structure_formula ~seed ~variant_duration ~n_variants ~instr_list
         check_combination
           ~combination_loc:[ Key KRest; Key KCombination ]
           ~instr_table_loc:[ Key KInstrument; Key KTable ]
-          ~other_table_loc:[ Key KRest; Key KTable ]
-          instr_table rest_table rest_combination
+          ~other_table_loc:[ Key KRest; Key KTable ] instr_table rest_table
+          rest_combination
   in
   let rest_ratio_coverage_errors =
     match rest_mode with
@@ -844,12 +843,13 @@ module Parse = struct
      the leading keyword itself before delegating to the shared body
      parser above. *)
   let parse_register_entry ~tr = function
-    | Sexp.List (Sexp.Atom "pitch-range" :: rest) ->
+    | Sexp.List (Sexp.Atom "pitch-range" :: rest) -> (
         let* range = parse_pitch_range_body ~tr rest in
-        (match range with
+        match range with
         | None -> Ok PercussionRegister
         | Some (low, high) -> lift (mk_register low high))
-    | Sexp.List _ | Sexp.Atom _ -> fail "register entry expects (pitch-range ...)"
+    | Sexp.List _ | Sexp.Atom _ ->
+        fail "register entry expects (pitch-range ...)"
 
   (* One entry of HARMONY's row (EMR-3 8.2): either a relative pitch, or the
      literal atom "p" marking a percussion event - never PR-2's 0 sentinel,
@@ -880,7 +880,8 @@ module Parse = struct
     | [ Sexp.List (Sexp.Atom "given" :: [ Sexp.List ints ]) ] ->
         let* ns = ints |> List.map require_int |> sequence in
         lift (mk_chord_transposition_given ~tr ns)
-    | _ -> fail "transposition expects one of: none, alea, series, (given (...))"
+    | _ ->
+        fail "transposition expects one of: none, alea, series, (given (...))"
 
   (* HARMONY's INTERVAL principle (EMR-3 8.2, entries 21-24): the matrix can
      be authored three ways - a dense grid of 0/1 rows, derived from a given
@@ -900,7 +901,9 @@ module Parse = struct
         lift (mk_interval_matrix ~tr (Array.of_list rows))
     | [ Sexp.List (Sexp.Atom "chord" :: [ Sexp.List tone_sexps ]) ] ->
         let* ns = tone_sexps |> List.map require_int |> sequence in
-        let* steps = ns |> List.map (fun n -> lift (mk_step ~tr n)) |> sequence in
+        let* steps =
+          ns |> List.map (fun n -> lift (mk_step ~tr n)) |> sequence
+        in
         lift (matrix_of_chord ~tr (Array.of_list steps))
     | [ Sexp.List (Sexp.Atom "adjacency" :: entries) ] ->
         let parse_entry = function
@@ -1045,18 +1048,19 @@ module Parse = struct
       in_loc [ Key KGlobal; Key KTr ] (get1 "octave-division" require_int)
     in
     let* () =
-      in_loc [ Key KGlobal; Key KTr ] (lift (if tr < 1 then Error (InvalidTr tr) else Ok ()))
+      in_loc [ Key KGlobal; Key KTr ]
+        (lift (if tr < 1 then Error (InvalidTr tr) else Ok ()))
     in
     (* N-VARIANTS (EMR-3 9.8): optional, defaulting to 1 - existing formulas
        written before this field existed still mean exactly what they always
        meant, one variant. *)
     let* n_variants =
-      in_loc [ Key KGlobal; Key KNVariants ]
+      in_loc
+        [ Key KGlobal; Key KNVariants ]
         (match
            List.find_opt
              (function
-               | Sexp.List (Sexp.Atom k :: _) -> k = "n-variants"
-               | _ -> false)
+               | Sexp.List (Sexp.Atom k :: _) -> k = "n-variants" | _ -> false)
              items
          with
         | None -> Ok 1
@@ -1064,7 +1068,8 @@ module Parse = struct
         | Some _ -> fail "n-variants expects one integer")
     in
     let* () =
-      in_loc [ Key KGlobal; Key KNVariants ]
+      in_loc
+        [ Key KGlobal; Key KNVariants ]
         (lift
            (if n_variants < 1 then Error (InvalidNVariants n_variants)
             else Ok ()))
@@ -1134,7 +1139,8 @@ module Parse = struct
        always meant, no rests at all. [rests]/[rest-table] are only
        required once [rest-mode] actually turns REST on. *)
     let* rest_mode =
-      in_loc [ Key KRest; Key KRestMode ]
+      in_loc
+        [ Key KRest; Key KRestMode ]
         (optional_field "rest-mode" ~default:RestOff items parse_rest_mode)
     in
     let* rest_list =
@@ -1145,7 +1151,8 @@ module Parse = struct
             let* args = require_field "rests" items in
             let* floats =
               match args with
-              | [ Sexp.List inner ] -> inner |> List.map require_float |> sequence
+              | [ Sexp.List inner ] ->
+                  inner |> List.map require_float |> sequence
               | _ -> fail "rests expects (rests (...))"
             in
             let* durs =
@@ -1210,7 +1217,9 @@ module Parse = struct
         (let* args = require_field "registers" items in
          match args with
          | [ Sexp.List inner ] ->
-             let* regs = inner |> List.map (parse_register_entry ~tr) |> sequence in
+             let* regs =
+               inner |> List.map (parse_register_entry ~tr) |> sequence
+             in
              Ok (ParameterList (Array.of_list regs))
          | _ -> fail "registers expects (registers (...))")
     in
@@ -1226,7 +1235,8 @@ module Parse = struct
     let* harmony =
       let* args = in_loc [ Key KHarmony ] (require_field "harmony" items) in
       let* principle_name =
-        in_loc [ Key KHarmony; Key KPrinciple ]
+        in_loc
+          [ Key KHarmony; Key KPrinciple ]
           (let* p_args = require_field "principle" args in
            match p_args with
            | [ Sexp.Atom s ] -> Ok s
@@ -1235,8 +1245,7 @@ module Parse = struct
       match principle_name with
       | "row" ->
           let* row =
-            in_loc
-              [ Key KHarmony; Key KRow ]
+            in_loc [ Key KHarmony; Key KRow ]
               (let* row_args = require_field "row" args in
                let* items =
                  match row_args with
@@ -1263,12 +1272,14 @@ module Parse = struct
           Ok (HarmRow { row; transposition })
       | "interval" ->
           let* matrix =
-            in_loc [ Key KHarmony; Key KMatrix ]
+            in_loc
+              [ Key KHarmony; Key KMatrix ]
               (let* m_args = require_field "matrix" args in
                parse_interval_matrix ~tr m_args)
           in
           let* forbidden_ints =
-            in_loc [ Key KHarmony; Key KForbiddenTones ]
+            in_loc
+              [ Key KHarmony; Key KForbiddenTones ]
               (optional_field "forbidden-tones" ~default:[] args (function
                 | [ Sexp.List inner ] ->
                     inner |> List.map require_int |> sequence
@@ -1276,7 +1287,8 @@ module Parse = struct
                 | _ -> fail "forbidden-tones expects (forbidden-tones (...))"))
           in
           let* forbidden_tones =
-            in_loc [ Key KHarmony; Key KForbiddenTones ]
+            in_loc
+              [ Key KHarmony; Key KForbiddenTones ]
               (let* steps =
                  forbidden_ints
                  |> List.map (fun n -> lift (mk_step ~tr n))
@@ -1285,7 +1297,8 @@ module Parse = struct
                lift (mk_forbidden_tones ~tr steps))
           in
           let* invert =
-            in_loc [ Key KHarmony; Key KInvertMatrix ]
+            in_loc
+              [ Key KHarmony; Key KInvertMatrix ]
               (optional_field "invert-matrix" ~default:false args (function
                 | [ Sexp.Atom "yes" ] -> Ok true
                 | [ Sexp.Atom "no" ] -> Ok false
@@ -1295,7 +1308,8 @@ module Parse = struct
           Ok (HarmInterval { matrix; forbidden_tones })
       | "chord" ->
           let* table =
-            in_loc [ Key KHarmony; Key KChord ]
+            in_loc
+              [ Key KHarmony; Key KChord ]
               (let* c_args = require_field "chords" args in
                match c_args with
                | [ Sexp.List chord_sexps ] ->
@@ -1306,7 +1320,8 @@ module Parse = struct
                | _ -> fail "chords expects (chords ((...) (...) ...))")
           in
           let* order =
-            in_loc [ Key KHarmony; Key KOrder ]
+            in_loc
+              [ Key KHarmony; Key KOrder ]
               (let* o_args = require_field "order" args in
                parse_principle o_args)
           in
@@ -1318,7 +1333,9 @@ module Parse = struct
           in
           Ok (HarmChord { table; order; transposition })
       | s ->
-          in_loc [ Key KHarmony; Key KPrinciple ] (lift (Error (IntervalPrincipleName s)))
+          in_loc
+            [ Key KHarmony; Key KPrinciple ]
+            (lift (Error (IntervalPrincipleName s)))
     in
     let instr_names =
       let (ParameterList instr_arr) = instr_list in
@@ -1489,16 +1506,14 @@ module Parse = struct
     in
     mk_structure_formula ~seed ~variant_duration ~n_variants ~instr_list
       ~instr_table ~instr_ensemble_group_selection ~number_of_instrument_groups
-      ~ed_list
-      ~ed_table ~perf_list ~performance_table ~dyn_list ~dynamics_table
+      ~ed_list ~ed_table ~perf_list ~performance_table ~dyn_list ~dynamics_table
       ~entrydelay_combination ~instrument_principle ~entrydelay_principle
       ~performance_principle ~performance_combination ~performance_mode
       ~dynamics_principle ~dynamics_combination ~dynamics_mode ~reg_list
-      ~register_table ~register_principle ~register_combination
-      ~register_mode ~harmony ~tr ~union ~density
-      ~hierarchy ~dur_list ~dur_table ~duration_combination
-      ~duration_relation_mode ~duration_principle ~rest_list ~rest_table
-      ~rest_combination ~rest_principle ~rest_mode
+      ~register_table ~register_principle ~register_combination ~register_mode
+      ~harmony ~tr ~union ~density ~hierarchy ~dur_list ~dur_table
+      ~duration_combination ~duration_relation_mode ~duration_principle
+      ~rest_list ~rest_table ~rest_combination ~rest_principle ~rest_mode
 
   let read_file path =
     let ic = open_in_bin path in
