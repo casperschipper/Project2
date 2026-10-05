@@ -55,6 +55,7 @@ export function defaultProject(): Project {
     startIndex: 0,
     comment: "",
     outputDir: null,
+    rowZeroBased: false,
 
     numberOfInstrumentGroups: 2,
     instruments: [

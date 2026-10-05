@@ -14,27 +14,30 @@
   --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Fira Code", Menlo,
     Consolas, monospace;
 
+  /* Light ("daylight") theme. Text greys are kept at 4.5:1 or more against
+     every background below (muted ~6.7:1, faint ~4.8:1 on the sunken grey),
+     and borders dark enough to see the edges of fields and boxes. */
   --bg: #fbfaf9;
   --surface: #ffffff;
-  --surface-sunken: #f5f4f2;
-  --border: #e7e5e4;
-  --border-strong: #d6d3d1;
+  --surface-sunken: #f2f0ee;
+  --border: #d6d3d1;
+  --border-strong: #a8a29e;
 
   --text: #1c1917;
-  --text-muted: #78716c;
-  --text-faint: #a8a29e;
+  --text-muted: #57534e;
+  --text-faint: #6f6862;
 
   --accent: #3d6b99;
   --accent-soft: #eaf1f8;
-  --accent-border: #b9d0e6;
+  --accent-border: #93b4d4;
 
   --error: #b4342a;
   --error-soft: #fdf2f1;
-  --error-border: #f0c4c0;
+  --error-border: #e3a39c;
 
   --warning: #96650d;
   --warning-soft: #fdf8ef;
-  --warning-border: #eddcbc;
+  --warning-border: #d9bd89;
 
   --ok: #3f6b4f;
   --ok-soft: #f0f6f1;
@@ -1693,4 +1696,145 @@ input.token__input:focus {
 .zoom__value {
   min-width: 48px;
   font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------------ */
+/* Playback preview (Output screen)                                     */
+/* ------------------------------------------------------------------ */
+
+.playback__output {
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.playback__error {
+  margin-bottom: 12px;
+}
+
+.playback__variant {
+  padding: 8px 10px 10px;
+  margin-bottom: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.playback__variant--playing {
+  border-color: var(--accent-border);
+}
+
+.playback__head {
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.playback__play {
+  min-width: 32px;
+  justify-content: center;
+}
+
+.playback__title {
+  font-weight: 600;
+}
+
+.playback__time {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.playback__badge {
+  padding: 1px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--accent-border);
+  background: var(--accent-soft);
+  font-size: 11.5px;
+  color: var(--text);
+}
+
+.playback__layers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.playback__layer {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* The layer's colour in the piano roll, as a small swatch by its checkbox. */
+.playback__layer::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--layer-color);
+}
+
+.piano-roll {
+  position: relative;
+  height: 90px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.piano-roll__svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.piano-roll__empty {
+  padding: 8px;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+.piano-roll__layer {
+  fill: var(--layer-color);
+}
+
+.piano-roll__layer--muted {
+  opacity: 0.18;
+}
+
+.playback__layer--0,
+.piano-roll__layer--0 {
+  --layer-color: var(--accent);
+}
+
+.playback__layer--1,
+.piano-roll__layer--1 {
+  --layer-color: var(--ok);
+}
+
+.playback__layer--2,
+.piano-roll__layer--2 {
+  --layer-color: var(--warning);
+}
+
+.playback__layer--3,
+.piano-roll__layer--3 {
+  --layer-color: var(--error);
+}
+
+.piano-roll__playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--text);
+  pointer-events: none;
 }

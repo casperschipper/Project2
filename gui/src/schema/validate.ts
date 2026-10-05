@@ -390,17 +390,21 @@ export function validateProject(p: Project): Diagnostic[] {
   if (p.harmonyPrinciple === "row") {
     // ROW: each entry is either the literal "p" (percussion) or a relative
     // pitch 1..tr - never a magic 0.
+    // Worded in whichever numbering the composer types the row in (see
+    // `rowZeroBased`); the stored value is always 1-based.
+    const shift = p.rowZeroBased ? 1 : 0;
     p.row.forEach((raw, i) => {
       if (raw === "p") return;
       const n = Number(raw);
       if (!Number.isInteger(n) || n < 1 || n > p.octaveDivision) {
+        const shown = Number.isInteger(n) ? String(n - shift) : raw;
         out.push(
           diag(
             "invalid-relative-pitch",
             "error",
             [key("harmony"), key("row"), idx(i)],
-            `"${raw}" is not a valid row entry - use a relative pitch 1..${p.octaveDivision}, or 'p' for percussion`,
-            { raw, tr: p.octaveDivision },
+            `"${shown}" is not a valid row entry - use a relative pitch ${1 - shift}..${p.octaveDivision - shift}, or 'p' for percussion`,
+            { raw: shown, tr: p.octaveDivision },
           ),
         );
       }

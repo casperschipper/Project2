@@ -3,9 +3,9 @@
 
 (structure-formula
 
-  (seed 3)
-  (variant-duration 10)
-  (n-variants 3)
+  (seed 1)
+  (variant-duration 30.0)
+  (n-variants 1)
   (octave-division 12)
 
   (dynamics (ppp pp p mf f ff fff))
@@ -59,11 +59,12 @@
   (instrument-table
     (2))
 
-  (entrydelays (0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8))
+  (entrydelays (0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.004 0.005 0.009))
   (entrydelay-table
     (0 1 2)
-    (3 4 5)
-    (0 1 2 3 4 5 6 7))
+    (5)
+    (0 1 2 3 4 5 6 7)
+    (8 9 10 0 3))
 
   (durations (0.1 0.2 0.3 0.5 0.8 5.0))
   (duration-table
@@ -83,28 +84,16 @@
     (0 4))
 
   (harmony
-    (principle interval)
-    (matrix (rows (
-        (1 0 0 0 0 0 1 0 0 0 0)
-        (0 0 0 0 0 0 0 0 0 0 0)
-        (0 0 0 0 0 0 0 0 0 0 0)
-        (0 0 0 0 0 0 0 0 0 0 0)
-        (0 0 0 0 0 0 0 0 0 0 0)
-        (0 0 0 0 0 0 0 0 0 0 0)
-        (1 0 0 0 0 0 1 0 0 0 0)
-        (0 0 0 0 0 0 0 0 0 0 0)
-        (0 0 0 0 0 0 0 0 0 0 0)
-        (0 0 0 0 0 0 0 0 0 0 0)
-        (0 0 0 0 0 0 0 0 0 0 0)
-      )))
-    (forbidden-tones ()))
+    (principle row)
+    (row (1 7 1 7 1 3 7))
+    (transposition none))
 
   (principles
     (instrument (ensemble alea) (order (group (element series) (repetition series) (repetitions 1 3))))
-    (entrydelay (ensemble series) (order (ratio ((0 1) (1 3) (2 1) (3 5) (4 2) (5 1) (6 1) (7 10)))))
+    (entrydelay (ensemble (sequence 1)) (order (tendency (section 1.0 (start 0.0 1.0) (end 0.9 1.0)) (section 1.0 (start 0.0 0.1) (end 0.0 0.1)) (section 1.0 (start 1.0 1.0) (end 0.0 1.0)))))
     (performance (ensemble (sequence 2)) (order alea) (mode per-chord))
     (dynamics (ensemble series) (order series) (mode per-chord))
-    (duration (ensemble series) (order series) (relation (shorter-than-entry per-note)))
+    (duration (ensemble series) (order series) (relation (independent per-note)))
     (register (ensemble series) (order series) (mode per-note)))
 
   (hierarchy (Ins Reg Per Dyn Har Ent Dur))

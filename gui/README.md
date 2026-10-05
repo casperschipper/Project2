@@ -96,26 +96,27 @@ xcode-select --install
 
 **Linux** — package names vary by distribution; Tauri v2 needs
 `webkit2gtk-4.1`, an app-indicator library, `librsvg`, and the usual C
-toolchain/`openssl`/`curl`/`wget`/`file`. Debian/Ubuntu:
+toolchain/`openssl`/`curl`/`wget`/`file`; the MIDI preview needs ALSA's
+development files. Debian/Ubuntu:
 
 ```sh
 sudo apt install libwebkit2gtk-4.1-dev libsoup-3.0-dev \
   build-essential curl wget file libxdo-dev libssl-dev \
-  libayatana-appindicator3-dev librsvg2-dev
+  libayatana-appindicator3-dev librsvg2-dev libasound2-dev
 ```
 
 Fedora:
 
 ```sh
 sudo dnf install webkit2gtk4.1-devel openssl-devel curl wget file \
-  libappindicator-gtk3-devel librsvg2-devel
+  libappindicator-gtk3-devel librsvg2-devel alsa-lib-devel
 ```
 
 Arch:
 
 ```sh
 sudo pacman -S --needed webkit2gtk-4.1 base-devel curl wget file openssl \
-  appmenu-gtk-module gtk3 libappindicator-gtk3 librsvg
+  appmenu-gtk-module gtk3 libappindicator-gtk3 librsvg alsa-lib
 ```
 
 The runtime library alone is not enough on any distro; the `-dev`/`-devel`

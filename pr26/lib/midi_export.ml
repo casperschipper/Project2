@@ -200,3 +200,43 @@ let write_layers_midi ?tempo ~prefix ~tr
   layers
   |> List.iteri (fun i entries ->
       write_layer_midi ?tempo ~tr (Printf.sprintf "%s_layer%d.mid" prefix i) entries)
+
+(* ---- playback data for the GUI ---- *)
+
+(* The notes of one generated score as JSON, for the GUI's MIDI preview: per
+   variant, per layer, one [time, duration, midi note, velocity, instrument]
+   array per note. Times are seconds (after quantization when that is on);
+   the instrument is its index in [instrs], so the GUI can give each one its
+   own channel across all layers. Same pitch/velocity mapping as the .mid
+   files above, so a preview and an exported file can't disagree. Output
+   only - nothing here comes from, or goes into, the structure formula. *)
+let playback_json ~tr ~instrs (variants : Score_generation.entry list list list) =
+  let instr_index instr =
+    let rec find i = function
+      | [] -> 0
+      | x :: rest -> if x = instr then i else find (i + 1) rest
+    in
+    find 0 instrs
+  in
+  let note_json (n : Score_generation.note) =
+    let (Duration dur) = n.duration in
+    Printf.sprintf "[%.4f,%.4f,%d,%d,%d]" n.time dur
+      (midi_note_of_pitch ~tr n.pitch)
+      (velocity_of_dynamic n.dynamic)
+      (instr_index n.instrument)
+  in
+  let layer_json (entries : Score_generation.entry list) =
+    entries
+    |> List.concat_map (fun (e : Score_generation.entry) -> e.notes)
+    |> List.map note_json |> Parameters.json_array
+  in
+  let variant_json layers =
+    Parameters.json_obj [ ("layers", Parameters.json_array (List.map layer_json layers)) ]
+  in
+  Parameters.json_obj
+    [
+      ( "instruments",
+        Parameters.json_array
+          (List.map (fun (InstrumentName name) -> Parameters.json_string name) instrs) );
+      ("variants", Parameters.json_array (List.map variant_json variants));
+    ]

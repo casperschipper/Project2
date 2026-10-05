@@ -223,6 +223,10 @@ export type Project = {
   /** GUI-only: where an explicit Run persists score/entries/MIDI output.
    * Chosen once (via a folder picker) and remembered from then on. */
   outputDir: string | null;
+  /** GUI-only: show and type ROW's relative pitches 0-based (0..tr-1)
+   * instead of EMR-3's 1..tr. Display only - `row` itself, and so the
+   * formula, always holds 1..tr. */
+  rowZeroBased: boolean;
 
   // --- instruments ----------------------------------------------------
   numberOfInstrumentGroups: number;
@@ -350,6 +354,18 @@ export type EngineResult = {
    * continuation - see `pr26/lib/debug_log.ml`). Left untyped here: it's
    * displayed as raw JSON for now, not interpreted by this GUI. */
   debug?: unknown[];
+  /** The generated notes, for the Output screen's playback preview (see
+   * `pr26/lib/midi_export.ml`, `playback_json`). Set whenever generation
+   * succeeded. */
+  playback?: PlaybackData;
   /** Set when the engine could not be started or produced unparseable output. */
   engineError?: string;
+};
+
+/** [start (s), duration (s), MIDI note, velocity, instrument index]. */
+export type PlaybackNote = [number, number, number, number, number];
+
+export type PlaybackData = {
+  instruments: string[];
+  variants: { layers: PlaybackNote[][] }[];
 };

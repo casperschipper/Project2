@@ -162,3 +162,32 @@ export async function openProjectFile(): Promise<{ path: string; contents: strin
     input.click();
   });
 }
+
+// ---------------------------------------------------------------------
+// MIDI preview (desktop app only - a browser has no access to the
+// system's MIDI ports here, so it gets no ports and can't play).
+// ---------------------------------------------------------------------
+
+/** Names of the MIDI output ports currently available. */
+export async function midiPorts(): Promise<string[]> {
+  if (!isTauri()) return [];
+  return invoke<string[]>("midi_ports");
+}
+
+/**
+ * Plays `notes` ([start s, duration s, MIDI note, velocity, channel]) to
+ * `port` from `from` seconds on, replacing whatever was playing. Resolves
+ * once the port is open; rejects with the reason when it can't be.
+ */
+export async function midiPlay(
+  port: string,
+  notes: [number, number, number, number, number][],
+  from: number,
+): Promise<void> {
+  if (!isTauri()) throw new Error("MIDI output needs the desktop app");
+  await invoke("midi_play", { port, notes, from });
+}
+
+export async function midiStop(): Promise<void> {
+  if (isTauri()) await invoke("midi_stop");
+}

@@ -201,7 +201,7 @@ let render_json file =
             (json_of_diagnostics ~ok:false ~errors:[ crash_diagnostic exn ]
                ~warnings ~extra:[ ("log", log) ]);
           false
-      | Ok (_instrs, variants) ->
+      | Ok (instrs, variants) ->
           let n = List.length variants in
           let file_field name key =
             match read_whole_file (in_out_dir name) with
@@ -245,10 +245,16 @@ let render_json file =
             if !debug_mode then [ ("debug", Pr26.Debug_log.to_json ()) ]
             else []
           in
+          (* The notes themselves, for the GUI's playback preview. *)
+          let playback_field =
+            [ ("playback", Pr26.Midi_export.playback_json ~tr:sf.tr
+                  ~instrs:(List.map (fun (Instrument i) -> i.instrument) instrs)
+                  variants ) ]
+          in
           emit
             (json_of_diagnostics ~ok:true ~errors:[]
                ~warnings:(warnings @ too_strict_warnings)
-               ~extra:(("log", log) :: result_fields @ debug_field));
+               ~extra:(("log", log) :: result_fields @ playback_field @ debug_field));
           true)
 
 let watch file json =

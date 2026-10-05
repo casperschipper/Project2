@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useStore } from "../state/store";
-import { DiagnosticList } from "../components/Field";
+import { DiagnosticList, Section } from "../components/Field";
+import { PlaybackPanel } from "../components/PlaybackPanel";
 import { dedupeForDisplay } from "../engine/diagnostics";
 import { chooseOutputDir } from "../engine/backend";
 
@@ -91,6 +92,16 @@ export function OutputScreen() {
         What the engine generated from the current formula. More formats and ways of
         displaying this will follow.
       </p>
+
+      <Section title="Playback">
+        {engineResult?.playback ? (
+          <PlaybackPanel data={engineResult.playback} firstVariant={project.startIndex} />
+        ) : (
+          <div className="empty-note">
+            Nothing to play yet - the engine has not produced a score for this formula.
+          </div>
+        )}
+      </Section>
 
       <div className="field" style={{ marginBottom: 20 }}>
         <div className="field__row" style={{ flexWrap: "wrap" }}>

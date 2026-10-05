@@ -1,3 +1,5 @@
+mod midi;
+
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -301,7 +303,10 @@ pub fn run() {
             read_help,
             write_help,
             read_text_file,
-            write_text_file
+            write_text_file,
+            midi::midi_ports,
+            midi::midi_play,
+            midi::midi_stop
         ])
         .run(tauri::generate_context!())
         .expect("error while running the Projekt 2 GUI");

@@ -27,6 +27,10 @@ import type { ChordTransposition, HarmonyPrinciple, Transposition } from "../sch
 export function HarmonyScreen() {
   const { project, update } = useStore();
   const matrixSize = Math.max(project.octaveDivision - 1, 0);
+  // ROW is stored 1-based (EMR-3); with `rowZeroBased` it is shown and typed
+  // one lower.
+  const rowShift = project.rowZeroBased ? 1 : 0;
+  const rowFrom = 1 - rowShift;
   // What the INTERVAL principle actually resolves to at run time - chord-
   // derived if applicable. `null` while the chord (or, in principle, a
   // malformed direct matrix) isn't valid yet.
@@ -88,17 +92,29 @@ export function HarmonyScreen() {
               label="Row"
               helpKey="fields/harmony-row"
               path="harmony.row"
-              hint={`Relative pitches 1..${project.octaveDivision}, or 'p' for an explicit percussion event. Drag the grip to reorder.`}
+              hint={`Relative pitches ${rowFrom}..${rowFrom + project.octaveDivision - 1}, or 'p' for an explicit percussion event. Drag the grip to reorder.`}
             >
+              <label className="faint" style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={project.rowZeroBased}
+                  onChange={(e) => update((p) => (p.rowZeroBased = e.target.checked))}
+                />
+                Count pitches from 0 (0..{project.octaveDivision - 1} instead of 1..
+                {project.octaveDivision}) - display only, the formula keeps 1..
+                {project.octaveDivision}
+              </label>
               <TokenListEditor
-                values={project.row}
-                onChange={(v) => update((p) => (p.row = v))}
+                values={project.row.map((v) => shiftRowValue(v, -rowShift))}
+                onChange={(v) => update((p) => (p.row = v.map((x) => shiftRowValue(x, rowShift))))}
                 placeholder="p"
-                bulkPlaceholder="1 2 3 p 5 7 9 11 12"
+                bulkPlaceholder={project.rowZeroBased ? "0 1 2 p 4 6 8 10 11" : "1 2 3 p 5 7 9 11 12"}
                 invalid={(v) => {
                   if (v === "p") return false;
                   const n = Number(v);
-                  return !Number.isInteger(n) || n < 1 || n > project.octaveDivision;
+                  return (
+                    !Number.isInteger(n) || n < rowFrom || n > rowFrom + project.octaveDivision - 1
+                  );
                 }}
               />
             </Field>
@@ -500,4 +516,11 @@ function IntervalGraphPanel({ size, matrix }: { size: number; matrix: boolean[][
       <IntervalGraph size={size} matrix={matrix} />
     </figure>
   );
+}
+
+/** Shifts a row entry by `by`, leaving `p` and anything not a whole number
+ * (a half-typed or invalid entry) as typed, so validation still sees it. */
+function shiftRowValue(v: string, by: number): string {
+  const n = Number(v);
+  return v.trim() !== "" && Number.isInteger(n) ? String(n + by) : v;
 }
