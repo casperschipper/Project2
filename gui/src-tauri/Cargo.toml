@@ -1,6 +1,6 @@
 [package]
 name = "pr2-gui"
-version = "0.2.0"
+version = "0.2.1"
 description = "GUI for the Projekt 2 (G.M. Koenig) engine"
 edition = "2021"
 rust-version = "1.77"

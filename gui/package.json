@@ -1,7 +1,7 @@
 {
   "name": "pr2-gui",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "description": "GUI for the Projekt 2 (G.M. Koenig) engine",
   "scripts": {
