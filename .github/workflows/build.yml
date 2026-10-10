@@ -71,8 +71,13 @@ jobs:
         with:
           ocaml-compiler: "5.4"
 
+      # MACOSX_DEPLOYMENT_TARGET: on macOS, link the engine for the oldest
+      # macOS the app supports rather than the runner's (see
+      # gui/scripts/prepare-engine.sh); the other platforms ignore it.
       - name: Build the engine
         working-directory: pr26
+        env:
+          MACOSX_DEPLOYMENT_TARGET: "11.0"
         run: |
           opam install . --deps-only --yes
           opam exec -- dune build --profile release bin/main_sexp.exe

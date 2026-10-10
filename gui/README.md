@@ -142,7 +142,10 @@ which builds the engine with dune and copies it to
 `src-tauri/binaries/pr2-engine-<target triple>`. Tauri ships it as a
 [sidecar](https://v2.tauri.app/develop/sidecar/) next to the app's executable,
 and ships `help/` as a bundle resource, so the result is self-contained: no
-`pr26` checkout or OCaml toolchain is needed to run it.
+`pr26` checkout or OCaml toolchain is needed to run it. On macOS the engine is
+linked to run on macOS 11 and later (`MACOSX_DEPLOYMENT_TARGET`), not only on
+the macOS it was built on; the linker's warnings that the OCaml libraries
+were built for a newer macOS are expected.
 
 On Linux this produces, in `src-tauri/target/release/bundle/`:
 
