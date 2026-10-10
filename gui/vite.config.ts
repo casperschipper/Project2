@@ -54,6 +54,12 @@ function backendPlugin(): Plugin {
           return;
         }
 
+        // --- does a folder exist (see dir_exists in src-tauri/src/lib.rs) ---
+        if (url.pathname === "/api/dir-exists" && req.method === "GET") {
+          json(res, 200, { exists: await isDir(url.searchParams.get("path") ?? "") });
+          return;
+        }
+
         // --- help markdown --------------------------------------------------
         // Read from disk on every request (never bundled in dev) so editing a
         // .md file in your editor shows up on the next open of the panel.
@@ -101,6 +107,10 @@ async function readHelp(key: string): Promise<string | null> {
   }
 }
 
+async function isDir(p: string): Promise<boolean> {
+  return fs.stat(p).then((s) => s.isDirectory(), () => false);
+}
+
 /**
  * Mirrors the Tauri `run_engine` command (see src-tauri/src/lib.rs): when
  * `outDir` is given (an explicit Run) the score/entries/MIDI files are
@@ -113,7 +123,14 @@ async function runEngine(sexp: string, outDir?: string, debug?: boolean) {
   const dir = persistent
     ? outDir!
     : await fs.mkdtemp(path.join(os.tmpdir(), "pr2-run-"));
-  if (persistent) await fs.mkdir(dir, { recursive: true });
+  if (persistent && !(await isDir(dir))) {
+    return {
+      ok: false,
+      errors: [],
+      warnings: [],
+      engineError: `the output folder ${dir} does not exist - choose an output folder again`,
+    };
+  }
   const formula = path.join(dir, "formula.sexp");
   await fs.writeFile(formula, sexp, "utf8");
 

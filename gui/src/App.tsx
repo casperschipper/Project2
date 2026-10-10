@@ -17,6 +17,7 @@ import {
 } from "./screens/ParameterScreen";
 import {
   chooseOutputDir,
+  dirExists,
   isTauri,
   openProjectFile,
   saveProjectFile,
@@ -82,6 +83,12 @@ export function App() {
     if (!file) return;
     try {
       const parsed = JSON.parse(file.contents) as Project;
+      // A saved output folder only counts on the computer that has it: one
+      // from elsewhere is dropped, so nothing is written until the composer
+      // picks a folder here.
+      if (parsed.outputDir && !(await dirExists(parsed.outputDir).catch(() => false))) {
+        parsed.outputDir = null;
+      }
       replaceProject({ ...defaultProject(), ...parsed });
       setFilePath(file.path);
     } catch {
@@ -208,7 +215,9 @@ export function App() {
           running={running}
           pending={pending}
           blocked={blocked}
+          hasOutputDir={Boolean(project.outputDir)}
           onForceRender={forceRender}
+          onChooseOutputDir={setOutputDir}
         />
 
         <RunStatus
@@ -217,6 +226,7 @@ export function App() {
           errors={totalErrors}
           warnings={totalWarnings}
           ok={engineResult?.ok ?? false}
+          hasOutputDir={Boolean(project.outputDir)}
         />
 
         <button type="button" className="btn btn--ghost btn--small" onClick={open}>
@@ -403,18 +413,23 @@ function NavItem({
  * below - that one reports the *content* of the last completed run (errors,
  * warnings), this one reports the *freshness* of that content, which can
  * disagree with it (recent edits can leave stale errors on screen for up to
- * the debounce wait).
+ * the debounce wait). Never green before an output folder is chosen: the
+ * formula is checked then, but nothing is written anywhere yet.
  */
 function SyncStatus({
   running,
   pending,
   blocked,
+  hasOutputDir,
   onForceRender,
+  onChooseOutputDir,
 }: {
   running: boolean;
   pending: boolean;
   blocked: boolean;
+  hasOutputDir: boolean;
   onForceRender: () => void;
+  onChooseOutputDir: () => void;
 }) {
   // Checked before [pending]: while blocked, nothing is scheduled to render
   // at all (the debounce effect skips scheduling one), regardless of
@@ -452,6 +467,20 @@ function SyncStatus({
     );
   }
 
+  if (!hasOutputDir) {
+    return (
+      <button
+        type="button"
+        className="btn btn--ghost btn--small status"
+        onClick={onChooseOutputDir}
+        title="The formula is checked, but nothing is written until you choose an output folder"
+      >
+        <span className="status__dot status__dot--warning" />
+        No output folder
+      </button>
+    );
+  }
+
   return (
     <div className="status" title="Output matches the current formula">
       <span className="status__dot status__dot--ok" />
@@ -466,12 +495,14 @@ function RunStatus({
   errors,
   warnings,
   ok,
+  hasOutputDir,
 }: {
   running: boolean;
   blocked: boolean;
   errors: number;
   warnings: number;
   ok: boolean;
+  hasOutputDir: boolean;
 }) {
   const [dot, text] = (() => {
     if (running) return ["running", "Running"];
@@ -480,7 +511,8 @@ function RunStatus({
     if (blocked) return ["error", "Not run"];
     if (warnings > 0)
       return ["warning", `${warnings} warning${warnings === 1 ? "" : "s"}`];
-    if (ok) return ["ok", "Score generated"];
+    // Without an output folder the run was only a check: nothing was kept.
+    if (ok) return hasOutputDir ? ["ok", "Score generated"] : ["", "No errors"];
     return ["", "Idle"];
   })();
 

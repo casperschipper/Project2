@@ -61,6 +61,16 @@ export async function chooseOutputDir(): Promise<string | null> {
   return typeof path === "string" ? path : null;
 }
 
+/** Whether `path` is an existing folder on this computer. */
+export async function dirExists(path: string): Promise<boolean> {
+  if (isTauri()) return invoke<boolean>("dir_exists", { path });
+
+  const res = await fetch(`/api/dir-exists?path=${encodeURIComponent(path)}`);
+  if (!res.ok) return false;
+  const { exists } = await res.json();
+  return exists === true;
+}
+
 /** Returns null when the document hasn't been written yet. */
 export async function readHelp(key: string): Promise<string | null> {
   if (isTauri()) return invoke<string | null>("read_help", { key });

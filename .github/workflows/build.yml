@@ -106,7 +106,7 @@ jobs:
         shell: bash
         run: |
           out=$(mktemp -d smoke-test.XXXXXX)
-          if ! gui/src-tauri/binaries/pr2-engine-* pr26/formula.sexp --json --out-dir "$out" > "$out/result.json" \
+          if ! gui/src-tauri/binaries/pr2-engine-* pr26/CasperTest/formula.sexp --json --out-dir "$out" > "$out/result.json" \
              || ! grep -q '"ok":true' "$out/result.json"; then
             cat "$out/result.json"
             exit 1

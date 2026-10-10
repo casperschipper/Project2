@@ -145,10 +145,15 @@ fn run_engine(sexp: String, out_dir: Option<String>, debug: Option<bool>) -> Val
     // persistent case at all.
     let _tmp_guard;
     let run_dir: PathBuf = match &out_dir {
+        // Only ever a folder the composer picked, so it is never created here:
+        // a missing one (say, a project saved on another computer) is
+        // reported instead of being made somewhere they never chose.
         Some(p) => {
             let pb = PathBuf::from(p);
-            if let Err(e) = std::fs::create_dir_all(&pb) {
-                return engine_error(format!("could not create the output directory: {e}"));
+            if !pb.is_dir() {
+                return engine_error(format!(
+                    "the output folder {p} does not exist - choose an output folder again"
+                ));
             }
             _tmp_guard = None;
             pb
@@ -233,6 +238,13 @@ fn read_text_file(path: String) -> Result<String, String> {
     std::fs::read_to_string(Path::new(&path)).map_err(|e| e.to_string())
 }
 
+/// Whether `path` is an existing folder - used to drop a project's saved
+/// output folder when it was opened on a computer that doesn't have it.
+#[tauri::command]
+fn dir_exists(path: String) -> bool {
+    Path::new(&path).is_dir()
+}
+
 #[tauri::command]
 fn write_text_file(path: String, contents: String) -> Result<(), String> {
     std::fs::write(Path::new(&path), contents).map_err(|e| e.to_string())
@@ -304,6 +316,7 @@ pub fn run() {
             write_help,
             read_text_file,
             write_text_file,
+            dir_exists,
             midi::midi_ports,
             midi::midi_play,
             midi::midi_stop
